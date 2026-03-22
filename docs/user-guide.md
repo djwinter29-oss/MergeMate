@@ -129,10 +129,12 @@ The default workflow is:
 3. if confirmation is enabled, MergeMate returns the plan and waits for approval
 4. you can reply with more requirements to revise the plan
 5. approve the run with `/approve <run_id>` or `/approve` to approve the latest one
-6. MergeMate retrieves context, writes an architecture document under `docs/architecture/`, generates implementation output, writes a test plan under `docs/testing/`, and writes a review report under `docs/reviews/`
+6. For `generate_code`, MergeMate retrieves context, writes an architecture document under `docs/architecture/`, generates implementation output, writes a test plan under `docs/testing/`, and writes a review report under `docs/reviews/`
 7. MergeMate sends stage updates while the run is active and a final completion or failure message at the end
 
 Workflow documents are written under the active docs root, typically `docs/architecture/`, `docs/testing/`, and `docs/reviews/` under the configured workspace root.
+
+For direct workflows such as debugging and explanation, MergeMate still drafts and confirms a plan, but the execution step runs a direct single-agent call and does not emit the architecture, test-plan, or review documents.
 
 Useful Telegram commands:
 

@@ -175,3 +175,72 @@ def test_approve_is_idempotent_for_completed_run() -> None:
     assert result.dispatched is False
     assert result.status == RunStatus.COMPLETED.value
     assert dispatcher.dispatched_run_ids == []
+
+
+@pytest.mark.asyncio
+async def test_revise_plan_for_chat_rejects_other_chat() -> None:
+    repository = InMemoryRunRepository()
+    dispatcher = DispatcherStub()
+    use_case = SubmitPromptUseCase(
+        repository,
+        ContextServiceStub(),
+        dispatcher,
+        WorkflowServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
+    )
+    await use_case.execute(
+        chat_id=1,
+        user_id=2,
+        agent_name="coder",
+        workflow="generate_code",
+        prompt="build feature",
+    )
+    run_id = next(iter(repository.runs))
+
+    result = await use_case.revise_plan_for_chat(run_id, "new feedback", chat_id=999)
+
+    assert result is None
+
+
+def test_approve_rejects_run_from_other_chat() -> None:
+    repository = InMemoryRunRepository()
+    dispatcher = DispatcherStub()
+    use_case = SubmitPromptUseCase(
+        repository,
+        ContextServiceStub(),
+        dispatcher,
+        WorkflowServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
+    )
+    from datetime import UTC, datetime
+    from mergemate.domain.runs.entities import AgentRun
+
+    now = datetime.now(UTC)
+    repository.create(
+        AgentRun(
+            run_id="run-2",
+            chat_id=1,
+            user_id=2,
+            agent_name="coder",
+            workflow="generate_code",
+            status=RunStatus.AWAITING_CONFIRMATION,
+            current_stage="awaiting_user_confirmation",
+            prompt="pending",
+            estimate_seconds=10,
+            plan_text="plan",
+            design_text=None,
+            test_text=None,
+            review_text=None,
+            review_iterations=0,
+            approved=False,
+            result_text=None,
+            error_text=None,
+            created_at=now,
+            updated_at=now,
+        )
+    )
+
+    result = use_case.approve("run-2", chat_id=999)
+
+    assert result is None
+    assert dispatcher.dispatched_run_ids == []

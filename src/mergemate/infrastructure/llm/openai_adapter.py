@@ -24,10 +24,9 @@ class OpenAIAdapter:
 
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
         if not self._api_key:
-            return (
-                "Provider is not configured yet. Set the OpenAI API key in the configured "
-                "environment variable to enable model-backed responses.\n\n"
-                f"Request summary:\n{user_prompt[:1200]}"
+            raise RuntimeError(
+                "Provider is not configured. Set the configured API key environment variable "
+                f"for model {self._model} before executing this workflow."
             )
 
         payload = {

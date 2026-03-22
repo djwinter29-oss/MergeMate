@@ -14,11 +14,12 @@ This directory records the architectural decisions that shape MergeMate.
 | [ADR-006](./ADR-006-role-based-agent-model-assignment.md) | role-based agent model assignment | lets planning, design, coding, testing, and review use different model setups |
 | [ADR-007](./ADR-007-review-driven-replanning-loop.md) | bounded review-driven replanning | allows serious review findings to trigger replanning without unbounded loops |
 | [ADR-008](./ADR-008-scm-integration-through-local-clis.md) | SCM integration through local authenticated CLIs | reuses existing `git`, `gh`, and `glab` login state instead of embedding OAuth |
+| [ADR-009](./ADR-009-config-driven-workflow-dispatch.md) | config-driven workflow dispatch | keeps workflow selection and execution shape aligned with the real runtime |
 
 ## How To Read These
 
 - start with `ADR-001` through `ADR-004` for the original MVP foundation
-- read `ADR-005` through `ADR-008` for the later workflow and integration decisions
+- read `ADR-005` through `ADR-009` for the later workflow and integration decisions
 - when a new requirement changes structure, deployment, provider strategy, or workflow control, it should usually become a new ADR rather than being buried only in code changes
 
 ## When To Create A New ADR

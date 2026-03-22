@@ -24,10 +24,12 @@ Responsible for doing actual agent work:
 
 1. Pull queued run.
 2. Load conversation context.
-3. Build design and implementation context.
-4. Call the architect, coder, tester, and reviewer agents using their configured provider aliases.
-5. Persist stage progress and generated artifacts.
-6. Optionally replan from reviewer concerns up to the configured iteration limit.
+3. Build workflow-specific execution context.
+4. Choose the execution shape from the workflow name:
+	- `generate_code`: call architect, coder, tester, and reviewer agents with generated workflow documents
+	- `debug_code` and `explain_code`: call the selected agent directly after context assembly
+5. Persist stage progress and generated artifacts when the workflow uses the multi-stage delivery path.
+6. Optionally replan from reviewer concerns up to the configured iteration limit for `generate_code`.
 7. Send periodic status updates and the final result back to Telegram.
 
 ## Modules

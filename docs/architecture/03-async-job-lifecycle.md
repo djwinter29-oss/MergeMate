@@ -39,8 +39,9 @@ This is intentionally simple and should be replaced later by telemetry-informed 
 Cancellation is best-effort in the MVP:
 
 1. Queued runs can be cancelled before execution.
-2. Running jobs can be marked cancelled and checked between design, implementation, testing, review, and replanning steps.
-3. Provider calls already in flight may complete before cancellation is observed.
+2. Running multi-stage jobs can be marked cancelled and checked between design, implementation, testing, review, and replanning steps.
+3. Direct-execution workflows still depend on provider completion boundaries, so cancellation is only observed before or after the direct model call.
+4. Provider calls already in flight may complete before cancellation is observed.
 
 ## Failure Handling
 

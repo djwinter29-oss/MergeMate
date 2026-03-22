@@ -77,3 +77,35 @@ def test_list_enabled_tools_returns_only_registered_tools() -> None:
     result = service.list_enabled_tools("coder")
 
     assert result == ["syntax_checker", "code_formatter"]
+
+
+def test_install_package_returns_blocked_when_tool_missing() -> None:
+    service = ToolService(RegistryStub({}), SettingsStub(source_control=SourceControlConfigStub(), agents={}))
+
+    result = service.install_package("requests")
+
+    assert result["status"] == "blocked"
+
+
+def test_get_repository_context_uses_explicit_platform_when_available() -> None:
+    service = ToolService(
+        RegistryStub(
+            {
+                "git_repository": ToolStub({"status": "ok", "detail": "git status"}),
+                "gitlab_cli": ToolStub({"status": "ok", "detail": "glab repo view"}),
+            }
+        ),
+        SettingsStub(source_control=SourceControlConfigStub(default_platform="github"), agents={}),
+    )
+
+    context = service.get_repository_context("gitlab")
+
+    assert context["gitlab"]["detail"] == "glab repo view"
+
+
+def test_get_platform_auth_status_blocks_when_tool_missing() -> None:
+    service = ToolService(RegistryStub({}), SettingsStub(source_control=SourceControlConfigStub(), agents={}))
+
+    result = service.get_platform_auth_status("github")
+
+    assert result["status"] == "blocked"

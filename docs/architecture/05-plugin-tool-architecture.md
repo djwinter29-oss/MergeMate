@@ -20,6 +20,10 @@ Tool invocation should be extensible without mixing provider logic, Telegram log
 - built-in source-control tools for `git`, `gh`, and `glab`
 - agent config listing enabled tools
 
+## Current Limitation
+
+In the current MVP, tool invocation is wired into the CLI and support services, but not yet into the agent execution loop itself. The agent `tools` list is therefore a configuration seam prepared for later runtime integration rather than an actively enforced execution contract.
+
 ## Future Expansion
 
 - entry-point based plugin discovery

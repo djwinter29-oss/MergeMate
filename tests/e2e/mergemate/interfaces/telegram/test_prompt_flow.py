@@ -82,24 +82,30 @@ class SubmitPromptStub:
         self.result = result
         self.revised_result = revised_result
         self.execute_calls: list[dict[str, object]] = []
-        self.revise_calls: list[tuple[str, str]] = []
+        self.revise_calls: list[tuple[str, str, int | None]] = []
 
     async def execute(self, **kwargs) -> SubmitPromptResult:
         self.execute_calls.append(kwargs)
         return self.result
 
-    async def revise_plan(self, run_id: str, feedback: str) -> SubmitPromptResult | None:
-        self.revise_calls.append((run_id, feedback))
+    async def revise_plan_for_chat(
+        self,
+        run_id: str,
+        feedback: str,
+        *,
+        chat_id: int | None = None,
+    ) -> SubmitPromptResult | None:
+        self.revise_calls.append((run_id, feedback, chat_id))
         return self.revised_result
 
 
 class ApproveRunStub:
     def __init__(self, result: ApproveRunResult) -> None:
         self.result = result
-        self.calls: list[str] = []
+        self.calls: list[tuple[str, int | None]] = []
 
-    def execute(self, run_id: str, on_finished=None):
-        self.calls.append(run_id)
+    def execute(self, run_id: str, *, chat_id: int | None = None, on_finished=None):
+        self.calls.append((run_id, chat_id))
         return self.result
 
 
@@ -210,7 +216,7 @@ async def test_handle_prompt_revises_existing_plan(monkeypatch: pytest.MonkeyPat
     await handlers.handle_prompt(update, context)
 
     assert submit_prompt.execute_calls == []
-    assert submit_prompt.revise_calls == [("run-456", "add audit logs")]
+    assert submit_prompt.revise_calls == [("run-456", "add audit logs", 11)]
     assert started_watchers == []
     assert len(message.replies) == 1
     assert "Requirements captured for run run-456." in message.replies[0]
@@ -237,9 +243,22 @@ async def test_approve_command_replies_and_starts_progress_watcher(monkeypatch: 
 
     await handlers.approve_command(update, context)
 
-    assert approve_run.calls == ["run-789"]
+    assert approve_run.calls == [("run-789", 11)]
     assert started_watchers == [(11, "run-789")]
     assert len(message.replies) == 1
     assert message.replies[0] == (
         "Run run-789 approved. Retrieving context, designing, implementing, testing, and reviewing now."
     )
+
+
+@pytest.mark.asyncio
+async def test_status_command_hides_run_from_other_chat() -> None:
+    runtime = _build_runtime(latest_run=None, submit_prompt=None, approve_run=None)
+    application = FakeApplication(runtime)
+    context = FakeContext(application=application, args=["foreign-run"])
+    update, message = _build_update("/status foreign-run")
+
+    await handlers.status_command(update, context)
+
+    assert runtime.get_run_status.calls == [("foreign-run", 11)]
+    assert message.replies == ["No runs found for this chat."]

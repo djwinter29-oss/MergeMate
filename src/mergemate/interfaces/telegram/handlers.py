@@ -91,6 +91,7 @@ async def approve_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     run = runtime.approve_run.execute(
         run_id,
+        chat_id=chat.id,
         on_finished=lambda completed_run: _notify_terminal_update(
             context.application,
             chat.id,
@@ -131,7 +132,11 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     latest_run = runtime.get_run_status.execute(chat_id=request.chat_id)
     if latest_run is not None and latest_run.status.value == "awaiting_confirmation":
-        revised = await runtime.submit_prompt.revise_plan(latest_run.run_id, request.message_text)
+        revised = await runtime.submit_prompt.revise_plan_for_chat(
+            latest_run.run_id,
+            request.message_text,
+            chat_id=request.chat_id,
+        )
         if revised is None:
             await message.reply_text("Could not revise the current plan.")
             return

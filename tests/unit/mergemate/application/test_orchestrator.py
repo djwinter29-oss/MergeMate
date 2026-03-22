@@ -170,6 +170,11 @@ class DocumentationServiceStub:
 class WorkflowServiceStub:
     def __init__(self) -> None:
         self.generate_code_calls = 0
+        self.direct_calls = []
+
+    @staticmethod
+    def uses_multi_stage_delivery(workflow: str) -> bool:
+        return workflow == "generate_code"
 
     async def create_design(self, plan_text: str, context_text: str) -> str:
         return "design"
@@ -187,19 +192,23 @@ class WorkflowServiceStub:
     async def draft_plan(self, prompt: str, prior_feedback: str | None = None) -> str:
         return "replanned"
 
+    async def execute_direct(self, agent_name: str, system_prompt: str, user_prompt: str) -> str:
+        self.direct_calls.append((agent_name, system_prompt, user_prompt))
+        return "direct result"
+
     @staticmethod
     def has_high_concerns(review_text: str) -> bool:
         return False
 
 
-def _build_run() -> AgentRun:
+def _build_run(*, workflow: str = "generate_code", agent_name: str = "coder") -> AgentRun:
     now = datetime.now(UTC)
     return AgentRun(
         run_id="run-1",
         chat_id=123,
         user_id=456,
-        agent_name="coder",
-        workflow="generate_code",
+        agent_name=agent_name,
+        workflow=workflow,
         status=RunStatus.QUEUED,
         current_stage="queued_for_execution",
         prompt="build a feature",
@@ -275,4 +284,33 @@ async def test_process_run_writes_all_document_artifacts() -> None:
     assert "Design document:" in final_message
     assert "Test plan document:" in final_message
     assert "Review report:" in final_message
+    assert learning_service.saved
+
+
+@pytest.mark.asyncio
+async def test_process_run_executes_non_generate_workflow_directly() -> None:
+    repository = RunRepositoryStub(_build_run(workflow="debug_code", agent_name="debugger"))
+    context_service = ContextServiceStub()
+    documentation_service = DocumentationServiceStub()
+    learning_service = LearningServiceStub()
+    workflow_service = WorkflowServiceStub()
+    orchestrator = AgentOrchestrator(
+        run_repository=repository,
+        context_service=context_service,
+        documentation_service=documentation_service,
+        learning_service=learning_service,
+        prompt_service=PromptServiceStub(),
+        workflow_service=workflow_service,
+        llm_gateway=None,
+        settings=SettingsStub(),
+    )
+
+    run = await orchestrator.process_run("run-1")
+
+    assert run is not None
+    assert run.status == RunStatus.COMPLETED
+    assert workflow_service.direct_calls == [("debugger", "system", "context")]
+    assert workflow_service.generate_code_calls == 0
+    assert documentation_service.calls == []
+    assert context_service.appended_messages == [(123, "assistant", "direct result")]
     assert learning_service.saved

@@ -2,9 +2,15 @@
 
 
 class WorkflowService:
+    MULTI_STAGE_WORKFLOWS = {"generate_code"}
+
     def __init__(self, llm_gateway, settings) -> None:
         self._llm_gateway = llm_gateway
         self._settings = settings
+
+    @classmethod
+    def uses_multi_stage_delivery(cls, workflow: str) -> bool:
+        return workflow in cls.MULTI_STAGE_WORKFLOWS
 
     async def draft_plan(self, prompt: str, prior_feedback: str | None = None) -> str:
         system_prompt = (
@@ -57,6 +63,9 @@ class WorkflowService:
             system_prompt,
             user_prompt,
         )
+
+    async def execute_direct(self, agent_name: str, system_prompt: str, user_prompt: str) -> str:
+        return await self._llm_gateway.generate(agent_name, system_prompt, user_prompt)
 
     async def generate_tests(self, plan_text: str, design_text: str, implementation_text: str) -> str:
         system_prompt = (

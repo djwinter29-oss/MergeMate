@@ -5,7 +5,7 @@ from mergemate.infrastructure.llm.openai_adapter import OpenAIAdapter
 
 
 @pytest.mark.asyncio
-async def test_generate_returns_fallback_when_api_key_missing() -> None:
+async def test_generate_raises_when_api_key_missing() -> None:
     adapter = OpenAIAdapter(
         model="gpt-5.4",
         api_key=None,
@@ -16,13 +16,8 @@ async def test_generate_returns_fallback_when_api_key_missing() -> None:
         extra_headers={},
     )
 
-    prompt = "x" * 1300
-    result = await adapter.generate("system prompt", prompt)
-
-    assert "Provider is not configured yet" in result
-    assert "Request summary:" in result
-    assert prompt[:1200] in result
-    assert prompt[:1250] not in result
+    with pytest.raises(RuntimeError, match="Provider is not configured"):
+        await adapter.generate("system prompt", "user prompt")
 
 
 @pytest.mark.asyncio

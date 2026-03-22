@@ -33,7 +33,9 @@ MergeMate is an AI-powered Telegram agent for code generation, debugging help, a
 - Intake layer validates and creates a run record.
 - Planning agent drafts a plan that always includes design and test approach.
 - Bot returns the drafted plan for confirmation, or queues the run immediately when confirmation is disabled.
-- Background worker executes design, implementation, testing, and review stages.
+- Background worker executes one of two delivery shapes:
+	- multi-stage delivery for `generate_code`
+	- direct single-agent execution for `debug_code` and `explain_code`
 - Bot sends proactive progress updates and a final result back into the chat.
 
 For a visual overview, see the diagram guide in `docs/diagrams/index.md`.

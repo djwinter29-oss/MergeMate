@@ -93,3 +93,21 @@ async def test_watch_run_progress_sends_updates_for_stage_changes(monkeypatch) -
     assert len(application.bot.messages) == 2
     assert "stage=retrieve_context" in application.bot.messages[0][1]
     assert "stage=implementation" in application.bot.messages[1][1]
+
+
+@pytest.mark.asyncio
+async def test_watch_run_progress_skips_duplicate_snapshots_and_missing_runs(monkeypatch) -> None:
+    async def _sleep(_seconds: int) -> None:
+        return None
+
+    monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
+    application = ApplicationStub()
+    runtime = RuntimeStub([
+        _build_run(RunStatus.RUNNING, "retrieve_context"),
+        _build_run(RunStatus.RUNNING, "retrieve_context"),
+        None,
+    ])
+
+    await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
+
+    assert len(application.bot.messages) == 1

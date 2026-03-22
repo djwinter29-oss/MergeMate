@@ -51,7 +51,39 @@ class AgentOrchestrator:
             recent_messages = recent_messages[:-1]
         learned_items = self._learning_service.load_recent_learnings(run.chat_id)
 
-        _, context_text = self._prompt_service.render(run.workflow, recent_messages, learned_items, run.prompt)
+        system_prompt, context_text = self._prompt_service.render(
+            run.workflow,
+            recent_messages,
+            learned_items,
+            run.prompt,
+        )
+
+        if not self._workflow_service.uses_multi_stage_delivery(run.workflow):
+            direct_result = await self._workflow_service.execute_direct(
+                run.agent_name,
+                system_prompt,
+                context_text,
+            )
+            self._run_repository.save_artifacts(
+                run_id,
+                current_stage="execution",
+                result_text=direct_result,
+            )
+            self._context_service.append_message(run.chat_id, "assistant", direct_result)
+            self._learning_service.remember_success(
+                chat_id=run.chat_id,
+                workflow=run.workflow,
+                prompt=run.prompt,
+                result_text=direct_result,
+            )
+            completed_run = self._run_repository.update_status(
+                run_id,
+                RunStatus.COMPLETED,
+                current_stage="completed",
+                result_text=direct_result,
+            )
+            assert completed_run is not None
+            return completed_run
 
         max_iterations = self._settings.workflow_control.max_review_iterations
         current_plan = run.plan_text or "No approved plan available."

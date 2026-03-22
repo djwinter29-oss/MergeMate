@@ -100,8 +100,19 @@ class SubmitPromptUseCase:
         )
 
     async def revise_plan(self, run_id: str, feedback: str) -> SubmitPromptResult | None:
+        return await self.revise_plan_for_chat(run_id, feedback)
+
+    async def revise_plan_for_chat(
+        self,
+        run_id: str,
+        feedback: str,
+        *,
+        chat_id: int | None = None,
+    ) -> SubmitPromptResult | None:
         existing = self._run_repository.get(run_id)
         if existing is None:
+            return None
+        if chat_id is not None and existing.chat_id != chat_id:
             return None
         updated_prompt = f"{existing.prompt}\n\nAdditional user feedback:\n{feedback.strip()}"
         plan_text = await self._workflow_service.draft_plan(updated_prompt)
@@ -116,9 +127,17 @@ class SubmitPromptUseCase:
             plan_text=plan_text,
         )
 
-    def approve(self, run_id: str, on_finished=None) -> ApproveRunResult | None:
+    def approve(
+        self,
+        run_id: str,
+        *,
+        chat_id: int | None = None,
+        on_finished=None,
+    ) -> ApproveRunResult | None:
         existing = self._run_repository.get(run_id)
         if existing is None:
+            return None
+        if chat_id is not None and existing.chat_id != chat_id:
             return None
         if existing.status in {RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED}:
             return ApproveRunResult(run_id=existing.run_id, dispatched=False, status=existing.status.value)

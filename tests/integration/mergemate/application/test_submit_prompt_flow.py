@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import pytest
 
 from mergemate.application.jobs.dispatcher import RunDispatcher
+from mergemate.application.use_cases.cancel_run import CancelRunUseCase
 from mergemate.application.services.context_service import ContextService
 from mergemate.application.use_cases.approve_run import ApproveRunUseCase
 from mergemate.application.use_cases.get_run_status import GetRunStatusUseCase
@@ -61,6 +62,7 @@ def sqlite_runtime(tmp_path):
         "conversation_repository": conversation_repository,
         "submit_prompt": submit_prompt,
         "approve_run": ApproveRunUseCase(submit_prompt),
+        "cancel_run": CancelRunUseCase(run_repository),
         "get_run_status": GetRunStatusUseCase(run_repository),
         "worker": worker,
     }
@@ -101,7 +103,7 @@ async def test_approve_run_dispatches_and_updates_persisted_status(sqlite_runtim
         prompt="implement audit logs",
     )
 
-    approval_result = sqlite_runtime["approve_run"].execute(submit_result.run_id)
+    approval_result = sqlite_runtime["approve_run"].execute(submit_result.run_id, chat_id=777)
     saved_run = sqlite_runtime["run_repository"].get(submit_result.run_id)
 
     assert approval_result is not None
@@ -112,3 +114,24 @@ async def test_approve_run_dispatches_and_updates_persisted_status(sqlite_runtim
     assert saved_run.status == RunStatus.QUEUED
     assert saved_run.current_stage == "queued_for_execution"
     assert sqlite_runtime["worker"].calls == [submit_result.run_id]
+
+
+@pytest.mark.asyncio
+async def test_run_access_is_scoped_to_chat(sqlite_runtime) -> None:
+    submit_result = await sqlite_runtime["submit_prompt"].execute(
+        chat_id=100,
+        user_id=200,
+        agent_name="coder",
+        workflow="generate_code",
+        prompt="build billing flow",
+    )
+
+    assert sqlite_runtime["get_run_status"].execute(submit_result.run_id, chat_id=999) is None
+    assert sqlite_runtime["approve_run"].execute(submit_result.run_id, chat_id=999) is None
+    assert await sqlite_runtime["submit_prompt"].revise_plan_for_chat(
+        submit_result.run_id,
+        "change scope",
+        chat_id=999,
+    ) is None
+    assert sqlite_runtime["cancel_run"].execute(submit_result.run_id, chat_id=999) is None
+    assert sqlite_runtime["worker"].calls == []

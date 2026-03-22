@@ -2,7 +2,12 @@ from datetime import UTC, datetime
 
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.runs.value_objects import RunStatus
-from mergemate.infrastructure.persistence.sqlite import SQLiteDatabase, SQLiteRunRepository
+from mergemate.infrastructure.persistence.sqlite import (
+    SQLiteConversationRepository,
+    SQLiteDatabase,
+    SQLiteLearningRepository,
+    SQLiteRunRepository,
+)
 
 
 def _build_run(run_id: str = "run-1") -> AgentRun:
@@ -81,3 +86,76 @@ def test_approve_marks_queued_run_as_approved_without_resetting_stage(tmp_path) 
     assert approved.status == RunStatus.QUEUED
     assert approved.current_stage == "queued_for_execution"
     assert approved.approved is True
+
+
+def test_run_repository_round_trip_and_updates(tmp_path) -> None:
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repository = SQLiteRunRepository(database)
+    run = _build_run()
+    repository.create(run)
+
+    loaded = repository.get("run-1")
+    assert loaded is not None
+    assert loaded.prompt == "build a bot"
+
+    updated = repository.update_status(
+        "run-1",
+        RunStatus.RUNNING,
+        current_stage="implementation",
+        result_text="partial",
+        error_text="warning",
+    )
+    assert updated is not None
+    assert updated.status == RunStatus.RUNNING
+    assert updated.current_stage == "implementation"
+    assert updated.result_text == "partial"
+    assert updated.error_text == "warning"
+
+    artifacted = repository.save_artifacts(
+        "run-1",
+        current_stage="review",
+        design_text="design",
+        test_text="tests",
+        review_text="review",
+        result_text="implementation",
+        review_iterations=2,
+    )
+    assert artifacted is not None
+    assert artifacted.design_text == "design"
+    assert artifacted.test_text == "tests"
+    assert artifacted.review_text == "review"
+    assert artifacted.result_text == "implementation"
+    assert artifacted.review_iterations == 2
+
+    listed = repository.list_for_chat(1)
+    assert [item.run_id for item in listed] == ["run-1"]
+    assert repository.get("missing") is None
+    assert repository.update_status("missing", RunStatus.FAILED) is None
+    assert repository.update_plan("missing", "plan") is None
+    assert repository.approve("missing") is None
+    assert repository.save_artifacts("missing", result_text="x") is None
+
+
+def test_conversation_and_learning_repositories_preserve_order_and_limit(tmp_path) -> None:
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+
+    conversations = SQLiteConversationRepository(database)
+    conversations.append_message(1, "user", "first")
+    conversations.append_message(1, "assistant", "second")
+    conversations.append_message(1, "user", "third")
+
+    assert conversations.list_messages(1, limit=2) == [
+        {"role": "assistant", "content": "second"},
+        {"role": "user", "content": "third"},
+    ]
+
+    learning = SQLiteLearningRepository(database)
+    learning.record(1, "generate_code", "p1", "r1")
+    learning.record(1, "debug_code", "p2", "r2")
+
+    assert learning.list_recent(1, limit=2) == [
+        {"workflow": "debug_code", "prompt": "p2", "result_excerpt": "r2"},
+        {"workflow": "generate_code", "prompt": "p1", "result_excerpt": "r1"},
+    ]

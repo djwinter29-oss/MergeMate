@@ -88,6 +88,17 @@ Current limitations:
 - `mergemate repo-context [--platform github|gitlab]`
 - `mergemate platform-auth github|gitlab`
 
+## GitHub Automation
+
+The repository includes two GitHub Actions workflows:
+
+- pull request validation in `.github/workflows/pr-checks.yml` for PR creation and later commits pushed to the PR branch
+- tag-based publishing in `.github/workflows/publish-pypi.yml` for tags matching `v*`
+
+The publish workflow builds the wheel and source distribution, checks them with `twine check`, verifies that the Git tag matches the version in `pyproject.toml`, and then publishes to PyPI.
+
+The PyPI workflow is configured for GitHub trusted publishing through the `id-token: write` permission. Configure the project on PyPI to trust this repository before using release tags.
+
 ## Local State
 
 By default, runtime state is stored in a SQLite database at `.state/mergemate.db` under the configured workspace root. The default workspace root is `./workspace` relative to the active config file, and MergeMate creates that directory automatically if needed.
@@ -110,7 +121,7 @@ MergeMate now persists short excerpts from successful runs and feeds recent lear
 
 MergeMate can also fan out one request to multiple configured model aliases in parallel. The default `coder` agent is now configured to call two provider aliases concurrently and return a sectioned combined result.
 
-The current execution sequence is:
+The current `generate_code` execution sequence is:
 
 1. capture requirements
 2. ask clarification questions and draft a plan
@@ -121,6 +132,8 @@ The current execution sequence is:
 7. use configured testing model to generate tests, then write a test plan document under the workspace docs folder
 8. use configured review model to review design and implementation, then write a review report under the workspace docs folder
 9. if review reports high concerns, send those concerns back to the planning model and repeat up to the configured iteration limit
+
+For direct workflows such as `debug_code` and `explain_code`, MergeMate still drafts and confirms a plan first, but the background execution path runs a direct single-agent call instead of the full design, testing, and review chain.
 
 Package installation is supported, but intentionally gated by configuration:
 
