@@ -72,7 +72,7 @@ MergeMate builds its effective configuration in this order:
 
 Secrets are not stored directly in the YAML by default. Instead, each provider points to an environment variable name such as `OPENAI_API_KEY`.
 
-Relative runtime paths are resolved from `storage.workspace_root`. This lets you keep process data, context memory, final workflow documents, and relative repository paths under one configurable workspace folder.
+Relative runtime paths are resolved from `storage.workspace_root`. It defaults to `./workspace` relative to the active config file, and MergeMate creates that directory automatically if it does not exist. This lets you keep process data, context memory, final workflow documents, and relative repository paths under one configurable workspace folder.
 
 ## Basic Commands
 

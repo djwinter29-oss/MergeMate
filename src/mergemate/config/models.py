@@ -26,7 +26,7 @@ class TelegramConfig(BaseModel):
 
 
 class StorageConfig(BaseModel):
-    workspace_root: str = "."
+    workspace_root: str = "./workspace"
     database_path: str = ".state/mergemate.db"
 
 
@@ -119,8 +119,11 @@ class AppConfig(BaseModel):
     def resolve_workspace_root(self, config_path: Path) -> Path:
         workspace_root = Path(self.storage.workspace_root).expanduser()
         if workspace_root.is_absolute():
-            return workspace_root.resolve()
-        return (config_path.parent / workspace_root).resolve()
+            resolved_workspace_root = workspace_root.resolve()
+        else:
+            resolved_workspace_root = (config_path.parent / workspace_root).resolve()
+        resolved_workspace_root.mkdir(parents=True, exist_ok=True)
+        return resolved_workspace_root
 
     def resolve_docs_root(self, config_path: Path) -> Path:
         return (self.resolve_workspace_root(config_path) / "docs").resolve()

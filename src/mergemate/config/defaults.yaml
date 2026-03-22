@@ -33,7 +33,7 @@ telegram:
   mode: polling
 
 storage:
-  workspace_root: .
+  workspace_root: ./workspace
   database_path: .state/mergemate.db
 
 learning:

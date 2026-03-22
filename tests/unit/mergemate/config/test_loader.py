@@ -9,7 +9,7 @@ def test_load_runtime_settings_uses_project_config() -> None:
     assert settings.default_agent == "coder"
     assert settings.default_provider == "openai_coder"
     assert settings.telegram.mode == "polling"
-    assert settings.storage.workspace_root == "."
+    assert settings.storage.workspace_root == "./workspace"
     assert settings.storage.database_path == ".state/mergemate.db"
     assert settings.workflow_control.max_review_iterations == 5
     assert settings.workflow_control.architect_agent_name == "architect"
@@ -66,3 +66,16 @@ source_control:
     assert settings.resolve_database_path(config_path) == (tmp_path / "workspace" / ".state" / "runtime.db").resolve()
     assert settings.resolve_docs_root(config_path) == (tmp_path / "workspace" / "docs").resolve()
     assert settings.resolve_working_directory(config_path) == (tmp_path / "workspace" / "repo").resolve()
+
+
+def test_resolve_workspace_root_creates_missing_directory(tmp_path) -> None:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("storage:\n  workspace_root: ./workspace\n", encoding="utf-8")
+
+    settings = load_runtime_settings(config_path)
+
+    workspace_root = settings.resolve_workspace_root(config_path)
+
+    assert workspace_root == (tmp_path / "workspace").resolve()
+    assert workspace_root.exists() is True
+    assert workspace_root.is_dir() is True

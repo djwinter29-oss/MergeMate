@@ -64,4 +64,4 @@ This lets one deployment use different models for planning, design, implementati
 
 ## Workspace Root
 
-Relative runtime paths are resolved from `storage.workspace_root`. This is the base folder for process state such as the SQLite database, final workflow documents under `docs/`, and relative repository working directories unless a path is configured as absolute.
+Relative runtime paths are resolved from `storage.workspace_root`. It defaults to `./workspace` relative to the active config file and is created automatically when resolved. This is the base folder for process state such as the SQLite database, final workflow documents under `docs/`, and relative repository working directories unless a path is configured as absolute.

@@ -35,7 +35,7 @@ Default config resolution order:
 
 This supports both project-local use and user-space service deployment.
 
-Relative runtime paths are scoped under `storage.workspace_root`, so process state, final workflow documents, and relative repository context can all live under one configurable workspace folder.
+Relative runtime paths are scoped under `storage.workspace_root`, which now defaults to `./workspace` and is created automatically if missing. This keeps process state, final workflow documents, and relative repository context under one configurable workspace folder.
 
 ## Current MVP Draft
 
@@ -90,7 +90,7 @@ Current limitations:
 
 ## Local State
 
-By default, runtime state is stored in a SQLite database at `.state/mergemate.db` under the configured workspace root. The default workspace root is `.` relative to the active config file.
+By default, runtime state is stored in a SQLite database at `.state/mergemate.db` under the configured workspace root. The default workspace root is `./workspace` relative to the active config file, and MergeMate creates that directory automatically if needed.
 
 ## Quick Start
 
