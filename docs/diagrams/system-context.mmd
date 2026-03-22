@@ -1,0 +1,7 @@
+graph TD
+    User[Telegram User] --> Bot[MergeMate Telegram Interface]
+    Bot --> Orchestrator[Application Orchestrator]
+    Orchestrator --> Worker[Background Worker]
+    Worker --> Provider[LLM Provider]
+    Worker --> Store[Persistence]
+    Worker --> Tools[Tool Runtime]

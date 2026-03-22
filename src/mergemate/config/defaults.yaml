@@ -1,0 +1,83 @@
+default_agent: coder
+default_provider: openai
+
+providers:
+  openai:
+    provider_type: openai
+    api_key_env: OPENAI_API_KEY
+    model: gpt-5.4
+    timeout_seconds: 90
+  openai_reasoner:
+    provider_type: openai
+    api_key_env: OPENAI_API_KEY
+    model: gpt-5.4
+    timeout_seconds: 120
+
+telegram:
+  bot_token_env: TELEGRAM_BOT_TOKEN
+  mode: polling
+
+storage:
+  database_path: .state/mergemate.db
+
+learning:
+  enabled: true
+  max_context_items: 3
+  max_result_chars: 1200
+
+tools:
+  allow_package_install: false
+  allowed_packages: []
+  pip_executable: python3
+
+runtime:
+  max_concurrent_runs: 2
+  status_update_interval_seconds: 5
+  default_request_timeout_seconds: 300
+
+workflow_control:
+  require_confirmation: true
+  max_review_iterations: 5
+  planner_agent_name: planner
+  coder_agent_name: coder
+  tester_agent_name: tester
+  reviewer_agent_name: reviewer
+
+agents:
+  planner:
+    workflow: planning
+    tools: []
+    provider_names:
+      - openai
+    parallel_mode: single
+    combine_strategy: first_success
+
+  coder:
+    workflow: generate_code
+    tools:
+      - syntax_checker
+      - code_formatter
+    provider_names:
+      - openai
+      - openai_reasoner
+    parallel_mode: parallel
+    combine_strategy: sectioned
+
+  tester:
+    workflow: testing
+    tools: []
+    provider_names:
+      - openai_reasoner
+    parallel_mode: single
+    combine_strategy: first_success
+
+  reviewer:
+    workflow: review
+    tools: []
+    provider_names:
+      - openai_reasoner
+    parallel_mode: single
+    combine_strategy: first_success
+
+logging:
+  level: INFO

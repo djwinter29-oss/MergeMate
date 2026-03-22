@@ -1,0 +1,15 @@
+sequenceDiagram
+    participant U as User
+    participant T as Telegram Interface
+    participant J as Job Dispatcher
+    participant W as Worker
+    participant P as Provider
+
+    U->>T: Send prompt
+    T->>J: Submit run
+    J-->>T: Run queued with estimate
+    T-->>U: Acknowledgement
+    W->>P: Execute workflow
+    P-->>W: Result
+    W-->>T: Final output
+    T-->>U: Response

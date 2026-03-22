@@ -1,0 +1,8 @@
+graph TD
+    CLI[CLI] --> Config[Config Loader]
+    Telegram[Telegram Interface] --> Jobs[Job Dispatcher]
+    Jobs --> Queue[Queue Backend]
+    Queue --> Worker[Worker]
+    Worker --> LLM[LLM Adapter]
+    Worker --> Persistence[Persistence]
+    Worker --> Tools[Tool Registry]
