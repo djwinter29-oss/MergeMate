@@ -10,6 +10,7 @@ class AgentOrchestrator:
         self,
         run_repository,
         context_service,
+        documentation_service,
         learning_service,
         prompt_service,
         workflow_service,
@@ -18,11 +19,16 @@ class AgentOrchestrator:
     ) -> None:
         self._run_repository = run_repository
         self._context_service = context_service
+        self._documentation_service = documentation_service
         self._learning_service = learning_service
         self._prompt_service = prompt_service
         self._workflow_service = workflow_service
         self._llm_gateway = llm_gateway
         self._settings = settings
+
+    def _is_cancelled(self, run_id: str) -> bool:
+        latest_run = self._run_repository.get(run_id)
+        return latest_run is not None and latest_run.status == RunStatus.CANCELLED
 
     async def process_run(self, run_id: str):
         run = self._run_repository.get(run_id)
@@ -52,15 +58,31 @@ class AgentOrchestrator:
         implementation_text = ""
         test_text = ""
         review_text = ""
+        design_document_path = ""
+        test_document_path = ""
+        review_document_path = ""
 
         for iteration in range(1, max_iterations + 1):
+            if self._is_cancelled(run_id):
+                return self._run_repository.get(run_id)
+
             design_text = await self._workflow_service.create_design(current_plan, context_text)
+            design_document_path = str(
+                self._documentation_service.write_architecture_design(
+                    run_id=run_id,
+                    iteration=iteration,
+                    plan_text=current_plan,
+                    design_text=design_text,
+                )
+            )
             self._run_repository.save_artifacts(
                 run_id,
                 current_stage="design",
                 design_text=design_text,
                 review_iterations=iteration,
             )
+            if self._is_cancelled(run_id):
+                return self._run_repository.get(run_id)
 
             implementation_text = await self._workflow_service.generate_code(
                 current_plan,
@@ -73,11 +95,22 @@ class AgentOrchestrator:
                 result_text=implementation_text,
                 review_iterations=iteration,
             )
+            if self._is_cancelled(run_id):
+                return self._run_repository.get(run_id)
 
             test_text = await self._workflow_service.generate_tests(
                 current_plan,
                 design_text,
                 implementation_text,
+            )
+            test_document_path = str(
+                self._documentation_service.write_test_plan(
+                    run_id=run_id,
+                    iteration=iteration,
+                    plan_text=current_plan,
+                    design_text=design_text,
+                    test_text=test_text,
+                )
             )
             self._run_repository.save_artifacts(
                 run_id,
@@ -85,6 +118,8 @@ class AgentOrchestrator:
                 test_text=test_text,
                 review_iterations=iteration,
             )
+            if self._is_cancelled(run_id):
+                return self._run_repository.get(run_id)
 
             review_text = await self._workflow_service.review(
                 current_plan,
@@ -92,12 +127,25 @@ class AgentOrchestrator:
                 implementation_text,
                 test_text,
             )
+            review_document_path = str(
+                self._documentation_service.write_review_report(
+                    run_id=run_id,
+                    iteration=iteration,
+                    plan_text=current_plan,
+                    design_text=design_text,
+                    implementation_text=implementation_text,
+                    test_text=test_text,
+                    review_text=review_text,
+                )
+            )
             self._run_repository.save_artifacts(
                 run_id,
                 current_stage="review",
                 review_text=review_text,
                 review_iterations=iteration,
             )
+            if self._is_cancelled(run_id):
+                return self._run_repository.get(run_id)
 
             if not self._workflow_service.has_high_concerns(review_text):
                 break
@@ -111,6 +159,8 @@ class AgentOrchestrator:
                 current_plan,
                 current_stage="internal_replanning",
             )
+            if self._is_cancelled(run_id):
+                return self._run_repository.get(run_id)
 
         latest_run = self._run_repository.get(run_id)
         if latest_run is not None and latest_run.status == RunStatus.CANCELLED:
@@ -118,6 +168,9 @@ class AgentOrchestrator:
 
         final_result = (
             f"Approved plan:\n{current_plan}\n\n"
+            f"Design document:\n{design_document_path}\n\n"
+            f"Test plan document:\n{test_document_path}\n\n"
+            f"Review report:\n{review_document_path}\n\n"
             f"Design:\n{latest_run.design_text if latest_run and latest_run.design_text else ''}\n\n"
             f"Implementation:\n{implementation_text}\n\n"
             f"Tests:\n{test_text}\n\n"

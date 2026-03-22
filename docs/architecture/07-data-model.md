@@ -6,29 +6,54 @@
 
 - run ID
 - chat ID
+- user ID
+- agent name
 - workflow
 - status
+- current stage
+- original prompt
+- plan text
+- design text
+- test text
+- review text
+- review iteration count
+- approval flag
+- result text
+- error text
 - timestamps
 - estimate
-- terminal outcome
 
 ### Conversation
 
 - chat ID
 - ordered messages
-- optional artifacts or references
+- role per message
+- message content
+- creation time
+
+### Learning Entry
+
+- chat ID
+- workflow
+- original prompt
+- stored result excerpt
+- creation time
 
 ### Agent Definition
 
 - agent name
 - workflow name
 - enabled tools
+- provider aliases
+- parallel mode
+- combine strategy
 
-## Persistence Roadmap
+## Current Persistence
 
-MVP starts with interface contracts and SQLite placeholders. The intended persistent tables later are:
+The MVP persists state in SQLite. The current tables are:
 
 - `agent_runs`
 - `conversation_messages`
-- `artifacts`
-- `tool_invocations`
+- `learning_entries`
+
+Artifacts such as plan, design, tests, review, and final result are currently stored directly on the `agent_runs` record instead of a separate artifact table.

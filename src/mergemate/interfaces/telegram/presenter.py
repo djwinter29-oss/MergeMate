@@ -1,5 +1,15 @@
 """Formatting helpers for Telegram replies."""
 
+from datetime import UTC, datetime
+
+
+def _remaining_seconds(run) -> int | None:
+    if run.estimate_seconds is None:
+        return None
+    now = datetime.now(UTC)
+    elapsed = int((now - run.created_at).total_seconds())
+    return max(run.estimate_seconds - elapsed, 0)
+
 
 def format_acknowledgement(run_id: str, agent: str, estimate_seconds: int) -> str:
     return (
@@ -8,9 +18,10 @@ def format_acknowledgement(run_id: str, agent: str, estimate_seconds: int) -> st
     )
 
 
-def format_plan_for_confirmation(run_id: str, agent: str, plan_text: str) -> str:
+def format_plan_for_confirmation(run_id: str, agent: str, plan_text: str, estimate_seconds: int) -> str:
     return (
-        f"Requirements captured for run {run_id}. Planning agent: {agent}.\n\n"
+        f"Requirements captured for run {run_id}. Planning agent: {agent}. "
+        f"Estimated execution time after approval: {estimate_seconds}s.\n\n"
         f"{plan_text}\n\n"
         "Reply with more requirements to revise the plan, or run /approve <run_id> to continue."
     )
@@ -23,11 +34,18 @@ def format_status(run_id: str, status: str, estimate_seconds: int | None = None)
 
 
 def format_detailed_status(run) -> str:
+    remaining_seconds = _remaining_seconds(run)
+    estimate_line = (
+        f"\nEstimated remaining time: {remaining_seconds}s."
+        if remaining_seconds is not None and run.status.value in {"queued", "running", "waiting_tool"}
+        else ""
+    )
     return (
         f"Run {run.run_id} is {run.status.value}.\n"
         f"Current stage: {run.current_stage}.\n"
         f"Review iterations: {run.review_iterations}.\n"
         f"Approved: {'yes' if run.approved else 'no'}."
+        f"{estimate_line}"
     )
 
 
@@ -59,8 +77,22 @@ def format_approval_not_needed(run_id: str, status: str) -> str:
     return f"Run {run_id} was not re-approved because it is already in status '{status}'."
 
 
-def format_auto_execution_started(run_id: str, plan_text: str) -> str:
+def format_auto_execution_started(run_id: str, plan_text: str, estimate_seconds: int) -> str:
     return (
-        f"Run {run_id} started automatically because confirmation is disabled.\n\n"
+        f"Run {run_id} started automatically because confirmation is disabled. "
+        f"Estimated completion time: {estimate_seconds}s.\n\n"
         f"{plan_text}"
+    )
+
+
+def format_progress_update(run) -> str:
+    remaining_seconds = _remaining_seconds(run)
+    estimate_line = (
+        f" Estimated remaining time: {remaining_seconds}s."
+        if remaining_seconds is not None and run.status.value in {"queued", "running", "waiting_tool"}
+        else ""
+    )
+    return (
+        f"Run {run.run_id} update: status={run.status.value}, stage={run.current_stage}, "
+        f"review_iterations={run.review_iterations}.{estimate_line}"
     )

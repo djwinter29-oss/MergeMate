@@ -35,6 +35,8 @@ Default config resolution order:
 
 This supports both project-local use and user-space service deployment.
 
+Relative runtime paths are scoped under `storage.workspace_root`, so process state, final workflow documents, and relative repository context can all live under one configurable workspace folder.
+
 ## Current MVP Draft
 
 The current implementation includes:
@@ -43,6 +45,9 @@ The current implementation includes:
 - requirement capture and plan confirmation before execution
 - plan revision by sending more requirements before approval
 - background run execution with local concurrency control
+- proactive Telegram progress updates while a run is in flight
+- plan-based architecture documents written under `docs/architecture/`
+- separate test plans under `docs/testing/` and review reports under `docs/reviews/`
 - SQLite-backed run and conversation persistence
 - learning memory from successful prior runs within the same chat
 - optional multi-model fan-out for an agent, with parallel execution across configured provider aliases
@@ -52,6 +57,27 @@ The current implementation includes:
 - local config plus explicit `--config` override at startup
 - OpenAI provider adapter with a clear fallback message when no API key is configured
 - config-gated package installation support through the runtime CLI
+- source-control integration through logged-in `git`, `gh`, and `glab` CLIs
+
+## Project Status
+
+MergeMate is currently in an MVP draft stage.
+
+Implemented now:
+
+- approval-gated planning before execution
+- background execution with Telegram progress updates
+- role-based planner, architect, coder, tester, and reviewer stages
+- endpoint-based provider configuration for OpenAI-compatible APIs
+- SQLite persistence for runs, chat history, and learning excerpts
+- local CLI integration for repository and platform context
+
+Current limitations:
+
+- Telegram webhook mode is not implemented yet
+- the provider adapter currently assumes an OpenAI-compatible chat-completions request shape
+- progress estimates are still static and workflow-based rather than telemetry-driven
+- sandboxed code execution is not part of the MVP
 
 ## Commands
 
@@ -59,10 +85,12 @@ The current implementation includes:
 - `mergemate validate-config`
 - `mergemate print-config-path`
 - `mergemate install-package <package-name>`
+- `mergemate repo-context [--platform github|gitlab]`
+- `mergemate platform-auth github|gitlab`
 
 ## Local State
 
-By default, runtime state is stored in a SQLite database at `.state/mergemate.db` relative to the active config file directory.
+By default, runtime state is stored in a SQLite database at `.state/mergemate.db` under the configured workspace root. The default workspace root is `.` relative to the active config file.
 
 ## Quick Start
 
@@ -73,6 +101,8 @@ By default, runtime state is stored in a SQLite database at `.state/mergemate.db
 5. Start the bot with `mergemate run-bot` or pass an explicit config path.
 
 Use `mergemate validate-config` to verify which config file and database path will be used before startup.
+
+For step-by-step setup and operation, see `docs/user-guide.md`.
 
 ## Learning And Package Installation
 
@@ -86,10 +116,10 @@ The current execution sequence is:
 2. ask clarification questions and draft a plan
 3. wait for user confirmation
 4. retrieve context
-5. produce design and save it internally
+5. produce design, save it internally, and write an architecture document under the workspace docs folder
 6. use configured coding model to generate implementation output
-7. use configured testing model to generate tests and test approach
-8. use configured review model to review design and implementation
+7. use configured testing model to generate tests, then write a test plan document under the workspace docs folder
+8. use configured review model to review design and implementation, then write a review report under the workspace docs folder
 9. if review reports high concerns, send those concerns back to the planning model and repeat up to the configured iteration limit
 
 Package installation is supported, but intentionally gated by configuration:
@@ -108,6 +138,93 @@ The current MVP combine strategies are:
 - `sectioned`: return each model output in labeled sections
 - `first_success`: return the first successful model result
 
+## Provider Endpoints
+
+Providers are configured by URL, not by a provider type flag. This is intended to support OpenAI-compatible endpoints, including custom gateway URLs or Azure AI Foundry-style endpoints, as long as they accept the same chat-completions request shape used by the current adapter.
+
+You can also mix multiple providers at the same time by assigning different provider aliases to different roles.
+
+Example:
+
+```yaml
+providers:
+	kimi_planner:
+		api_key_env: KIMI_API_KEY
+		model: kimi-k2
+		timeout_seconds: 90
+		provider_url: https://api.moonshot.ai/v1/chat/completions
+
+	deepseek_architect:
+		api_key_env: DEEPSEEK_API_KEY
+		model: deepseek-reasoner
+		timeout_seconds: 120
+		provider_url: https://api.deepseek.com/chat/completions
+
+	openai_coder:
+		api_key_env: OPENAI_API_KEY
+		model: gpt-5.4
+		timeout_seconds: 120
+		provider_url: https://api.openai.com/v1/chat/completions
+
+	azure_reviewer:
+		api_key_env: AZURE_OPENAI_API_KEY
+		model: gpt-4.1
+		timeout_seconds: 120
+		provider_url: https://your-endpoint.openai.azure.com/openai/deployments/reviewer/chat/completions?api-version=2024-10-21
+		api_key_header: api-key
+		api_key_prefix: ""
+
+workflow_control:
+	planner_agent_name: planner
+	architect_agent_name: architect
+	coder_agent_name: coder
+	tester_agent_name: tester
+	reviewer_agent_name: reviewer
+
+agents:
+	planner:
+		workflow: planning
+		provider_names: [kimi_planner]
+
+	architect:
+		workflow: design
+		provider_names: [deepseek_architect]
+
+	coder:
+		workflow: generate_code
+		provider_names: [openai_coder]
+
+	tester:
+		workflow: testing
+		provider_names: [openai_coder]
+
+	reviewer:
+		workflow: review
+		provider_names: [azure_reviewer]
+```
+
+This lets you run Kimi, DeepSeek, OpenAI, Azure-hosted models, and other compatible endpoints in the same MergeMate workflow.
+
+## GitHub And GitLab
+
+MergeMate can work with source-control platforms through the local command-line utilities you are already logged into.
+
+Current support assumes the user has authenticated locally with the relevant tools:
+
+- `git`
+- `gh` for GitHub
+- `glab` for GitLab
+
+The MVP uses those CLIs instead of embedding platform-specific OAuth flows. That keeps setup simple and fits local developer workflows.
+
+Configured support includes:
+
+- repository status from `git`
+- GitHub repository and auth inspection through `gh`
+- GitLab repository and auth inspection through `glab`
+
 ## Repository Layout
 
 See the architecture documentation in `docs/architecture/` for the planned runtime, job lifecycle, config model, and packaging strategy.
+
+The architecture decisions themselves are indexed in `docs/architecture/adr/index.md`.

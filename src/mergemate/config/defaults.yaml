@@ -1,23 +1,39 @@
 default_agent: coder
-default_provider: openai
+default_provider: openai_coder
 
 providers:
-  openai:
-    provider_type: openai
+  openai_planner:
     api_key_env: OPENAI_API_KEY
     model: gpt-5.4
     timeout_seconds: 90
-  openai_reasoner:
-    provider_type: openai
+    provider_url: https://api.openai.com/v1/chat/completions
+  openai_architect:
     api_key_env: OPENAI_API_KEY
     model: gpt-5.4
     timeout_seconds: 120
+    provider_url: https://api.openai.com/v1/chat/completions
+  openai_coder:
+    api_key_env: OPENAI_API_KEY
+    model: gpt-5.4
+    timeout_seconds: 120
+    provider_url: https://api.openai.com/v1/chat/completions
+  openai_tester:
+    api_key_env: OPENAI_API_KEY
+    model: gpt-5.4
+    timeout_seconds: 120
+    provider_url: https://api.openai.com/v1/chat/completions
+  openai_reviewer:
+    api_key_env: OPENAI_API_KEY
+    model: gpt-5.4
+    timeout_seconds: 120
+    provider_url: https://api.openai.com/v1/chat/completions
 
 telegram:
   bot_token_env: TELEGRAM_BOT_TOKEN
   mode: polling
 
 storage:
+  workspace_root: .
   database_path: .state/mergemate.db
 
 learning:
@@ -30,6 +46,16 @@ tools:
   allowed_packages: []
   pip_executable: python3
 
+source_control:
+  working_directory: .
+  default_platform: github
+  enable_git: true
+  enable_github: true
+  enable_gitlab: true
+  git_executable: git
+  github_executable: gh
+  gitlab_executable: glab
+
 runtime:
   max_concurrent_runs: 2
   status_update_interval_seconds: 5
@@ -39,6 +65,7 @@ workflow_control:
   require_confirmation: true
   max_review_iterations: 5
   planner_agent_name: planner
+  architect_agent_name: architect
   coder_agent_name: coder
   tester_agent_name: tester
   reviewer_agent_name: reviewer
@@ -48,7 +75,15 @@ agents:
     workflow: planning
     tools: []
     provider_names:
-      - openai
+      - openai_planner
+    parallel_mode: single
+    combine_strategy: first_success
+
+  architect:
+    workflow: design
+    tools: []
+    provider_names:
+      - openai_architect
     parallel_mode: single
     combine_strategy: first_success
 
@@ -58,16 +93,15 @@ agents:
       - syntax_checker
       - code_formatter
     provider_names:
-      - openai
-      - openai_reasoner
-    parallel_mode: parallel
-    combine_strategy: sectioned
+      - openai_coder
+    parallel_mode: single
+    combine_strategy: first_success
 
   tester:
     workflow: testing
     tools: []
     provider_names:
-      - openai_reasoner
+      - openai_tester
     parallel_mode: single
     combine_strategy: first_success
 
@@ -75,7 +109,7 @@ agents:
     workflow: review
     tools: []
     provider_names:
-      - openai_reasoner
+      - openai_reviewer
     parallel_mode: single
     combine_strategy: first_success
 

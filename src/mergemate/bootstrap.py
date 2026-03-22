@@ -7,6 +7,7 @@ from mergemate.application.jobs.dispatcher import RunDispatcher
 from mergemate.application.jobs.worker import BackgroundRunWorker
 from mergemate.application.orchestrator import AgentOrchestrator
 from mergemate.application.services.context_service import ContextService
+from mergemate.application.services.documentation_service import DocumentationService
 from mergemate.application.services.learning_service import LearningService
 from mergemate.application.services.prompt_service import PromptService
 from mergemate.application.services.tool_service import ToolService
@@ -25,7 +26,14 @@ from mergemate.infrastructure.persistence.sqlite import (
     SQLiteRunRepository,
 )
 from mergemate.infrastructure.telemetry.logger import configure_logging
+from mergemate.infrastructure.tools.builtin.code_formatter import CodeFormatterTool
 from mergemate.infrastructure.tools.builtin.package_installer import PackageInstallerTool
+from mergemate.infrastructure.tools.builtin.source_control import (
+    GitHubCliTool,
+    GitLabCliTool,
+    GitRepositoryTool,
+)
+from mergemate.infrastructure.tools.builtin.syntax_checker import SyntaxCheckerTool
 from mergemate.infrastructure.tools.registry import ToolRegistry
 
 
@@ -65,27 +73,62 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
         max_context_items=settings.learning.max_context_items,
         max_result_chars=settings.learning.max_result_chars,
     )
+    documentation_service = DocumentationService(settings.resolve_docs_root(resolved_config_path))
     prompt_service = PromptService(Path(__file__).resolve().parent / "prompts")
+    working_directory = settings.resolve_working_directory(resolved_config_path)
 
     llm_clients = {}
     for provider_name, provider_settings in settings.providers.items():
-        if provider_settings.provider_type != "openai":
-            raise ValueError(f"Unsupported provider_type: {provider_settings.provider_type}")
         llm_clients[provider_name] = OpenAIAdapter(
             model=provider_settings.model,
             api_key=settings.resolve_provider_api_key(provider_name),
             timeout_seconds=provider_settings.timeout_seconds,
-            api_base_url=provider_settings.api_base_url,
+            provider_url=provider_settings.provider_url,
+            api_key_header=provider_settings.api_key_header,
+            api_key_prefix=provider_settings.api_key_prefix,
+            extra_headers=provider_settings.extra_headers,
         )
     llm_gateway = ParallelLLMGateway(settings, llm_clients)
 
     tool_registry = ToolRegistry(
         {
+            "code_formatter": CodeFormatterTool(),
             "package_installer": PackageInstallerTool(
                 allow_package_install=settings.tools.allow_package_install,
                 allowed_packages=settings.tools.allowed_packages,
                 pip_executable=settings.tools.pip_executable,
-            )
+            ),
+            "syntax_checker": SyntaxCheckerTool(),
+            **(
+                {
+                    "git_repository": GitRepositoryTool(
+                        settings.source_control.git_executable,
+                        working_directory,
+                    )
+                }
+                if settings.source_control.enable_git
+                else {}
+            ),
+            **(
+                {
+                    "github_cli": GitHubCliTool(
+                        settings.source_control.github_executable,
+                        working_directory,
+                    )
+                }
+                if settings.source_control.enable_github
+                else {}
+            ),
+            **(
+                {
+                    "gitlab_cli": GitLabCliTool(
+                        settings.source_control.gitlab_executable,
+                        working_directory,
+                    )
+                }
+                if settings.source_control.enable_gitlab
+                else {}
+            ),
         }
     )
     tool_service = ToolService(tool_registry, settings)
@@ -94,6 +137,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
     orchestrator = AgentOrchestrator(
         run_repository=run_repository,
         context_service=context_service,
+        documentation_service=documentation_service,
         learning_service=learning_service,
         prompt_service=prompt_service,
         workflow_service=workflow_service,

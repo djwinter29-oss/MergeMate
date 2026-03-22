@@ -51,3 +51,30 @@ def install_package(
         typer.echo(result["detail"], err=True)
         raise typer.Exit(code=1)
     typer.echo(result["detail"])
+
+
+@app.command("repo-context")
+def repo_context(
+    platform: str | None = typer.Option(None, help="Source platform to inspect: github or gitlab"),
+    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
+) -> None:
+    """Print local repository context using git and an authenticated platform CLI."""
+    runtime = bootstrap(config)
+    context = runtime.tool_service.get_repository_context(platform)
+    for name, result in context.items():
+        typer.echo(f"[{name}] {result['status']}")
+        typer.echo(result["detail"])
+
+
+@app.command("platform-auth")
+def platform_auth(
+    platform: str = typer.Argument(..., help="Platform to inspect: github or gitlab"),
+    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
+) -> None:
+    """Check whether a logged-in platform CLI is available for GitHub or GitLab."""
+    runtime = bootstrap(config)
+    result = runtime.tool_service.get_platform_auth_status(platform)
+    if result["status"] != "ok":
+        typer.echo(result["detail"], err=True)
+        raise typer.Exit(code=1)
+    typer.echo(result["detail"])

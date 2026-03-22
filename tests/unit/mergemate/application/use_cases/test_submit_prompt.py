@@ -26,11 +26,15 @@ class InMemoryRunRepository:
 
     def approve(self, run_id: str):
         run = self.runs[run_id]
-        if run.approved or run.status != RunStatus.AWAITING_CONFIRMATION:
+        if run.approved:
             return run
-        run.approved = True
-        run.status = RunStatus.QUEUED
-        run.current_stage = "queued_for_execution"
+        if run.status == RunStatus.AWAITING_CONFIRMATION:
+            run.approved = True
+            run.status = RunStatus.QUEUED
+            run.current_stage = "queued_for_execution"
+            return run
+        if run.status == RunStatus.QUEUED:
+            run.approved = True
         return run
 
 

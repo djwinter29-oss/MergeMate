@@ -11,11 +11,13 @@ class LoggingConfig(BaseModel):
 
 
 class ProviderConfig(BaseModel):
-    provider_type: str = "openai"
     api_key_env: str
     model: str
     timeout_seconds: int = 90
-    api_base_url: str | None = None
+    provider_url: str = "https://api.openai.com/v1/chat/completions"
+    api_key_header: str = "Authorization"
+    api_key_prefix: str = "Bearer"
+    extra_headers: dict[str, str] = Field(default_factory=dict)
 
 
 class TelegramConfig(BaseModel):
@@ -24,6 +26,7 @@ class TelegramConfig(BaseModel):
 
 
 class StorageConfig(BaseModel):
+    workspace_root: str = "."
     database_path: str = ".state/mergemate.db"
 
 
@@ -39,6 +42,17 @@ class ToolRuntimeConfig(BaseModel):
     pip_executable: str = "python3"
 
 
+class SourceControlConfig(BaseModel):
+    working_directory: str = "."
+    default_platform: str = "github"
+    enable_git: bool = True
+    enable_github: bool = True
+    enable_gitlab: bool = True
+    git_executable: str = "git"
+    github_executable: str = "gh"
+    gitlab_executable: str = "glab"
+
+
 class RuntimeConfig(BaseModel):
     max_concurrent_runs: int = 2
     status_update_interval_seconds: int = 5
@@ -49,6 +63,7 @@ class WorkflowControlConfig(BaseModel):
     require_confirmation: bool = True
     max_review_iterations: int = 5
     planner_agent_name: str = "planner"
+    architect_agent_name: str = "architect"
     coder_agent_name: str = "coder"
     tester_agent_name: str = "tester"
     reviewer_agent_name: str = "reviewer"
@@ -70,6 +85,7 @@ class AppConfig(BaseModel):
     storage: StorageConfig = Field(default_factory=StorageConfig)
     learning: LearningConfig = Field(default_factory=LearningConfig)
     tools: ToolRuntimeConfig = Field(default_factory=ToolRuntimeConfig)
+    source_control: SourceControlConfig = Field(default_factory=SourceControlConfig)
     runtime: RuntimeConfig
     workflow_control: WorkflowControlConfig = Field(default_factory=WorkflowControlConfig)
     agents: dict[str, AgentConfig]
@@ -94,7 +110,24 @@ class AppConfig(BaseModel):
         return token
 
     def resolve_database_path(self, config_path: Path) -> Path:
+        workspace_root = self.resolve_workspace_root(config_path)
         database_path = Path(self.storage.database_path).expanduser()
         if database_path.is_absolute():
             return database_path
-        return (config_path.parent / database_path).resolve()
+        return (workspace_root / database_path).resolve()
+
+    def resolve_workspace_root(self, config_path: Path) -> Path:
+        workspace_root = Path(self.storage.workspace_root).expanduser()
+        if workspace_root.is_absolute():
+            return workspace_root.resolve()
+        return (config_path.parent / workspace_root).resolve()
+
+    def resolve_docs_root(self, config_path: Path) -> Path:
+        return (self.resolve_workspace_root(config_path) / "docs").resolve()
+
+    def resolve_working_directory(self, config_path: Path) -> Path:
+        workspace_root = self.resolve_workspace_root(config_path)
+        working_directory = Path(self.source_control.working_directory).expanduser()
+        if working_directory.is_absolute():
+            return working_directory
+        return (workspace_root / working_directory).resolve()

@@ -15,10 +15,15 @@ from mergemate.interfaces.telegram.presenter import (
     format_plan_for_confirmation,
     format_welcome,
 )
+from mergemate.interfaces.telegram.progress_notifier import watch_run_progress
 
 
 def _runtime(context: ContextTypes.DEFAULT_TYPE):
     return context.application.bot_data["runtime"]
+
+
+def _start_progress_watcher(application, runtime, chat_id: int, run_id: str) -> None:
+    application.create_task(watch_run_progress(application, runtime, chat_id, run_id))
 
 
 def _build_request(update: Update, runtime) -> TelegramRequest:
@@ -99,6 +104,7 @@ async def approve_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await message.reply_text(format_approval_not_needed(run.run_id, run.status))
         return
     await message.reply_text(format_approval_started(run.run_id))
+    _start_progress_watcher(context.application, runtime, chat.id, run.run_id)
 
 
 async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -134,6 +140,7 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 revised.run_id,
                 runtime.settings.workflow_control.planner_agent_name,
                 revised.plan_text or "",
+                revised.estimate_seconds,
             )
         )
         return
@@ -153,13 +160,16 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             format_auto_execution_started(
                 submit_result.run_id,
                 submit_result.plan_text or "",
+                submit_result.estimate_seconds,
             )
         )
+        _start_progress_watcher(context.application, runtime, request.chat_id, submit_result.run_id)
         return
     await message.reply_text(
         format_plan_for_confirmation(
             submit_result.run_id,
             runtime.settings.workflow_control.planner_agent_name,
             submit_result.plan_text or "",
+            submit_result.estimate_seconds,
         )
     )

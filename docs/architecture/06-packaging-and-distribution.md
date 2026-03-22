@@ -13,7 +13,15 @@ MergeMate should be structured so it can later be released to PyPI and installed
 
 ## User Installation Model
 
-Expected future usage:
+Current local-development usage:
+
+```bash
+pip install -e .[dev]
+mergemate validate-config
+mergemate run-bot
+```
+
+Planned installed-package usage:
 
 ```bash
 pip install mergemate
@@ -31,7 +39,7 @@ The CLI design allows the same package to run:
 ## Release Roadmap
 
 1. Stabilize config and CLI surface.
-2. Add integration tests around config resolution and startup behavior.
-3. Define semantic versioning policy.
+2. Make package versioning fully release-driven from the package source and build metadata.
+3. Add integration tests around config resolution and startup behavior.
 4. Publish pre-release builds.
 5. Publish stable release to PyPI.

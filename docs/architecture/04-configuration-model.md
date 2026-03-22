@@ -22,6 +22,8 @@ The effective config is built in this order:
 
 The current scaffold implements package defaults plus the resolved YAML file. Environment variable expansion for secret values is a later implementation task, but the schema already stores the variable names to reference.
 
+The current runtime resolves API keys and Telegram tokens by reading the configured environment-variable names at startup or request time.
+
 ## Local-First Default
 
 The default config lives in the repository-local `config/` directory. This is useful for:
@@ -40,11 +42,26 @@ mergemate run-bot --config ~/.config/mergemate/config.yaml
 
 This allows a per-user service definition without forcing the repo-local config layout.
 
-## Planned Schema Areas
+## Current Schema Areas
 
-- default agent and provider
-- provider definitions and model selection
-- Telegram runtime mode
-- concurrency and timeout limits
-- agent-to-workflow mapping
-- enabled tools per agent
+- `default_agent` and `default_provider`
+- `providers`: endpoint URL, model, timeout, auth header, auth prefix, and extra headers
+- `telegram`: bot token environment variable and runtime mode
+- `storage`: workspace root and SQLite database path
+- `learning`: recent successful-run memory behavior
+- `tools`: package-install permissions and pip executable
+- `source_control`: git, GitHub CLI, and GitLab CLI integration settings
+- `runtime`: concurrency, request timeout, and progress-update interval
+- `workflow_control`: approval requirement, review iteration cap, and role-to-agent mapping
+- `agents`: workflow, tool allow-list, provider aliases, parallel mode, and combine strategy
+- `logging`: application log level
+
+## Provider Configuration Pattern
+
+Providers are configured by URL so the same schema can target multiple OpenAI-compatible endpoints. Roles such as planner, architect, coder, tester, and reviewer are then mapped to one or more provider aliases through the `agents` section.
+
+This lets one deployment use different models for planning, design, implementation, testing, and review without changing the runtime code.
+
+## Workspace Root
+
+Relative runtime paths are resolved from `storage.workspace_root`. This is the base folder for process state such as the SQLite database, final workflow documents under `docs/`, and relative repository working directories unless a path is configured as absolute.

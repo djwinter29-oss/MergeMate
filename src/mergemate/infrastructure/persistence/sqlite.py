@@ -227,8 +227,17 @@ class SQLiteRunRepository:
         existing = self.get(run_id)
         if existing is None:
             return None
-        if existing.approved or existing.status != RunStatus.AWAITING_CONFIRMATION:
+        if existing.approved:
             return existing
+        if existing.status not in {RunStatus.AWAITING_CONFIRMATION, RunStatus.QUEUED}:
+            return existing
+
+        next_status = RunStatus.QUEUED.value if existing.status == RunStatus.AWAITING_CONFIRMATION else existing.status.value
+        next_stage = (
+            "queued_for_execution"
+            if existing.status == RunStatus.AWAITING_CONFIRMATION
+            else existing.current_stage
+        )
         with self._database.connection() as connection:
             connection.execute(
                 """
@@ -236,7 +245,7 @@ class SQLiteRunRepository:
                 SET approved = 1, status = ?, current_stage = ?, updated_at = ?
                 WHERE run_id = ?
                 """,
-                (RunStatus.QUEUED.value, "queued_for_execution", datetime.now(UTC).isoformat(), run_id),
+                (next_status, next_stage, datetime.now(UTC).isoformat(), run_id),
             )
         return self.get(run_id)
 

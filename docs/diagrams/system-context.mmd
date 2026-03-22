@@ -1,7 +1,9 @@
 graph TD
     User[Telegram User] --> Bot[MergeMate Telegram Interface]
-    Bot --> Orchestrator[Application Orchestrator]
-    Orchestrator --> Worker[Background Worker]
-    Worker --> Provider[LLM Provider]
-    Worker --> Store[Persistence]
+    Bot --> Runtime[MergeMate Runtime]
+    Runtime --> Planner[Planning and Approval Flow]
+    Runtime --> Worker[Background Worker]
+    Worker --> Provider[Configured LLM Providers]
+    Worker --> Store[SQLite Persistence]
     Worker --> Tools[Tool Runtime]
+    Runtime --> Scm[git gh glab CLIs]

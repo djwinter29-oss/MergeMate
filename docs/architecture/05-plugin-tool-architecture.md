@@ -14,9 +14,10 @@ Tool invocation should be extensible without mixing provider logic, Telegram log
 ## MVP Scope
 
 - registry implementation
-- built-in formatter placeholder
-- built-in syntax checker placeholder
+- built-in formatter tool
+- built-in syntax checker tool
 - built-in package installer tool behind config gating
+- built-in source-control tools for `git`, `gh`, and `glab`
 - agent config listing enabled tools
 
 ## Future Expansion
@@ -29,3 +30,5 @@ Tool invocation should be extensible without mixing provider logic, Telegram log
 ## Safety Boundary
 
 Package installation is not enabled by default. Operators must explicitly turn it on in config and can restrict installation to an allowlist. This keeps the capability available for agent-assisted workflows without making runtime dependency changes implicit.
+
+Source-control platform support assumes the operator has already authenticated with the local CLI utilities. The MVP does not manage OAuth or tokens itself; it delegates to the existing authenticated environment.

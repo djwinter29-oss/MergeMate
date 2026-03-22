@@ -14,8 +14,9 @@ Responsible for keeping Telegram responsive:
 2. Normalize request.
 3. Resolve effective configuration.
 4. Determine workflow and initial estimate.
-5. Persist a queued run.
-6. Return acknowledgement immediately.
+5. Persist a run in `awaiting_confirmation` or `queued` state based on config.
+6. Draft a plan with the planner agent.
+7. Return the drafted plan immediately, or auto-dispatch when confirmation is disabled.
 
 ### Background Path
 
@@ -23,10 +24,11 @@ Responsible for doing actual agent work:
 
 1. Pull queued run.
 2. Load conversation context.
-3. Build prompt and tool plan.
-4. Call one provider or fan out to multiple models in parallel, then optionally invoke tools.
-5. Persist progress and artifacts.
-6. Send status and final result back to Telegram.
+3. Build design and implementation context.
+4. Call the architect, coder, tester, and reviewer agents using their configured provider aliases.
+5. Persist stage progress and generated artifacts.
+6. Optionally replan from reviewer concerns up to the configured iteration limit.
+7. Send periodic status updates and the final result back to Telegram.
 
 ## Modules
 
@@ -40,8 +42,12 @@ Responsible for doing actual agent work:
 
 The runtime can map one agent to multiple provider aliases. When `parallel_mode` is enabled for that agent, the background path executes those model calls concurrently and combines the outputs according to the configured strategy.
 
+Provider definitions are endpoint-based, not type-based. This allows one workflow to mix OpenAI-compatible endpoints from different vendors, such as OpenAI, Azure-hosted deployments, Kimi, or DeepSeek, as long as they accept the current adapter request shape.
+
 ## Deployment Modes
 
 - Local interactive run: `mergemate run-bot --config ./config/config.yaml`
 - User-space service: launch the same command under systemd user service or equivalent with an explicit config path.
 - Future webhook mode: same internal architecture with a different Telegram ingress adapter.
+
+See `docs/diagrams/index.md` for the corresponding container and sequence views.

@@ -64,3 +64,20 @@ def test_approve_does_not_transition_completed_run(tmp_path) -> None:
     assert approved.status == RunStatus.COMPLETED
     assert approved.current_stage == "completed"
     assert approved.approved is True
+
+
+def test_approve_marks_queued_run_as_approved_without_resetting_stage(tmp_path) -> None:
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repository = SQLiteRunRepository(database)
+    run = _build_run()
+    run.status = RunStatus.QUEUED
+    run.current_stage = "queued_for_execution"
+    repository.create(run)
+
+    approved = repository.approve("run-1")
+
+    assert approved is not None
+    assert approved.status == RunStatus.QUEUED
+    assert approved.current_stage == "queued_for_execution"
+    assert approved.approved is True

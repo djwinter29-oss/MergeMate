@@ -1,15 +1,22 @@
 sequenceDiagram
     participant U as User
     participant T as Telegram Interface
+    participant P as Planning Service
     participant J as Job Dispatcher
     participant W as Worker
-    participant P as Provider
+    participant L as LLM Providers
 
     U->>T: Send prompt
-    T->>J: Submit run
-    J-->>T: Run queued with estimate
-    T-->>U: Acknowledgement
-    W->>P: Execute workflow
-    P-->>W: Result
-    W-->>T: Final output
-    T-->>U: Response
+    T->>P: Draft plan
+    P-->>T: Plan with questions, design, and test approach
+    T-->>U: Plan for approval with run ID and estimate
+    U->>T: /approve <run_id>
+    T->>J: Dispatch approved run
+    J-->>T: Run queued
+    J->>W: Start background execution
+    W->>L: Design, code, test, and review stages
+    W-->>T: Progress update
+    T-->>U: Stage update
+    L-->>W: Final reviewed result
+    W-->>T: Completion or failure
+    T-->>U: Final response

@@ -8,9 +8,10 @@ class WorkflowService:
 
     async def draft_plan(self, prompt: str, prior_feedback: str | None = None) -> str:
         system_prompt = (
-            "You are the planning agent. Capture and confirm requirements. "
+            "You are the planning and coordination agent. Capture and confirm requirements. "
             "Always produce a plan that includes design and how to test. "
-            "If requirements are unclear, include direct clarification questions."
+            "If requirements are unclear, include direct clarification questions. "
+            "You also coordinate operational decisions such as tool installation or settings updates when required."
         )
         user_prompt = (
             f"User request:\n{prompt.strip()}\n\n"
@@ -32,12 +33,12 @@ class WorkflowService:
 
     async def create_design(self, plan_text: str, context_text: str) -> str:
         system_prompt = (
-            "You are the design agent. Create an implementation-ready design from the approved plan. "
+            "You are the architect agent. Create an implementation-ready design from the approved plan. "
             "Be concrete about modules, interfaces, data flow, and testing seams."
         )
         user_prompt = f"Approved plan:\n{plan_text}\n\nRetrieved context:\n{context_text}"
         return await self._llm_gateway.generate(
-            self._settings.workflow_control.planner_agent_name,
+            self._settings.workflow_control.architect_agent_name,
             system_prompt,
             user_prompt,
         )
