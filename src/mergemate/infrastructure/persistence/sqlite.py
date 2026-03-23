@@ -62,6 +62,16 @@ class SQLiteDatabase:
                     created_at TEXT NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS tool_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    run_id TEXT NOT NULL,
+                    tool_name TEXT NOT NULL,
+                    action TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    detail TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+
                 CREATE INDEX IF NOT EXISTS idx_agent_runs_chat_id_created_at
                     ON agent_runs(chat_id, created_at DESC);
 
@@ -70,6 +80,9 @@ class SQLiteDatabase:
 
                 CREATE INDEX IF NOT EXISTS idx_learning_entries_chat_id_created_at
                     ON learning_entries(chat_id, created_at DESC);
+
+                CREATE INDEX IF NOT EXISTS idx_tool_events_run_id_created_at
+                    ON tool_events(run_id, created_at DESC);
                 """
             )
             self._ensure_column(connection, "agent_runs", "current_stage", "TEXT NOT NULL DEFAULT 'planning'")
@@ -374,6 +387,43 @@ class SQLiteLearningRepository:
                 "workflow": row["workflow"],
                 "prompt": row["prompt"],
                 "result_excerpt": row["result_excerpt"],
+            }
+            for row in rows
+        ]
+
+
+class SQLiteToolEventRepository:
+    def __init__(self, database: SQLiteDatabase) -> None:
+        self._database = database
+
+    def record(self, run_id: str, tool_name: str, action: str, status: str, detail: str) -> None:
+        with self._database.connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO tool_events (run_id, tool_name, action, status, detail, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (run_id, tool_name, action, status, detail, datetime.now(UTC).isoformat()),
+            )
+
+    def list_for_run(self, run_id: str, limit: int = 20) -> list[dict[str, str]]:
+        with self._database.connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT tool_name, action, status, detail
+                FROM tool_events
+                WHERE run_id = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+                """,
+                (run_id, limit),
+            ).fetchall()
+        return [
+            {
+                "tool_name": row["tool_name"],
+                "action": row["action"],
+                "status": row["status"],
+                "detail": row["detail"],
             }
             for row in rows
         ]

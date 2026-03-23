@@ -47,3 +47,19 @@ def test_render_includes_recent_messages_and_learning(tmp_path: Path) -> None:
     assert "Previously successful patterns:" in user_prompt
     assert "Prior result excerpt: fix syntax" in user_prompt
     assert user_prompt.endswith("Latest user request:\nlatest prompt")
+
+
+def test_render_includes_learning_without_recent_messages(tmp_path: Path) -> None:
+    _write_prompt(tmp_path, "explanation.md", "explain-system")
+    service = PromptService(tmp_path)
+
+    system_prompt, user_prompt = service.render(
+        "explain_code",
+        [],
+        [{"workflow": "explain_code", "prompt": "older", "result_excerpt": "summary"}],
+        "latest prompt",
+    )
+
+    assert system_prompt == "explain-system"
+    assert user_prompt.startswith("Previously successful patterns:")
+    assert user_prompt.endswith("Latest user request:\nlatest prompt")

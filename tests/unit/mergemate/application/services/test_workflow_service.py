@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 
 import pytest
 
+from mergemate.application.execution_plan import DirectExecutionPlan, MultiStageExecutionPlan
 from mergemate.application.services.workflow_service import WorkflowService
 
 
@@ -16,16 +18,36 @@ class GatewayStub:
 
 @dataclass(slots=True)
 class WorkflowControlStub:
-    planner_agent_name: str = "planner"
-    architect_agent_name: str = "architect"
-    coder_agent_name: str = "coder"
-    tester_agent_name: str = "tester"
-    reviewer_agent_name: str = "reviewer"
+    max_review_iterations: int = 5
 
 
 @dataclass(slots=True)
 class SettingsStub:
     workflow_control: WorkflowControlStub = field(default_factory=WorkflowControlStub)
+    agents: dict[str, object] = field(
+        default_factory=lambda: {
+            "planner": SimpleNamespace(workflow="planning"),
+            "architect": SimpleNamespace(workflow="design"),
+            "coder": SimpleNamespace(workflow="generate_code"),
+            "tester": SimpleNamespace(workflow="testing"),
+            "reviewer": SimpleNamespace(workflow="review"),
+        }
+    )
+
+    def resolve_agent_name_for_workflow(
+        self,
+        workflow: str,
+        *,
+        preferred_agent_name: str | None = None,
+    ) -> str:
+        if preferred_agent_name is not None:
+            agent = self.agents.get(preferred_agent_name)
+            if agent is not None and agent.workflow == workflow:
+                return preferred_agent_name
+        for agent_name, agent in self.agents.items():
+            if agent.workflow == workflow:
+                return agent_name
+        raise ValueError(workflow)
 
 
 @pytest.mark.asyncio
@@ -116,3 +138,10 @@ def test_uses_multi_stage_delivery_is_explicit() -> None:
 def test_has_high_concerns_reads_first_line_only() -> None:
     assert WorkflowService.has_high_concerns("HIGH_CONCERNS: yes\nissue") is True
     assert WorkflowService.has_high_concerns("HIGH_CONCERNS: no\nissue") is False
+
+
+def test_build_execution_plan_returns_expected_plan_types() -> None:
+    service = WorkflowService(GatewayStub(), SettingsStub())
+
+    assert isinstance(service.build_execution_plan("generate_code", agent_name="coder"), MultiStageExecutionPlan)
+    assert isinstance(service.build_execution_plan("debug_code", agent_name="debugger"), DirectExecutionPlan)

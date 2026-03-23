@@ -62,9 +62,16 @@ def test_write_document_deduplicates_existing_filename(tmp_path: Path) -> None:
         plan_text="1. Build login flow",
         design_text="design",
     )
+    third = service.write_architecture_design(
+        run_id="run-3",
+        iteration=1,
+        plan_text="1. Build login flow",
+        design_text="design",
+    )
 
     assert first.name == "build-login-flow.md"
     assert second.name == "build-login-flow-2.md"
+    assert third.name == "build-login-flow-3.md"
 
 
 def test_extract_plan_summary_skips_generic_headings_and_slugifies_unicode(tmp_path: Path) -> None:
@@ -91,3 +98,16 @@ def test_extract_plan_summary_falls_back_when_no_meaningful_line_exists(tmp_path
     )
 
     assert result.name == "work-item.md"
+
+
+def test_write_document_skips_blank_lines_when_extracting_summary(tmp_path: Path) -> None:
+    service = DocumentationService(tmp_path / "docs")
+
+    result = service.write_architecture_design(
+        run_id="run-1",
+        iteration=1,
+        plan_text="\n\n# Approved Plan\n\n* Scope\n2. Build dashboard\n",
+        design_text="design",
+    )
+
+    assert result.name == "build-dashboard.md"

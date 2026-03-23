@@ -9,6 +9,8 @@ from mergemate.domain.runs.value_objects import RunStatus
 class InMemoryRunRepository:
     def __init__(self) -> None:
         self.runs = {}
+        self.return_none_on_update = False
+        self.return_none_on_approve = False
 
     def create(self, run) -> None:
         self.runs[run.run_id] = run
@@ -17,6 +19,8 @@ class InMemoryRunRepository:
         return self.runs.get(run_id)
 
     def update_plan(self, run_id: str, plan_text: str, prompt: str | None = None, *, current_stage: str | None = None):
+        if self.return_none_on_update:
+            return None
         run = self.runs[run_id]
         run.plan_text = plan_text
         if prompt is not None:
@@ -25,6 +29,8 @@ class InMemoryRunRepository:
         return run
 
     def approve(self, run_id: str):
+        if self.return_none_on_approve:
+            return None
         run = self.runs[run_id]
         if run.approved:
             return run
@@ -244,3 +250,166 @@ def test_approve_rejects_run_from_other_chat() -> None:
 
     assert result is None
     assert dispatcher.dispatched_run_ids == []
+
+
+@pytest.mark.asyncio
+async def test_revise_plan_wrapper_returns_updated_result() -> None:
+    repository = InMemoryRunRepository()
+    context_service = ContextServiceStub()
+    use_case = SubmitPromptUseCase(
+        repository,
+        context_service,
+        DispatcherStub(),
+        WorkflowServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
+    )
+    await use_case.execute(
+        chat_id=1,
+        user_id=2,
+        agent_name="coder",
+        workflow="generate_code",
+        prompt="build feature",
+    )
+    run_id = next(iter(repository.runs))
+
+    result = await use_case.revise_plan(run_id, "add logs")
+
+    assert result is not None
+    assert result.plan_text == "plan for build feature\n\nAdditional user feedback:\nadd logs"
+    assert context_service.messages[-1] == (1, "user", "add logs")
+
+
+@pytest.mark.asyncio
+async def test_revise_plan_for_chat_returns_none_when_update_fails() -> None:
+    repository = InMemoryRunRepository()
+    repository.return_none_on_update = True
+    use_case = SubmitPromptUseCase(
+        repository,
+        ContextServiceStub(),
+        DispatcherStub(),
+        WorkflowServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
+    )
+    await use_case.execute(
+        chat_id=1,
+        user_id=2,
+        agent_name="coder",
+        workflow="generate_code",
+        prompt="build feature",
+    )
+    run_id = next(iter(repository.runs))
+
+    assert await use_case.revise_plan_for_chat(run_id, "feedback", chat_id=1) is None
+
+
+def test_approve_returns_none_when_repository_approve_fails() -> None:
+    repository = InMemoryRunRepository()
+    repository.return_none_on_approve = True
+    dispatcher = DispatcherStub()
+    use_case = SubmitPromptUseCase(
+        repository,
+        ContextServiceStub(),
+        dispatcher,
+        WorkflowServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
+    )
+    from datetime import UTC, datetime
+    from mergemate.domain.runs.entities import AgentRun
+
+    now = datetime.now(UTC)
+    repository.create(
+        AgentRun(
+            run_id="run-3",
+            chat_id=1,
+            user_id=2,
+            agent_name="coder",
+            workflow="generate_code",
+            status=RunStatus.AWAITING_CONFIRMATION,
+            current_stage="awaiting_user_confirmation",
+            prompt="pending",
+            estimate_seconds=10,
+            plan_text="plan",
+            design_text=None,
+            test_text=None,
+            review_text=None,
+            review_iterations=0,
+            approved=False,
+            result_text=None,
+            error_text=None,
+            created_at=now,
+            updated_at=now,
+        )
+    )
+
+    assert use_case.approve("run-3") is None
+    assert dispatcher.dispatched_run_ids == []
+
+
+def test_approve_returns_not_dispatched_for_already_approved_run() -> None:
+    repository = InMemoryRunRepository()
+    dispatcher = DispatcherStub()
+    use_case = SubmitPromptUseCase(
+        repository,
+        ContextServiceStub(),
+        dispatcher,
+        WorkflowServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
+    )
+    from datetime import UTC, datetime
+    from mergemate.domain.runs.entities import AgentRun
+
+    now = datetime.now(UTC)
+    repository.create(
+        AgentRun(
+            run_id="run-4",
+            chat_id=1,
+            user_id=2,
+            agent_name="coder",
+            workflow="generate_code",
+            status=RunStatus.QUEUED,
+            current_stage="queued_for_execution",
+            prompt="pending",
+            estimate_seconds=10,
+            plan_text="plan",
+            design_text=None,
+            test_text=None,
+            review_text=None,
+            review_iterations=0,
+            approved=True,
+            result_text=None,
+            error_text=None,
+            created_at=now,
+            updated_at=now,
+        )
+    )
+
+    result = use_case.approve("run-4")
+
+    assert result is not None
+    assert result.dispatched is False
+    assert result.status == RunStatus.QUEUED.value
+
+
+@pytest.mark.asyncio
+async def test_revise_plan_for_chat_returns_none_for_missing_run() -> None:
+    use_case = SubmitPromptUseCase(
+        InMemoryRunRepository(),
+        ContextServiceStub(),
+        DispatcherStub(),
+        WorkflowServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
+    )
+
+    assert await use_case.revise_plan_for_chat("missing", "feedback", chat_id=1) is None
+
+
+def test_approve_returns_none_for_missing_run() -> None:
+    use_case = SubmitPromptUseCase(
+        InMemoryRunRepository(),
+        ContextServiceStub(),
+        DispatcherStub(),
+        WorkflowServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
+    )
+
+    assert use_case.approve("missing") is None

@@ -83,8 +83,8 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
             self.tools = tools
 
     class ToolServiceStub:
-        def __init__(self, registry, wired_settings) -> None:
-            recorded.record("tool_service", registry.tools, wired_settings)
+        def __init__(self, registry, wired_settings, **kwargs) -> None:
+            recorded.record("tool_service", registry.tools, wired_settings, kwargs)
 
     class WorkflowServiceStub:
         def __init__(self, gateway, wired_settings) -> None:
@@ -113,6 +113,7 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
     monkeypatch.setattr(bootstrap_module, "SQLiteRunRepository", type("SQLiteRunRepositoryStub", (RepositoryStub,), {}))
     monkeypatch.setattr(bootstrap_module, "SQLiteConversationRepository", type("SQLiteConversationRepositoryStub", (RepositoryStub,), {}))
     monkeypatch.setattr(bootstrap_module, "SQLiteLearningRepository", type("SQLiteLearningRepositoryStub", (RepositoryStub,), {}))
+    monkeypatch.setattr(bootstrap_module, "SQLiteToolEventRepository", type("SQLiteToolEventRepositoryStub", (RepositoryStub,), {}))
     monkeypatch.setattr(bootstrap_module, "ContextService", lambda repo: SimpleNamespace(repo=repo))
     monkeypatch.setattr(bootstrap_module, "LearningService", LearningServiceStub)
     monkeypatch.setattr(bootstrap_module, "DocumentationService", DocumentationServiceStub)
@@ -182,12 +183,13 @@ def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Pa
     monkeypatch.setattr(bootstrap_module, "SQLiteRunRepository", lambda database: "run_repo")
     monkeypatch.setattr(bootstrap_module, "SQLiteConversationRepository", lambda database: "conversation_repo")
     monkeypatch.setattr(bootstrap_module, "SQLiteLearningRepository", lambda database: "learning_repo")
+    monkeypatch.setattr(bootstrap_module, "SQLiteToolEventRepository", lambda database: "tool_event_repo")
     monkeypatch.setattr(bootstrap_module, "ContextService", lambda repo: "context_service")
     monkeypatch.setattr(bootstrap_module, "LearningService", lambda *args, **kwargs: "learning_service")
     monkeypatch.setattr(bootstrap_module, "DocumentationService", lambda docs_root: "documentation_service")
     monkeypatch.setattr(bootstrap_module, "PromptService", lambda prompts_root: "prompt_service")
     monkeypatch.setattr(bootstrap_module, "ParallelLLMGateway", lambda wired_settings, llm_clients: "gateway")
-    monkeypatch.setattr(bootstrap_module, "ToolService", lambda registry, wired_settings: "tool_service")
+    monkeypatch.setattr(bootstrap_module, "ToolService", lambda registry, wired_settings, **kwargs: "tool_service")
     monkeypatch.setattr(bootstrap_module, "WorkflowService", lambda gateway, wired_settings: "workflow_service")
     monkeypatch.setattr(bootstrap_module, "AgentOrchestrator", lambda **kwargs: "orchestrator")
     monkeypatch.setattr(bootstrap_module, "BackgroundRunWorker", lambda **kwargs: "worker")

@@ -123,8 +123,8 @@ class CancelRunStub:
 def _runtime(*, latest=None, submit=None, approve=None, cancel=None, default_agent="coder", workflow="generate_code"):
     settings = SimpleNamespace(
         default_agent=default_agent,
-        workflow_control=SimpleNamespace(planner_agent_name="planner"),
         agents={default_agent: SimpleNamespace(workflow=workflow)},
+        resolve_agent_name_for_workflow=lambda requested_workflow: "planner" if requested_workflow == "planning" else default_agent,
     )
     return SimpleNamespace(
         settings=settings,
@@ -142,6 +142,17 @@ async def test_start_command_replies_with_welcome() -> None:
     await handlers.start_command(UpdateStub(message), ContextStub(ApplicationStub(runtime)))
 
     assert "MergeMate is running" in message.replies[0]
+
+
+@pytest.mark.asyncio
+async def test_start_and_status_commands_return_when_message_or_chat_missing() -> None:
+    runtime = _runtime()
+    application = ApplicationStub(runtime)
+
+    await handlers.start_command(UpdateStub(None), ContextStub(application))
+    await handlers.status_command(UpdateStub(MessageStub("/status"), effective_chat=None), ContextStub(application))
+
+    assert application.bot.messages == []
 
 
 @pytest.mark.asyncio
@@ -198,6 +209,21 @@ async def test_approve_command_starts_watcher_when_dispatched(monkeypatch: pytes
 
 
 @pytest.mark.asyncio
+async def test_approve_command_uses_latest_run_when_no_argument(monkeypatch: pytest.MonkeyPatch) -> None:
+    started = []
+    monkeypatch.setattr(handlers, "_start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    runtime = _runtime(
+        latest=GetRunStatusStub([RunStub(run_id="run-latest")]),
+        approve=ApproveRunStub(SimpleNamespace(run_id="run-latest", dispatched=True, status="queued")),
+    )
+
+    message = MessageStub("/approve")
+    await handlers.approve_command(UpdateStub(message), ContextStub(ApplicationStub(runtime)))
+
+    assert started == [(5, "run-latest")]
+
+
+@pytest.mark.asyncio
 async def test_cancel_command_handles_missing_and_successful_cancel() -> None:
     runtime = _runtime(cancel=CancelRunStub(None))
     missing_message = MessageStub("/cancel")
@@ -218,6 +244,37 @@ async def test_handle_prompt_ignores_blank_message() -> None:
     await handlers.handle_prompt(UpdateStub(message), ContextStub(ApplicationStub(runtime)))
 
     assert message.replies == []
+
+
+def test_build_request_uses_runtime_default_agent() -> None:
+    runtime = _runtime(default_agent="reviewer")
+    request = handlers._build_request(UpdateStub(MessageStub("hello")), runtime)
+
+    assert request.chat_id == 5
+    assert request.user_id == 3
+    assert request.message_text == "hello"
+    assert request.agent_name == "reviewer"
+
+
+def test_start_progress_watcher_creates_task(monkeypatch: pytest.MonkeyPatch) -> None:
+    runtime = _runtime()
+    application = ApplicationStub(runtime)
+    monkeypatch.setattr(handlers, "watch_run_progress", lambda application, runtime, chat_id, run_id: "watcher")
+
+    handlers._start_progress_watcher(application, runtime, 5, "run-1")
+
+    assert application.created_tasks == ["watcher"]
+
+
+@pytest.mark.asyncio
+async def test_approve_and_cancel_commands_return_when_message_or_chat_missing() -> None:
+    runtime = _runtime()
+    application = ApplicationStub(runtime)
+
+    await handlers.approve_command(UpdateStub(MessageStub("/approve"), effective_chat=None), ContextStub(application))
+    await handlers.cancel_command(UpdateStub(MessageStub("/cancel"), effective_chat=None), ContextStub(application))
+
+    assert application.bot.messages == []
 
 
 @pytest.mark.asyncio

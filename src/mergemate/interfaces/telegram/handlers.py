@@ -143,7 +143,7 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await message.reply_text(
             format_plan_for_confirmation(
                 revised.run_id,
-                runtime.settings.workflow_control.planner_agent_name,
+                runtime.settings.resolve_agent_name_for_workflow("planning"),
                 revised.plan_text or "",
                 revised.estimate_seconds,
             )
@@ -173,7 +173,7 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await message.reply_text(
         format_plan_for_confirmation(
             submit_result.run_id,
-            runtime.settings.workflow_control.planner_agent_name,
+            runtime.settings.resolve_agent_name_for_workflow("planning"),
             submit_result.plan_text or "",
             submit_result.estimate_seconds,
         )

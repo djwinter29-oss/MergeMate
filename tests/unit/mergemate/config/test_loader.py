@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from mergemate.config.loader import load_runtime_settings, resolve_config_path
+from mergemate.config import loader as loader_module
+from mergemate.config.loader import _deep_merge, _read_yaml, load_runtime_settings, resolve_config_path
 
 
 def test_load_runtime_settings_uses_project_config() -> None:
@@ -12,7 +13,7 @@ def test_load_runtime_settings_uses_project_config() -> None:
     assert settings.storage.workspace_root == "./workspace"
     assert settings.storage.database_path == ".state/mergemate.db"
     assert settings.workflow_control.max_review_iterations == 5
-    assert settings.workflow_control.architect_agent_name == "architect"
+    assert settings.resolve_agent_name_for_workflow("design") == "architect"
     assert settings.providers["openai_planner"].api_key_header == "Authorization"
     assert settings.providers["openai_planner"].api_key_prefix == "Bearer"
 
@@ -44,6 +45,12 @@ def test_resolve_config_path_returns_explicit_path() -> None:
     resolved = resolve_config_path(explicit_path)
 
     assert resolved == explicit_path.expanduser().resolve()
+
+
+def test_resolve_config_path_defaults_to_local_config(monkeypatch) -> None:
+    monkeypatch.setattr(loader_module, "DEFAULT_LOCAL_CONFIG_PATH", Path("/tmp/default-config.yaml"))
+
+    assert resolve_config_path() == Path("/tmp/default-config.yaml").resolve()
 
 
 def test_workspace_root_scopes_database_docs_and_working_directory(tmp_path) -> None:
@@ -79,3 +86,25 @@ def test_resolve_workspace_root_creates_missing_directory(tmp_path) -> None:
     assert workspace_root == (tmp_path / "workspace").resolve()
     assert workspace_root.exists() is True
     assert workspace_root.is_dir() is True
+
+
+def test_read_yaml_and_deep_merge_cover_empty_and_nested_cases(tmp_path) -> None:
+    empty_path = tmp_path / "empty.yaml"
+    empty_path.write_text("", encoding="utf-8")
+
+    assert _read_yaml(tmp_path / "missing.yaml") == {}
+    assert _read_yaml(empty_path) == {}
+    assert _deep_merge({"a": {"b": 1}, "c": 1}, {"a": {"d": 2}, "c": 3}) == {
+        "a": {"b": 1, "d": 2},
+        "c": 3,
+    }
+
+
+def test_load_runtime_settings_ignores_explicit_path_when_it_matches_default(monkeypatch) -> None:
+    default_path = Path("config/config.yaml").resolve()
+    monkeypatch.setattr(loader_module, "PACKAGE_DEFAULTS_PATH", default_path)
+    monkeypatch.setattr(loader_module, "DEFAULT_LOCAL_CONFIG_PATH", default_path)
+
+    settings = load_runtime_settings(default_path)
+
+    assert settings.default_agent == "coder"

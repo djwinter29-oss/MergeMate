@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 
 from mergemate.infrastructure.tools.builtin.source_control import (
     GitHubCliTool,
@@ -29,3 +30,50 @@ def test_gitlab_cli_tool_rejects_unknown_action() -> None:
     result = tool.invoke({"action": "unknown"})
 
     assert result["status"] == "error"
+
+
+def test_cli_tools_run_expected_commands_and_surface_errors(monkeypatch) -> None:
+    calls = []
+
+    def fake_run(command, cwd, capture_output, text, check):
+        calls.append((command, cwd))
+        if command[0] == "glab":
+            return subprocess.CompletedProcess(command, 1, stdout="", stderr="denied")
+        return subprocess.CompletedProcess(command, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    cwd = Path("/tmp/repo")
+
+    git_result = GitRepositoryTool("git", cwd).invoke({"action": "branch"})
+    github_result = GitHubCliTool("gh", cwd).invoke({"action": "auth_status"})
+    gitlab_result = GitLabCliTool("glab", cwd).invoke({"action": "mr_status"})
+
+    assert git_result == {"status": "ok", "detail": "ok"}
+    assert github_result == {"status": "ok", "detail": "ok"}
+    assert gitlab_result == {"status": "error", "detail": "denied"}
+    assert calls == [
+        (["git", "branch", "--show-current"], cwd),
+        (["gh", "auth", "status"], cwd),
+        (["glab", "mr", "status"], cwd),
+    ]
+
+
+def test_git_repository_tool_uses_all_supported_actions(monkeypatch) -> None:
+    commands = []
+
+    def fake_run(command, cwd, capture_output, text, check):
+        commands.append(command)
+        return subprocess.CompletedProcess(command, 0, stdout="ok", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    tool = GitRepositoryTool("git", Path("."))
+
+    tool.invoke({"action": "status"})
+    tool.invoke({"action": "remotes"})
+    tool.invoke({"action": "diff_summary"})
+
+    assert commands == [
+        ["git", "status", "--short", "--branch"],
+        ["git", "remote", "-v"],
+        ["git", "diff", "--stat"],
+    ]

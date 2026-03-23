@@ -71,6 +71,7 @@ Implemented now:
 - endpoint-based provider configuration for OpenAI-compatible APIs
 - SQLite persistence for runs, chat history, and learning excerpts
 - local CLI integration for repository and platform context
+- phase-1 runtime tool context injection for enabled read-only agent tools
 
 Current limitations:
 
@@ -78,6 +79,7 @@ Current limitations:
 - the provider adapter currently assumes an OpenAI-compatible chat-completions request shape
 - progress estimates are still static and workflow-based rather than telemetry-driven
 - sandboxed code execution is not part of the MVP
+- runtime tool execution is still limited to safe context collection; autonomous mutating tool use is not implemented
 
 ## Commands
 

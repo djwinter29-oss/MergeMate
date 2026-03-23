@@ -69,6 +69,9 @@ def test_config_model_resolves_workspace_database_docs_and_absolute_paths(tmp_pa
     assert config.resolve_database_path(config_path) == (tmp_path / "absolute.db").resolve()
     assert config.resolve_working_directory(config_path) == (tmp_path / "absolute-repo").resolve()
 
+    config.storage.workspace_root = str((tmp_path / "absolute-workspace").resolve())
+    assert config.resolve_workspace_root(config_path) == (tmp_path / "absolute-workspace").resolve()
+
 
 def test_config_model_expands_environment_based_provider_override(monkeypatch: pytest.MonkeyPatch) -> None:
     config = _build_config()
@@ -76,3 +79,18 @@ def test_config_model_expands_environment_based_provider_override(monkeypatch: p
 
     assert config.resolve_provider_api_key("secondary") == "secondary-secret"
     assert os.getenv("SECONDARY_KEY") == "secondary-secret"
+
+
+def test_config_model_resolves_agent_name_for_workflow() -> None:
+    config = _build_config()
+
+    assert config.resolve_agent_name_for_workflow("generate_code") == "coder"
+    assert config.resolve_agent_name_for_workflow("generate_code", preferred_agent_name="coder") == "coder"
+    assert config.resolve_agent_name_for_workflow("generate_code", preferred_agent_name="reviewer") == "coder"
+
+
+def test_config_model_raises_for_unknown_workflow() -> None:
+    config = _build_config()
+
+    with pytest.raises(ValueError, match="No configured agent found"):
+        config.resolve_agent_name_for_workflow("planning")

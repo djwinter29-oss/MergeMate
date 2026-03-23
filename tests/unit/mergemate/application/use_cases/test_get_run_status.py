@@ -35,6 +35,12 @@ def test_execute_rejects_run_from_other_chat() -> None:
     assert use_case.execute("run-1", chat_id=99) is None
 
 
+def test_execute_returns_none_for_missing_run_id() -> None:
+    use_case = GetRunStatusUseCase(RunRepositoryStub())
+
+    assert use_case.execute("missing", chat_id=10) is None
+
+
 def test_execute_uses_latest_run_for_chat_and_requires_chat_when_no_id() -> None:
     use_case = GetRunStatusUseCase(RunRepositoryStub())
 

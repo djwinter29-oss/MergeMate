@@ -10,3 +10,9 @@ class ToolRegistry:
 
     def get_tool(self, name: str):
         return self._tools.get(name)
+
+    def get_tool_metadata(self, name: str):
+        tool = self.get_tool(name)
+        if tool is None:
+            return None
+        return getattr(tool, "metadata", None)

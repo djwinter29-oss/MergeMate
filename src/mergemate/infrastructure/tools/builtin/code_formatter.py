@@ -1,8 +1,16 @@
 """Built-in source formatter tool for simple MVP cleanup."""
 
+from mergemate.domain.tools.entities import ToolMetadata
+
 
 class CodeFormatterTool:
     name = "code_formatter"
+    metadata = ToolMetadata(
+        name=name,
+        runtime_mode="manual",
+        read_only=True,
+        blocks_run_state="waiting_tool",
+    )
 
     def invoke(self, payload: dict[str, str]) -> dict[str, str]:
         source = payload.get("source", "")

@@ -59,12 +59,14 @@ class FakeContext:
 @dataclass(slots=True)
 class RuntimeSettingsStub:
     default_agent: str = "coder"
-    workflow_control: object = field(
-        default_factory=lambda: SimpleNamespace(planner_agent_name="planner")
-    )
     agents: dict[str, object] = field(
         default_factory=lambda: {"coder": SimpleNamespace(workflow="generate_code")}
     )
+
+    def resolve_agent_name_for_workflow(self, workflow: str, *, preferred_agent_name: str | None = None) -> str:
+        if workflow == "planning":
+            return "planner"
+        return preferred_agent_name or self.default_agent
 
 
 class GetRunStatusStub:

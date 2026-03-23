@@ -24,3 +24,11 @@ def test_syntax_checker_blocks_unsupported_languages() -> None:
     result = tool.invoke({"source": "const x = 1;", "language": "javascript"})
 
     assert result["status"] == "blocked"
+
+
+def test_syntax_checker_requires_source() -> None:
+    tool = SyntaxCheckerTool()
+
+    result = tool.invoke({"source": "   ", "language": "python"})
+
+    assert result == {"status": "error", "detail": "source is required."}

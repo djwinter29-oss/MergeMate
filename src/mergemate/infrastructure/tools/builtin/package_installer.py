@@ -4,9 +4,17 @@ from __future__ import annotations
 
 import subprocess
 
+from mergemate.domain.tools.entities import ToolMetadata
+
 
 class PackageInstallerTool:
     name = "package_installer"
+    metadata = ToolMetadata(
+        name=name,
+        runtime_mode="manual",
+        read_only=False,
+        blocks_run_state="waiting_tool",
+    )
 
     def __init__(
         self,

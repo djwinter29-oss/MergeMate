@@ -22,7 +22,7 @@ Tool invocation should be extensible without mixing provider logic, Telegram log
 
 ## Current Limitation
 
-In the current MVP, tool invocation is wired into the CLI and support services, but not yet into the agent execution loop itself. The agent `tools` list is therefore a configuration seam prepared for later runtime integration rather than an actively enforced execution contract.
+In the current MVP, phase 1 runtime integration is limited to safe context collection. Enabled read-only tools can now contribute execution context through the application runtime, but mutating tools are still operator-facing or policy-driven rather than autonomously invoked by the model loop.
 
 ## Future Expansion
 

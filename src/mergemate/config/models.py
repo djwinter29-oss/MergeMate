@@ -62,11 +62,6 @@ class RuntimeConfig(BaseModel):
 class WorkflowControlConfig(BaseModel):
     require_confirmation: bool = True
     max_review_iterations: int = 5
-    planner_agent_name: str = "planner"
-    architect_agent_name: str = "architect"
-    coder_agent_name: str = "coder"
-    tester_agent_name: str = "tester"
-    reviewer_agent_name: str = "reviewer"
 
 
 class AgentConfig(BaseModel):
@@ -100,6 +95,23 @@ class AppConfig(BaseModel):
         if agent is None or not agent.provider_names:
             return [self.default_provider]
         return agent.provider_names
+
+    def resolve_agent_name_for_workflow(
+        self,
+        workflow: str,
+        *,
+        preferred_agent_name: str | None = None,
+    ) -> str:
+        if preferred_agent_name is not None:
+            preferred_agent = self.agents.get(preferred_agent_name)
+            if preferred_agent is not None and preferred_agent.workflow == workflow:
+                return preferred_agent_name
+
+        for agent_name, agent in self.agents.items():
+            if agent.workflow == workflow:
+                return agent_name
+
+        raise ValueError(f"No configured agent found for workflow {workflow}")
 
     def resolve_telegram_token(self) -> str:
         token = os.getenv(self.telegram.bot_token_env)

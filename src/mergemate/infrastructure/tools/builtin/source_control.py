@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 import subprocess
 
+from mergemate.domain.tools.entities import ToolMetadata
+
 
 class _BaseCliTool:
     def __init__(self, executable: str, working_directory: Path) -> None:
@@ -27,6 +29,14 @@ class _BaseCliTool:
 
 class GitRepositoryTool(_BaseCliTool):
     name = "git_repository"
+    metadata = ToolMetadata(
+        name=name,
+        runtime_mode="context",
+        default_action="status",
+        read_only=True,
+        blocks_run_state="waiting_tool",
+        context_key="git",
+    )
 
     def invoke(self, payload: dict[str, str]) -> dict[str, str]:
         action = payload.get("action", "status")
@@ -44,6 +54,16 @@ class GitRepositoryTool(_BaseCliTool):
 
 class GitHubCliTool(_BaseCliTool):
     name = "github_cli"
+    metadata = ToolMetadata(
+        name=name,
+        runtime_mode="context",
+        default_action="repo_view",
+        read_only=True,
+        blocks_run_state="waiting_tool",
+        context_key="github",
+        auth_action="auth_status",
+        platform="github",
+    )
 
     def invoke(self, payload: dict[str, str]) -> dict[str, str]:
         action = payload.get("action", "repo_view")
@@ -60,6 +80,16 @@ class GitHubCliTool(_BaseCliTool):
 
 class GitLabCliTool(_BaseCliTool):
     name = "gitlab_cli"
+    metadata = ToolMetadata(
+        name=name,
+        runtime_mode="context",
+        default_action="repo_view",
+        read_only=True,
+        blocks_run_state="waiting_tool",
+        context_key="gitlab",
+        auth_action="auth_status",
+        platform="gitlab",
+    )
 
     def invoke(self, payload: dict[str, str]) -> dict[str, str]:
         action = payload.get("action", "repo_view")

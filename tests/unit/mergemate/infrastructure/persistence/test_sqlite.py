@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+import sqlite3
 
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.runs.value_objects import RunStatus
@@ -7,6 +8,7 @@ from mergemate.infrastructure.persistence.sqlite import (
     SQLiteDatabase,
     SQLiteLearningRepository,
     SQLiteRunRepository,
+    SQLiteToolEventRepository,
 )
 
 
@@ -159,3 +161,67 @@ def test_conversation_and_learning_repositories_preserve_order_and_limit(tmp_pat
         {"workflow": "debug_code", "prompt": "p2", "result_excerpt": "r2"},
         {"workflow": "generate_code", "prompt": "p1", "result_excerpt": "r1"},
     ]
+
+
+def test_database_initialize_handles_existing_schema_and_non_approvable_status(tmp_path) -> None:
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    database.initialize()
+
+    repository = SQLiteRunRepository(database)
+    run = _build_run("run-2")
+    run.status = RunStatus.FAILED
+    repository.create(run)
+
+    approved = repository.approve("run-2")
+
+    assert approved is not None
+    assert approved.status == RunStatus.FAILED
+
+
+def test_ensure_column_adds_missing_column(tmp_path) -> None:
+    database_path = tmp_path / "state.db"
+    connection = sqlite3.connect(database_path)
+    connection.row_factory = sqlite3.Row
+    connection.execute("CREATE TABLE sample (id INTEGER PRIMARY KEY)")
+
+    SQLiteDatabase._ensure_column(connection, "sample", "extra", "TEXT")
+
+    columns = {row["name"] for row in connection.execute("PRAGMA table_info(sample)").fetchall()}
+    connection.close()
+
+    assert "extra" in columns
+
+
+def test_tool_event_repository_records_and_lists_events(tmp_path) -> None:
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repository = SQLiteToolEventRepository(database)
+
+    repository.record("run-1", "syntax_checker", "check", "started", "Invoking tool.")
+    repository.record("run-1", "syntax_checker", "check", "ok", "done")
+    repository.record("run-2", "git_repository", "status", "ok", "clean")
+
+    assert repository.list_for_run("run-1", limit=1) == [
+        {
+            "tool_name": "syntax_checker",
+            "action": "check",
+            "status": "ok",
+            "detail": "done",
+        }
+    ]
+    assert repository.list_for_run("run-1", limit=5) == [
+        {
+            "tool_name": "syntax_checker",
+            "action": "check",
+            "status": "ok",
+            "detail": "done",
+        },
+        {
+            "tool_name": "syntax_checker",
+            "action": "check",
+            "status": "started",
+            "detail": "Invoking tool.",
+        },
+    ]
+    assert repository.list_for_run("missing") == []

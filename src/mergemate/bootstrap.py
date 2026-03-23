@@ -24,6 +24,7 @@ from mergemate.infrastructure.persistence.sqlite import (
     SQLiteDatabase,
     SQLiteLearningRepository,
     SQLiteRunRepository,
+    SQLiteToolEventRepository,
 )
 from mergemate.infrastructure.telemetry.logger import configure_logging
 from mergemate.infrastructure.tools.builtin.code_formatter import CodeFormatterTool
@@ -45,6 +46,7 @@ class MergeMateRuntime:
     run_repository: SQLiteRunRepository
     conversation_repository: SQLiteConversationRepository
     learning_repository: SQLiteLearningRepository
+    tool_event_repository: SQLiteToolEventRepository
     learning_service: LearningService
     tool_service: ToolService
     workflow_service: WorkflowService
@@ -66,6 +68,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
     run_repository = SQLiteRunRepository(database)
     conversation_repository = SQLiteConversationRepository(database)
     learning_repository = SQLiteLearningRepository(database)
+    tool_event_repository = SQLiteToolEventRepository(database)
     context_service = ContextService(conversation_repository)
     learning_service = LearningService(
         learning_repository,
@@ -131,7 +134,12 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
             ),
         }
     )
-    tool_service = ToolService(tool_registry, settings)
+    tool_service = ToolService(
+        tool_registry,
+        settings,
+        run_repository=run_repository,
+        tool_event_repository=tool_event_repository,
+    )
     workflow_service = WorkflowService(llm_gateway, settings)
 
     orchestrator = AgentOrchestrator(
@@ -140,6 +148,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
         documentation_service=documentation_service,
         learning_service=learning_service,
         prompt_service=prompt_service,
+        tool_service=tool_service,
         workflow_service=workflow_service,
         llm_gateway=llm_gateway,
         settings=settings,
@@ -166,6 +175,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
         run_repository=run_repository,
         conversation_repository=conversation_repository,
         learning_repository=learning_repository,
+        tool_event_repository=tool_event_repository,
         learning_service=learning_service,
         tool_service=tool_service,
         workflow_service=workflow_service,

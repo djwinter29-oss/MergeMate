@@ -1,5 +1,7 @@
 """Workflow planning, design, implementation, testing, and review orchestration prompts."""
 
+from mergemate.application.execution_plan import DirectExecutionPlan, MultiStageExecutionPlan
+
 
 class WorkflowService:
     MULTI_STAGE_WORKFLOWS = {"generate_code"}
@@ -11,6 +13,20 @@ class WorkflowService:
     @classmethod
     def uses_multi_stage_delivery(cls, workflow: str) -> bool:
         return workflow in cls.MULTI_STAGE_WORKFLOWS
+
+    def build_execution_plan(self, workflow: str, *, agent_name: str):
+        if self.uses_multi_stage_delivery(workflow):
+            return MultiStageExecutionPlan(
+                agent_name=agent_name,
+                max_iterations=self._settings.workflow_control.max_review_iterations,
+            )
+        return DirectExecutionPlan(agent_name=agent_name)
+
+    def resolve_stage_agent_name(self, workflow: str, *, preferred_agent_name: str | None = None) -> str:
+        return self._settings.resolve_agent_name_for_workflow(
+            workflow,
+            preferred_agent_name=preferred_agent_name,
+        )
 
     async def draft_plan(self, prompt: str, prior_feedback: str | None = None) -> str:
         system_prompt = (
@@ -32,7 +48,7 @@ class WorkflowService:
         if prior_feedback:
             user_prompt += f"\n\nIncorporate this feedback or reviewer concern:\n{prior_feedback.strip()}"
         return await self._llm_gateway.generate(
-            self._settings.workflow_control.planner_agent_name,
+            self.resolve_stage_agent_name("planning"),
             system_prompt,
             user_prompt,
         )
@@ -44,12 +60,19 @@ class WorkflowService:
         )
         user_prompt = f"Approved plan:\n{plan_text}\n\nRetrieved context:\n{context_text}"
         return await self._llm_gateway.generate(
-            self._settings.workflow_control.architect_agent_name,
+            self.resolve_stage_agent_name("design"),
             system_prompt,
             user_prompt,
         )
 
-    async def generate_code(self, plan_text: str, design_text: str, context_text: str) -> str:
+    async def generate_code(
+        self,
+        plan_text: str,
+        design_text: str,
+        context_text: str,
+        *,
+        agent_name: str | None = None,
+    ) -> str:
         system_prompt = (
             "You are the coding agent. Implement according to the approved plan and design. "
             "Return a practical implementation summary, key file changes, and important code snippets."
@@ -59,7 +82,7 @@ class WorkflowService:
             "Produce implementation details and code-oriented output."
         )
         return await self._llm_gateway.generate(
-            self._settings.workflow_control.coder_agent_name,
+            self.resolve_stage_agent_name("generate_code", preferred_agent_name=agent_name),
             system_prompt,
             user_prompt,
         )
@@ -76,7 +99,7 @@ class WorkflowService:
             f"Plan:\n{plan_text}\n\nDesign:\n{design_text}\n\nImplementation:\n{implementation_text}"
         )
         return await self._llm_gateway.generate(
-            self._settings.workflow_control.tester_agent_name,
+            self.resolve_stage_agent_name("testing"),
             system_prompt,
             user_prompt,
         )
@@ -91,7 +114,7 @@ class WorkflowService:
             f"Plan:\n{plan_text}\n\nDesign:\n{design_text}\n\nImplementation:\n{implementation_text}\n\nTests:\n{test_text}"
         )
         return await self._llm_gateway.generate(
-            self._settings.workflow_control.reviewer_agent_name,
+            self.resolve_stage_agent_name("review"),
             system_prompt,
             user_prompt,
         )

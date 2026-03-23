@@ -64,11 +64,6 @@ runtime:
 workflow_control:
   require_confirmation: true
   max_review_iterations: 5
-  planner_agent_name: planner
-  architect_agent_name: architect
-  coder_agent_name: coder
-  tester_agent_name: tester
-  reviewer_agent_name: reviewer
 
 agents:
   planner:
