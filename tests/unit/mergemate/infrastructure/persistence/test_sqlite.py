@@ -208,20 +208,24 @@ def test_tool_event_repository_records_and_lists_events(tmp_path) -> None:
             "action": "check",
             "status": "ok",
             "detail": "done",
+            "created_at": repository.list_for_run("run-1", limit=1)[0]["created_at"],
         }
     ]
-    assert repository.list_for_run("run-1", limit=5) == [
+    listed = repository.list_for_run("run-1", limit=5)
+    assert listed == [
         {
             "tool_name": "syntax_checker",
             "action": "check",
             "status": "ok",
             "detail": "done",
+            "created_at": listed[0]["created_at"],
         },
         {
             "tool_name": "syntax_checker",
             "action": "check",
             "status": "started",
             "detail": "Invoking tool.",
+            "created_at": listed[1]["created_at"],
         },
     ]
     assert repository.list_for_run("missing") == []

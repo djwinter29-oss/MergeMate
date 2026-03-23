@@ -77,8 +77,8 @@ class GetRunStatusStub:
         self.results = list(results or [])
         self.calls = []
 
-    def execute(self, run_id: str | None = None, chat_id: int | None = None):
-        self.calls.append((run_id, chat_id))
+    def execute(self, run_id: str | None = None, chat_id: int | None = None, tool_event_limit: int = 5):
+        self.calls.append((run_id, chat_id, tool_event_limit))
         if not self.results:
             return None
         return self.results.pop(0)
@@ -151,6 +151,7 @@ async def test_start_and_status_commands_return_when_message_or_chat_missing() -
 
     await handlers.start_command(UpdateStub(None), ContextStub(application))
     await handlers.status_command(UpdateStub(MessageStub("/status"), effective_chat=None), ContextStub(application))
+    await handlers.tools_command(UpdateStub(MessageStub("/tools"), effective_chat=None), ContextStub(application))
 
     assert application.bot.messages == []
 
@@ -167,6 +168,89 @@ async def test_status_command_handles_missing_and_existing_runs() -> None:
     status_message = MessageStub("/status run-1")
     await handlers.status_command(UpdateStub(status_message), ContextStub(application, args=["run-1"]))
     assert "Run run-1 is running." in status_message.replies[0]
+    assert runtime.get_run_status.calls == [(None, 5, 5), ("run-1", 5, 5)]
+
+
+@pytest.mark.asyncio
+async def test_tools_command_handles_missing_existing_and_latest_runs() -> None:
+    run_with_tools = SimpleNamespace(
+        run_id="run-1",
+        tool_events=[
+            {
+                "tool_name": "syntax_checker",
+                "action": "check",
+                "status": "ok",
+                "detail": "done",
+                "created_at": "2026-03-23T10:15:00+00:00",
+            }
+        ],
+    )
+    runtime = _runtime(latest=GetRunStatusStub([None, run_with_tools, run_with_tools]))
+    application = ApplicationStub(runtime)
+
+    missing_message = MessageStub("/tools")
+    await handlers.tools_command(UpdateStub(missing_message), ContextStub(application))
+    assert missing_message.replies == ["No runs found for this chat."]
+
+    explicit_message = MessageStub("/tools run-1")
+    await handlers.tools_command(UpdateStub(explicit_message), ContextStub(application, args=["run-1"]))
+    assert "Tool activity for run run-1:" in explicit_message.replies[0]
+    assert "syntax_checker check [ok]: done" in explicit_message.replies[0]
+    assert "2026-03-23 10:15:00 UTC" in explicit_message.replies[0]
+
+    latest_message = MessageStub("/tools")
+    await handlers.tools_command(UpdateStub(latest_message), ContextStub(application))
+    assert "Tool activity for run run-1:" in latest_message.replies[0]
+    assert runtime.get_run_status.calls == [(None, 5, 10), ("run-1", 5, 10), (None, 5, 10)]
+
+
+@pytest.mark.asyncio
+async def test_tools_command_accepts_limit_with_or_without_run_id() -> None:
+    run_with_tools = SimpleNamespace(
+        run_id="run-1",
+        tool_events=[
+            {
+                "tool_name": "syntax_checker",
+                "action": "check",
+                "status": "ok",
+                "detail": "done",
+                "created_at": "2026-03-23T10:15:00+00:00",
+            }
+        ],
+    )
+    runtime = _runtime(latest=GetRunStatusStub([run_with_tools, run_with_tools]))
+    application = ApplicationStub(runtime)
+
+    latest_message = MessageStub("/tools 15")
+    await handlers.tools_command(UpdateStub(latest_message), ContextStub(application, args=["15"]))
+    assert "Tool activity for run run-1:" in latest_message.replies[0]
+
+    explicit_message = MessageStub("/tools run-1 7")
+    await handlers.tools_command(UpdateStub(explicit_message), ContextStub(application, args=["run-1", "7"]))
+    assert "Tool activity for run run-1:" in explicit_message.replies[0]
+    assert runtime.get_run_status.calls == [(None, 5, 15), ("run-1", 5, 7)]
+
+
+@pytest.mark.asyncio
+async def test_tools_command_rejects_invalid_limit_values() -> None:
+    runtime = _runtime(latest=GetRunStatusStub())
+    application = ApplicationStub(runtime)
+
+    zero_only_message = MessageStub("/tools 0")
+    await handlers.tools_command(UpdateStub(zero_only_message), ContextStub(application, args=["0"]))
+    assert zero_only_message.replies == ["Usage: /tools [run_id] [limit]. Limit must be a positive integer."]
+
+    bad_text_message = MessageStub("/tools run-1 many")
+    await handlers.tools_command(UpdateStub(bad_text_message), ContextStub(application, args=["run-1", "many"]))
+    assert bad_text_message.replies == ["Usage: /tools [run_id] [limit]. Limit must be a positive integer."]
+
+    zero_with_run_message = MessageStub("/tools run-1 0")
+    await handlers.tools_command(UpdateStub(zero_with_run_message), ContextStub(application, args=["run-1", "0"]))
+    assert zero_with_run_message.replies == ["Usage: /tools [run_id] [limit]. Limit must be a positive integer."]
+
+    too_many_args_message = MessageStub("/tools run-1 5 extra")
+    await handlers.tools_command(UpdateStub(too_many_args_message), ContextStub(application, args=["run-1", "5", "extra"]))
+    assert too_many_args_message.replies == ["Usage: /tools [run_id] [limit]."]
 
 
 @pytest.mark.asyncio

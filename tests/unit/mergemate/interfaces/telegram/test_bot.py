@@ -68,6 +68,7 @@ def test_build_application_registers_handlers(monkeypatch: pytest.MonkeyPatch) -
     assert builder.token_value == "token"
     assert application.bot_data["runtime"] is runtime
     assert application.handlers[0] == ("command", "start", "start_command")
+    assert ("command", "tools", "tools_command") in application.handlers
     assert application.handlers[-1] == ("message", "handle_prompt")
 
 

@@ -410,7 +410,7 @@ class SQLiteToolEventRepository:
         with self._database.connection() as connection:
             rows = connection.execute(
                 """
-                SELECT tool_name, action, status, detail
+                SELECT tool_name, action, status, detail, created_at
                 FROM tool_events
                 WHERE run_id = ?
                 ORDER BY created_at DESC
@@ -424,6 +424,7 @@ class SQLiteToolEventRepository:
                 "action": row["action"],
                 "status": row["status"],
                 "detail": row["detail"],
+                "created_at": row["created_at"],
             }
             for row in rows
         ]

@@ -181,7 +181,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
         workflow_service=workflow_service,
         submit_prompt=submit_prompt_use_case,
         approve_run=ApproveRunUseCase(submit_prompt_use_case),
-        get_run_status=GetRunStatusUseCase(run_repository),
+        get_run_status=GetRunStatusUseCase(run_repository, tool_event_repository),
         cancel_run=CancelRunUseCase(run_repository),
         worker=worker,
     )

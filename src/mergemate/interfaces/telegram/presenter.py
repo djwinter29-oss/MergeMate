@@ -11,6 +11,34 @@ def _remaining_seconds(run) -> int | None:
     return max(run.estimate_seconds - elapsed, 0)
 
 
+def _tool_events(run) -> list[dict[str, str]]:
+    return list(getattr(run, "tool_events", []))
+
+
+def _latest_tool_event(run) -> dict[str, str] | None:
+    latest_tool_event = getattr(run, "latest_tool_event", None)
+    if latest_tool_event is not None:
+        return latest_tool_event
+    events = _tool_events(run)
+    return events[0] if events else None
+
+
+def _format_tool_event(event: dict[str, str]) -> str:
+    detail = event.get("detail", "").strip() or "(no detail)"
+    return f"- {event['tool_name']} {event['action']} [{event['status']}]: {detail}"
+
+
+def _format_tool_event_timestamp(event: dict[str, str]) -> str:
+    created_at = event.get("created_at", "").strip()
+    if not created_at:
+        return ""
+    try:
+        timestamp = datetime.fromisoformat(created_at)
+    except ValueError:
+        return f"{created_at} "
+    return f"{timestamp.astimezone(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')} "
+
+
 def format_acknowledgement(run_id: str, agent: str, estimate_seconds: int) -> str:
     return (
         f"Request accepted. Run ID: {run_id}. Agent: {agent}. Status: queued. "
@@ -40,12 +68,17 @@ def format_detailed_status(run) -> str:
         if remaining_seconds is not None and run.status.value in {"queued", "running", "waiting_tool"}
         else ""
     )
+    tool_events = _tool_events(run)
+    tool_activity = ""
+    if tool_events:
+        tool_activity = "\nRecent tool activity:\n" + "\n".join(_format_tool_event(event) for event in tool_events[:3])
     return (
         f"Run {run.run_id} is {run.status.value}.\n"
         f"Current stage: {run.current_stage}.\n"
         f"Review iterations: {run.review_iterations}.\n"
         f"Approved: {'yes' if run.approved else 'no'}."
         f"{estimate_line}"
+        f"{tool_activity}"
     )
 
 
@@ -92,7 +125,24 @@ def format_progress_update(run) -> str:
         if remaining_seconds is not None and run.status.value in {"queued", "running", "waiting_tool"}
         else ""
     )
+    latest_tool_event = _latest_tool_event(run)
+    tool_activity = ""
+    if latest_tool_event is not None:
+        detail = latest_tool_event.get("detail", "").strip() or "(no detail)"
+        tool_activity = (
+            f" Latest tool: {latest_tool_event['tool_name']} {latest_tool_event['action']} "
+            f"[{latest_tool_event['status']}] - {detail}."
+        )
     return (
         f"Run {run.run_id} update: status={run.status.value}, stage={run.current_stage}, "
-        f"review_iterations={run.review_iterations}.{estimate_line}"
+        f"review_iterations={run.review_iterations}.{estimate_line}{tool_activity}"
     )
+
+
+def format_tool_history(run) -> str:
+    tool_events = _tool_events(run)
+    if not tool_events:
+        return f"No tool activity recorded for run {run.run_id}."
+    lines = [f"Tool activity for run {run.run_id}:"]
+    lines.extend(f"- {_format_tool_event_timestamp(event)}{_format_tool_event(event)[2:]}" for event in tool_events)
+    return "\n".join(lines)

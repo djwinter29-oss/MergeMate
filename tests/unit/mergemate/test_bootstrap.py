@@ -134,7 +134,7 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
     monkeypatch.setattr(bootstrap_module, "RunDispatcher", DispatcherStub)
     monkeypatch.setattr(bootstrap_module, "SubmitPromptUseCase", SubmitPromptStub)
     monkeypatch.setattr(bootstrap_module, "ApproveRunUseCase", lambda submit: ("approve", submit))
-    monkeypatch.setattr(bootstrap_module, "GetRunStatusUseCase", lambda repo: ("status", repo))
+    monkeypatch.setattr(bootstrap_module, "GetRunStatusUseCase", lambda repo, tool_event_repo: ("status", repo, tool_event_repo))
     monkeypatch.setattr(bootstrap_module, "CancelRunUseCase", lambda repo: ("cancel", repo))
 
     runtime = bootstrap_module.bootstrap()
@@ -196,7 +196,7 @@ def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Pa
     monkeypatch.setattr(bootstrap_module, "RunDispatcher", lambda worker: "dispatcher")
     monkeypatch.setattr(bootstrap_module, "SubmitPromptUseCase", lambda *args: "submit_prompt")
     monkeypatch.setattr(bootstrap_module, "ApproveRunUseCase", lambda submit: "approve_run")
-    monkeypatch.setattr(bootstrap_module, "GetRunStatusUseCase", lambda repo: "get_run_status")
+    monkeypatch.setattr(bootstrap_module, "GetRunStatusUseCase", lambda repo, tool_event_repo: "get_run_status")
     monkeypatch.setattr(bootstrap_module, "CancelRunUseCase", lambda repo: "cancel_run")
     monkeypatch.setattr(bootstrap_module, "CodeFormatterTool", lambda: "formatter")
     monkeypatch.setattr(bootstrap_module, "PackageInstallerTool", lambda **kwargs: "package_installer")

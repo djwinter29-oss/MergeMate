@@ -9,6 +9,7 @@ from mergemate.interfaces.telegram.handlers import (
     handle_prompt,
     start_command,
     status_command,
+    tools_command,
 )
 
 
@@ -24,6 +25,7 @@ class TelegramBotRuntime:
         application.bot_data["runtime"] = self._runtime
         application.add_handler(CommandHandler("start", start_command))
         application.add_handler(CommandHandler("status", status_command))
+        application.add_handler(CommandHandler("tools", tools_command))
         application.add_handler(CommandHandler("approve", approve_command))
         application.add_handler(CommandHandler("cancel", cancel_command))
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_prompt))

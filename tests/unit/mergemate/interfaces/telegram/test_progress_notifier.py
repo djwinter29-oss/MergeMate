@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 
@@ -22,7 +23,7 @@ class ApplicationStub:
 
 
 class GetRunStatusStub:
-    def __init__(self, runs: list[AgentRun]) -> None:
+    def __init__(self, runs: list[object]) -> None:
         self._runs = list(runs)
         self._index = 0
 
@@ -73,6 +74,22 @@ def _build_run(status: RunStatus, stage: str, review_iterations: int = 0) -> Age
     )
 
 
+def _build_snapshot(run: AgentRun, tool_events: list[dict[str, str]] | None = None):
+    tool_events = list(tool_events or [])
+    return SimpleNamespace(
+        run=run,
+        tool_events=tool_events,
+        latest_tool_event=tool_events[0] if tool_events else None,
+        run_id=run.run_id,
+        chat_id=run.chat_id,
+        status=run.status,
+        current_stage=run.current_stage,
+        review_iterations=run.review_iterations,
+        estimate_seconds=run.estimate_seconds,
+        created_at=run.created_at,
+    )
+
+
 @pytest.mark.asyncio
 async def test_watch_run_progress_sends_updates_for_stage_changes(monkeypatch) -> None:
     async def _sleep(_seconds: int) -> None:
@@ -82,9 +99,9 @@ async def test_watch_run_progress_sends_updates_for_stage_changes(monkeypatch) -
     application = ApplicationStub()
     runtime = RuntimeStub(
         [
-            _build_run(RunStatus.RUNNING, "retrieve_context"),
-            _build_run(RunStatus.RUNNING, "implementation", review_iterations=1),
-            _build_run(RunStatus.COMPLETED, "completed", review_iterations=1),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "implementation", review_iterations=1)),
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed", review_iterations=1)),
         ]
     )
 
@@ -103,11 +120,35 @@ async def test_watch_run_progress_skips_duplicate_snapshots_and_missing_runs(mon
     monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
     application = ApplicationStub()
     runtime = RuntimeStub([
-        _build_run(RunStatus.RUNNING, "retrieve_context"),
-        _build_run(RunStatus.RUNNING, "retrieve_context"),
+        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
         None,
     ])
 
     await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
 
     assert len(application.bot.messages) == 1
+
+
+@pytest.mark.asyncio
+async def test_watch_run_progress_sends_update_for_new_tool_activity_on_same_stage(monkeypatch) -> None:
+    async def _sleep(_seconds: int) -> None:
+        return None
+
+    monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
+    application = ApplicationStub()
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.WAITING_TOOL, "tool:syntax_checker")),
+            _build_snapshot(
+                _build_run(RunStatus.WAITING_TOOL, "tool:syntax_checker"),
+                tool_events=[{"tool_name": "syntax_checker", "action": "check", "status": "started", "detail": "Invoking tool."}],
+            ),
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+        ]
+    )
+
+    await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
+
+    assert len(application.bot.messages) == 2
+    assert "Latest tool: syntax_checker check [started] - Invoking tool.." in application.bot.messages[1][1]

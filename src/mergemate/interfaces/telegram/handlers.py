@@ -13,6 +13,7 @@ from mergemate.interfaces.telegram.presenter import (
     format_detailed_status,
     format_failure,
     format_plan_for_confirmation,
+    format_tool_history,
     format_welcome,
 )
 from mergemate.interfaces.telegram.progress_notifier import watch_run_progress
@@ -39,6 +40,26 @@ def _build_request(update: Update, runtime) -> TelegramRequest:
         message_text=message.text or "",
         agent_name=runtime.settings.default_agent,
     )
+
+
+def _parse_tools_command_args(args: list[str]) -> tuple[str | None, int, str | None]:
+    if not args:
+        return None, 10, None
+    if len(args) == 1:
+        if args[0].isdigit():
+            limit = int(args[0])
+            if limit <= 0:
+                return None, 10, "Usage: /tools [run_id] [limit]. Limit must be a positive integer."
+            return None, limit, None
+        return args[0], 10, None
+    if len(args) == 2:
+        if not args[1].isdigit():
+            return None, 10, "Usage: /tools [run_id] [limit]. Limit must be a positive integer."
+        limit = int(args[1])
+        if limit <= 0:
+            return None, 10, "Usage: /tools [run_id] [limit]. Limit must be a positive integer."
+        return args[0], limit, None
+    return None, 10, "Usage: /tools [run_id] [limit]."
 
 
 async def _notify_terminal_update(application, chat_id: int, run) -> None:
@@ -72,6 +93,24 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await message.reply_text("No runs found for this chat.")
         return
     await message.reply_text(format_detailed_status(run))
+
+
+async def tools_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    runtime = _runtime(context)
+    chat = update.effective_chat
+    message = update.effective_message
+    if chat is None or message is None:
+        return
+
+    run_id, limit, error_message = _parse_tools_command_args(context.args)
+    if error_message is not None:
+        await message.reply_text(error_message)
+        return
+    run = runtime.get_run_status.execute(run_id, chat_id=chat.id, tool_event_limit=limit)
+    if run is None:
+        await message.reply_text("No runs found for this chat.")
+        return
+    await message.reply_text(format_tool_history(run))
 
 
 async def approve_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
