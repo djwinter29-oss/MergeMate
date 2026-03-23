@@ -28,15 +28,27 @@ def _format_tool_event(event: dict[str, str]) -> str:
     return f"- {event['tool_name']} {event['action']} [{event['status']}]: {detail}"
 
 
+def _format_relative_age(timestamp: datetime, *, now: datetime) -> str:
+    elapsed_seconds = max(int((now - timestamp).total_seconds()), 0)
+    if elapsed_seconds < 60:
+        return f"{elapsed_seconds}s ago"
+    if elapsed_seconds < 3600:
+        return f"{elapsed_seconds // 60}m ago"
+    if elapsed_seconds < 86400:
+        return f"{elapsed_seconds // 3600}h ago"
+    return f"{elapsed_seconds // 86400}d ago"
+
+
 def _format_tool_event_timestamp(event: dict[str, str]) -> str:
     created_at = event.get("created_at", "").strip()
     if not created_at:
         return ""
     try:
-        timestamp = datetime.fromisoformat(created_at)
+        timestamp = datetime.fromisoformat(created_at).astimezone(UTC)
     except ValueError:
         return f"{created_at} "
-    return f"{timestamp.astimezone(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')} "
+    now = datetime.now(UTC)
+    return f"{timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')} ({_format_relative_age(timestamp, now=now)}) "
 
 
 def format_acknowledgement(run_id: str, agent: str, estimate_seconds: int) -> str:

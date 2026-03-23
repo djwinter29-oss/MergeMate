@@ -173,6 +173,7 @@ async def test_status_command_handles_missing_and_existing_runs() -> None:
 
 @pytest.mark.asyncio
 async def test_tools_command_handles_missing_existing_and_latest_runs() -> None:
+    now = __import__("datetime").datetime.now(__import__("datetime").UTC)
     run_with_tools = SimpleNamespace(
         run_id="run-1",
         tool_events=[
@@ -181,7 +182,7 @@ async def test_tools_command_handles_missing_existing_and_latest_runs() -> None:
                 "action": "check",
                 "status": "ok",
                 "detail": "done",
-                "created_at": "2026-03-23T10:15:00+00:00",
+                "created_at": (now - __import__("datetime").timedelta(minutes=2)).isoformat(),
             }
         ],
     )
@@ -196,7 +197,7 @@ async def test_tools_command_handles_missing_existing_and_latest_runs() -> None:
     await handlers.tools_command(UpdateStub(explicit_message), ContextStub(application, args=["run-1"]))
     assert "Tool activity for run run-1:" in explicit_message.replies[0]
     assert "syntax_checker check [ok]: done" in explicit_message.replies[0]
-    assert "2026-03-23 10:15:00 UTC" in explicit_message.replies[0]
+    assert "UTC (2m ago)" in explicit_message.replies[0]
 
     latest_message = MessageStub("/tools")
     await handlers.tools_command(UpdateStub(latest_message), ContextStub(application))
@@ -206,6 +207,7 @@ async def test_tools_command_handles_missing_existing_and_latest_runs() -> None:
 
 @pytest.mark.asyncio
 async def test_tools_command_accepts_limit_with_or_without_run_id() -> None:
+    now = __import__("datetime").datetime.now(__import__("datetime").UTC)
     run_with_tools = SimpleNamespace(
         run_id="run-1",
         tool_events=[
@@ -214,7 +216,7 @@ async def test_tools_command_accepts_limit_with_or_without_run_id() -> None:
                 "action": "check",
                 "status": "ok",
                 "detail": "done",
-                "created_at": "2026-03-23T10:15:00+00:00",
+                "created_at": (now - __import__("datetime").timedelta(minutes=2)).isoformat(),
             }
         ],
     )

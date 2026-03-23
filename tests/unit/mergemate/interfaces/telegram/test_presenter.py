@@ -59,20 +59,21 @@ def test_presenter_hides_remaining_time_for_terminal_or_missing_estimate() -> No
 
 
 def test_presenter_includes_recent_tool_activity_when_available() -> None:
+    now = datetime.now(UTC)
     tool_events = [
         {
             "tool_name": "syntax_checker",
             "action": "check",
             "status": "ok",
             "detail": "done",
-            "created_at": "2026-03-23T10:15:00+00:00",
+            "created_at": (now - timedelta(minutes=2)).isoformat(),
         },
         {
             "tool_name": "git_repository",
             "action": "status",
             "status": "ok",
             "detail": "clean",
-            "created_at": "2026-03-23T10:14:00+00:00",
+            "created_at": (now - timedelta(minutes=3)).isoformat(),
         },
     ]
     base_run = RunStub()
@@ -95,7 +96,8 @@ def test_presenter_includes_recent_tool_activity_when_available() -> None:
     assert "syntax_checker check [ok]: done" in detailed_status
     assert "Latest tool: syntax_checker check [ok] - done." in progress_update
     assert "Tool activity for run run-1:" in format_tool_history(run)
-    assert "2026-03-23 10:15:00 UTC" in format_tool_history(run)
+    tool_history = format_tool_history(run)
+    assert "UTC (2m ago)" in tool_history
 
 
 def test_presenter_formats_empty_tool_history() -> None:
@@ -139,3 +141,47 @@ def test_presenter_formats_tool_history_without_or_with_invalid_timestamp() -> N
 
     assert "syntax_checker check [ok]: (no detail)" in format_tool_history(run_without_timestamp)
     assert "not-a-timestamp git_repository status [ok]: clean" in format_tool_history(run_with_invalid_timestamp)
+
+
+def test_presenter_formats_relative_tool_age_across_units() -> None:
+    now = datetime.now(UTC)
+    base_run = RunStub()
+    run = SimpleNamespace(
+        run_id=base_run.run_id,
+        status=base_run.status,
+        current_stage=base_run.current_stage,
+        review_iterations=base_run.review_iterations,
+        approved=base_run.approved,
+        estimate_seconds=base_run.estimate_seconds,
+        created_at=base_run.created_at,
+        tool_events=[
+            {
+                "tool_name": "syntax_checker",
+                "action": "check",
+                "status": "ok",
+                "detail": "seconds",
+                "created_at": (now - timedelta(seconds=12)).isoformat(),
+            },
+            {
+                "tool_name": "git_repository",
+                "action": "status",
+                "status": "ok",
+                "detail": "hours",
+                "created_at": (now - timedelta(hours=2)).isoformat(),
+            },
+            {
+                "tool_name": "package_installer",
+                "action": "install",
+                "status": "ok",
+                "detail": "days",
+                "created_at": (now - timedelta(days=3)).isoformat(),
+            },
+        ],
+        latest_tool_event=None,
+    )
+
+    tool_history = format_tool_history(run)
+
+    assert "(12s ago)" in tool_history
+    assert "(2h ago)" in tool_history
+    assert "(3d ago)" in tool_history
