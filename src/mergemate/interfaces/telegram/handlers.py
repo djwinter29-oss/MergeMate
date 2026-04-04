@@ -179,11 +179,17 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     latest_run = runtime.get_run_status.execute(chat_id=request.chat_id)
     if latest_run is not None and latest_run.status.value == "awaiting_confirmation":
-        revised = await runtime.submit_prompt.revise_plan_for_chat(
-            latest_run.run_id,
-            request.message_text,
-            chat_id=request.chat_id,
-        )
+        try:
+            revised = await runtime.submit_prompt.revise_plan_for_chat(
+                latest_run.run_id,
+                request.message_text,
+                chat_id=request.chat_id,
+            )
+        except PromptSubmissionError as exc:
+            failed_run = runtime.get_run_status.execute(exc.run_id, chat_id=request.chat_id)
+            error_text = failed_run.error_text if failed_run is not None and failed_run.error_text else exc.error_text
+            await message.reply_text(error_text)
+            return
         if revised is None:
             await message.reply_text("Could not revise the current plan.")
             return

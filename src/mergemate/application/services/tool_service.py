@@ -54,12 +54,21 @@ class ToolService:
     ) -> None:
         if run_id is None or self._run_repository is None or blocks_run_state != RunStatus.WAITING_TOOL.value:
             return
+        current_run = self._run_repository.get(run_id) if hasattr(self._run_repository, "get") else None
+        if current_run is not None and current_run.status in {
+            RunStatus.COMPLETED,
+            RunStatus.FAILED,
+            RunStatus.CANCELLED,
+        }:
+            return
         if entering:
             self._run_repository.update_status(
                 run_id,
                 RunStatus.WAITING_TOOL,
                 current_stage=f"tool:{tool_name}",
             )
+            return
+        if current_run is not None and current_run.status != RunStatus.WAITING_TOOL:
             return
         self._run_repository.update_status(
             run_id,

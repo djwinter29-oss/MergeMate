@@ -133,7 +133,17 @@ class SubmitPromptUseCase:
         if chat_id is not None and existing.chat_id != chat_id:
             return None
         updated_prompt = f"{existing.prompt}\n\nAdditional user feedback:\n{feedback.strip()}"
-        plan_text = await self._workflow_service.draft_plan(updated_prompt)
+        try:
+            plan_text = await self._workflow_service.draft_plan(updated_prompt)
+        except Exception as exc:
+            error_text = str(exc)
+            self._run_repository.update_status(
+                run_id,
+                existing.status,
+                current_stage=existing.current_stage,
+                error_text=error_text,
+            )
+            raise PromptSubmissionError(run_id, error_text) from exc
         updated_run = self._run_repository.update_plan(run_id, plan_text, prompt=updated_prompt)
         if updated_run is None:
             return None

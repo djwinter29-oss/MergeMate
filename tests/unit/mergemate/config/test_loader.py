@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from mergemate.config import loader as loader_module
 from mergemate.config.loader import _deep_merge, _read_yaml, load_runtime_settings, resolve_config_path
 
@@ -39,12 +41,20 @@ workflow_control:
     assert settings.default_provider == "openai_coder"
 
 
-def test_resolve_config_path_returns_explicit_path() -> None:
-    explicit_path = Path("~/custom-config.yaml")
+def test_resolve_config_path_returns_explicit_path(tmp_path) -> None:
+    explicit_path = tmp_path / "custom-config.yaml"
+    explicit_path.write_text("default_agent: coder\n", encoding="utf-8")
 
     resolved = resolve_config_path(explicit_path)
 
-    assert resolved == explicit_path.expanduser().resolve()
+    assert resolved == explicit_path.resolve()
+
+
+def test_resolve_config_path_rejects_missing_explicit_path(tmp_path) -> None:
+    missing_path = tmp_path / "missing.yaml"
+
+    with pytest.raises(FileNotFoundError, match="Configuration file not found"):
+        resolve_config_path(missing_path)
 
 
 def test_resolve_config_path_defaults_to_local_config(monkeypatch) -> None:
@@ -125,3 +135,10 @@ def test_load_runtime_settings_ignores_explicit_path_when_it_matches_default(mon
     settings = load_runtime_settings(default_path)
 
     assert settings.default_agent == "coder"
+
+
+def test_load_runtime_settings_rejects_missing_explicit_path(tmp_path) -> None:
+    missing_path = tmp_path / "missing.yaml"
+
+    with pytest.raises(FileNotFoundError, match="Configuration file not found"):
+        load_runtime_settings(missing_path)

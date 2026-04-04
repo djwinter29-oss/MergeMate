@@ -431,6 +431,28 @@ async def test_handle_prompt_revises_existing_plan_and_handles_failure() -> None
 
 
 @pytest.mark.asyncio
+async def test_handle_prompt_replies_with_error_when_plan_revision_fails() -> None:
+    failed_run = RunStub(run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION, error_text="planner unavailable")
+    runtime = _runtime(
+        latest=GetRunStatusStub([
+            RunStub(run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION),
+            failed_run,
+        ]),
+        submit=SubmitPromptStub(revise_result=None, execute_error=None),
+    )
+
+    async def failing_revise_plan_for_chat(run_id: str, feedback: str, *, chat_id: int | None = None):
+        raise PromptSubmissionError(run_id, "planner unavailable")
+
+    runtime.submit_prompt.revise_plan_for_chat = failing_revise_plan_for_chat
+    message = MessageStub("add logs")
+
+    await handlers.handle_prompt(UpdateStub(message), ContextStub(ApplicationStub(runtime)))
+
+    assert message.replies == ["planner unavailable"]
+
+
+@pytest.mark.asyncio
 async def test_handle_prompt_handles_auto_execution_and_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
     started = []
     monkeypatch.setattr(handlers, "_start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))

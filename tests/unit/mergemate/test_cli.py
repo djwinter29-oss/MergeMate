@@ -65,6 +65,15 @@ def test_validate_config_prints_resolved_paths(monkeypatch: pytest.MonkeyPatch) 
     assert "Resolved database path: /tmp/runtime.db" in result.stdout
 
 
+def test_validate_config_fails_for_missing_explicit_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "resolve_config_path", lambda config: (_ for _ in ()).throw(FileNotFoundError("Configuration file not found: /tmp/missing.yaml")))
+
+    result = runner.invoke(cli.app, ["validate-config", "--config", "/tmp/missing.yaml"])
+
+    assert result.exit_code != 0
+    assert isinstance(result.exception, FileNotFoundError)
+
+
 def test_print_config_path_outputs_default_path(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli, "resolve_config_path", lambda config=None: Path("/tmp/default.yaml"))
 

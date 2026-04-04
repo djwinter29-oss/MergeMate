@@ -18,6 +18,13 @@ def _discover_default_local_config_path() -> Path:
     return Path.cwd() / "config" / "config.yaml"
 
 
+def _resolve_explicit_config_path(explicit_path: Path) -> Path:
+    resolved_path = explicit_path.expanduser().resolve()
+    if not resolved_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {resolved_path}")
+    return resolved_path
+
+
 DEFAULT_LOCAL_CONFIG_PATH = _discover_default_local_config_path()
 
 
@@ -40,7 +47,7 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
 
 def resolve_config_path(explicit_path: Path | None = None) -> Path:
     if explicit_path is not None:
-        return explicit_path.expanduser().resolve()
+        return _resolve_explicit_config_path(explicit_path)
     return _discover_default_local_config_path().resolve()
 
 
@@ -49,7 +56,7 @@ def load_runtime_settings(explicit_path: Path | None = None) -> AppConfig:
     local_config_path = _discover_default_local_config_path().resolve()
     effective = _deep_merge(defaults, _read_yaml(local_config_path))
     if explicit_path is not None:
-        resolved_explicit_path = explicit_path.expanduser().resolve()
+        resolved_explicit_path = _resolve_explicit_config_path(explicit_path)
         if resolved_explicit_path != local_config_path:
             effective = _deep_merge(effective, _read_yaml(resolved_explicit_path))
     return AppConfig.model_validate(effective)

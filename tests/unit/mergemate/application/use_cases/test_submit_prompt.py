@@ -426,6 +426,38 @@ async def test_revise_plan_for_chat_returns_none_when_update_fails() -> None:
     assert await use_case.revise_plan_for_chat(run_id, "feedback", chat_id=1) is None
 
 
+@pytest.mark.asyncio
+async def test_revise_plan_for_chat_raises_prompt_submission_error_when_planner_fails() -> None:
+    repository = InMemoryRunRepository()
+    use_case = SubmitPromptUseCase(
+        repository,
+        ContextServiceStub(),
+        DispatcherStub(),
+        FailingWorkflowServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
+    )
+    await SubmitPromptUseCase(
+        repository,
+        ContextServiceStub(),
+        DispatcherStub(),
+        WorkflowServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
+    ).execute(
+        chat_id=1,
+        user_id=2,
+        agent_name="coder",
+        workflow="generate_code",
+        prompt="build feature",
+    )
+    run_id = next(iter(repository.runs))
+
+    with pytest.raises(PromptSubmissionError, match="planner unavailable"):
+        await use_case.revise_plan_for_chat(run_id, "feedback", chat_id=1)
+
+    assert repository.get(run_id).status == RunStatus.AWAITING_CONFIRMATION
+    assert repository.get(run_id).error_text == "planner unavailable"
+
+
 def test_approve_returns_none_when_repository_approve_fails() -> None:
     repository = InMemoryRunRepository()
     repository.return_none_on_approve = True

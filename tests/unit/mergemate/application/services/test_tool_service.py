@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from types import SimpleNamespace
 
 import pytest
 
@@ -74,9 +75,23 @@ class ToolEventRepositoryStub:
 class RunRepositoryStub:
     def __init__(self) -> None:
         self.transitions = []
+        self.runs = {}
+
+    def get(self, run_id: str):
+        return self.runs.get(run_id)
 
     def update_status(self, run_id, status, *, current_stage=None, result_text=None, error_text=None):
         self.transitions.append((run_id, status.value, current_stage))
+        run = self.runs.get(run_id)
+        if run is None:
+            run = SimpleNamespace(run_id=run_id, status=status, current_stage=current_stage, error_text=error_text)
+            self.runs[run_id] = run
+        run.status = status
+        if current_stage is not None:
+            run.current_stage = current_stage
+        if error_text is not None:
+            run.error_text = error_text
+        return run
 
 
 def test_get_repository_context_uses_git_and_default_platform() -> None:
@@ -363,6 +378,7 @@ def test_execute_enabled_tool_records_tool_events_and_waiting_state() -> None:
         run_repository=run_repository,
         tool_event_repository=tool_event_repository,
     )
+    run_repository.runs["run-1"] = SimpleNamespace(run_id="run-1", status=tool_service_module.RunStatus.RUNNING, current_stage="implementation", error_text=None)
 
     result = service.execute_enabled_tool(
         "coder",
@@ -413,6 +429,7 @@ def test_execute_enabled_tool_records_failure_and_restores_run_state_when_tool_r
         run_repository=run_repository,
         tool_event_repository=tool_event_repository,
     )
+    run_repository.runs["run-1"] = SimpleNamespace(run_id="run-1", status=tool_service_module.RunStatus.RUNNING, current_stage="implementation", error_text=None)
 
     result = service.execute_enabled_tool(
         "coder",
@@ -442,6 +459,57 @@ def test_execute_enabled_tool_records_failure_and_restores_run_state_when_tool_r
             "status": "error",
             "detail": "Tool syntax_checker failed: checker crashed",
         },
+    ]
+
+
+def test_execute_enabled_tool_does_not_restore_running_after_terminal_transition() -> None:
+    run_repository = RunRepositoryStub()
+    run_repository.runs["run-1"] = SimpleNamespace(
+        run_id="run-1",
+        status=tool_service_module.RunStatus.RUNNING,
+        current_stage="retrieve_context",
+        error_text=None,
+    )
+
+    class TerminalDuringInvokeToolStub:
+        metadata = ToolMetadata(
+            name="git_repository",
+            runtime_mode="context",
+            default_action="status",
+            read_only=True,
+            context_key="git",
+            blocks_run_state="waiting_tool",
+        )
+
+        def invoke(self, payload: dict[str, str]) -> dict[str, str]:
+            run_repository.update_status(
+                "run-1",
+                tool_service_module.RunStatus.FAILED,
+                current_stage="retrieve_context",
+                error_text="Run interrupted during shutdown.",
+            )
+            return {"status": "ok", "detail": "done"}
+
+    service = ToolService(
+        RegistryStub({"git_repository": TerminalDuringInvokeToolStub()}),
+        SettingsStub(source_control=SourceControlConfigStub(), agents={"coder": AgentConfigStub(tools=["git_repository"])}),
+        run_repository=run_repository,
+        tool_event_repository=ToolEventRepositoryStub(events=[]),
+    )
+
+    result = service.execute_enabled_tool(
+        "coder",
+        "git_repository",
+        {"action": "status"},
+        run_id="run-1",
+        resume_stage="retrieve_context",
+    )
+
+    assert result == {"status": "ok", "detail": "done"}
+    assert run_repository.runs["run-1"].status == tool_service_module.RunStatus.FAILED
+    assert run_repository.transitions == [
+        ("run-1", "waiting_tool", "tool:git_repository"),
+        ("run-1", "failed", "retrieve_context"),
     ]
 
 
