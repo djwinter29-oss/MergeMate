@@ -5,7 +5,7 @@ from pathlib import Path
 import typer
 
 from mergemate.bootstrap import bootstrap
-from mergemate.config.loader import DEFAULT_LOCAL_CONFIG_PATH, resolve_config_path
+from mergemate.config.loader import resolve_config_path
 from mergemate.interfaces.telegram.bot import TelegramBotRuntime
 
 app = typer.Typer(help="MergeMate command line interface")
@@ -36,7 +36,7 @@ def validate_config(
 @app.command("print-config-path")
 def print_config_path() -> None:
     """Print the default local configuration path."""
-    typer.echo(str(DEFAULT_LOCAL_CONFIG_PATH))
+    typer.echo(str(resolve_config_path()))
 
 
 @app.command("install-package")

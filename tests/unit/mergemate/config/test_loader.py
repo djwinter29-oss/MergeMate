@@ -48,9 +48,26 @@ def test_resolve_config_path_returns_explicit_path() -> None:
 
 
 def test_resolve_config_path_defaults_to_local_config(monkeypatch) -> None:
-    monkeypatch.setattr(loader_module, "DEFAULT_LOCAL_CONFIG_PATH", Path("/tmp/default-config.yaml"))
+    monkeypatch.setattr(loader_module, "_discover_default_local_config_path", lambda: Path("/tmp/default-config.yaml"))
 
     assert resolve_config_path() == Path("/tmp/default-config.yaml").resolve()
+
+
+def test_resolve_config_path_prefers_project_root_over_current_directory(tmp_path, monkeypatch) -> None:
+    project_root = tmp_path / "project"
+    config_path = project_root / "config" / "config.yaml"
+    defaults_path = project_root / "src" / "mergemate" / "config" / "defaults.yaml"
+    defaults_path.parent.mkdir(parents=True)
+    config_path.parent.mkdir(parents=True)
+    (project_root / "pyproject.toml").write_text("[project]\nname='mergemate'\n", encoding="utf-8")
+    defaults_path.write_text("default_agent: coder\n", encoding="utf-8")
+    config_path.write_text("default_agent: reviewer\n", encoding="utf-8")
+    other_root = tmp_path / "elsewhere"
+    other_root.mkdir()
+    monkeypatch.chdir(other_root)
+    monkeypatch.setattr(loader_module, "PACKAGE_DEFAULTS_PATH", defaults_path)
+
+    assert resolve_config_path() == config_path.resolve()
 
 
 def test_workspace_root_scopes_database_docs_and_working_directory(tmp_path) -> None:
@@ -103,7 +120,7 @@ def test_read_yaml_and_deep_merge_cover_empty_and_nested_cases(tmp_path) -> None
 def test_load_runtime_settings_ignores_explicit_path_when_it_matches_default(monkeypatch) -> None:
     default_path = Path("config/config.yaml").resolve()
     monkeypatch.setattr(loader_module, "PACKAGE_DEFAULTS_PATH", default_path)
-    monkeypatch.setattr(loader_module, "DEFAULT_LOCAL_CONFIG_PATH", default_path)
+    monkeypatch.setattr(loader_module, "_discover_default_local_config_path", lambda: default_path)
 
     settings = load_runtime_settings(default_path)
 

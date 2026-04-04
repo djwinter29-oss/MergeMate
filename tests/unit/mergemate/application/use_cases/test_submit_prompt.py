@@ -64,10 +64,13 @@ class ContextServiceStub:
 
 
 class DispatcherStub:
-    def __init__(self) -> None:
+    def __init__(self, *, error: Exception | None = None) -> None:
         self.dispatched_run_ids = []
+        self.error = error
 
     def dispatch_run(self, run_id: str, on_finished=None):
+        if self.error is not None:
+            raise self.error
         self.dispatched_run_ids.append(run_id)
 
         @dataclass(slots=True)
@@ -181,6 +184,33 @@ async def test_execute_marks_run_failed_when_plan_drafting_raises() -> None:
     assert saved_run.status == RunStatus.FAILED
     assert saved_run.current_stage == "planning"
     assert saved_run.error_text == "planner unavailable"
+
+
+@pytest.mark.asyncio
+async def test_execute_marks_run_failed_when_dispatch_rejects_during_shutdown() -> None:
+    repository = InMemoryRunRepository()
+    dispatcher = DispatcherStub(error=RuntimeError("Background worker is stopping and cannot accept new runs."))
+    use_case = SubmitPromptUseCase(
+        repository,
+        ContextServiceStub(),
+        dispatcher,
+        WorkflowServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=False)),
+    )
+
+    with pytest.raises(PromptSubmissionError, match="Background worker is stopping"):
+        await use_case.execute(
+            chat_id=1,
+            user_id=2,
+            agent_name="coder",
+            workflow="generate_code",
+            prompt="build feature",
+        )
+
+    saved_run = next(iter(repository.runs.values()))
+    assert saved_run.status == RunStatus.FAILED
+    assert saved_run.current_stage == "queued_for_execution"
+    assert saved_run.error_text == "Background worker is stopping and cannot accept new runs."
 
 
 def test_approve_is_idempotent_for_completed_run() -> None:
@@ -297,6 +327,53 @@ def test_approve_rejects_run_from_other_chat() -> None:
 
     assert result is None
     assert dispatcher.dispatched_run_ids == []
+
+
+def test_approve_marks_run_failed_when_dispatch_rejects_during_shutdown() -> None:
+    repository = InMemoryRunRepository()
+    dispatcher = DispatcherStub(error=RuntimeError("Background worker is stopping and cannot accept new runs."))
+    use_case = SubmitPromptUseCase(
+        repository,
+        ContextServiceStub(),
+        dispatcher,
+        WorkflowServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
+    )
+    from datetime import UTC, datetime
+    from mergemate.domain.runs.entities import AgentRun
+
+    now = datetime.now(UTC)
+    repository.create(
+        AgentRun(
+            run_id="run-3",
+            chat_id=1,
+            user_id=2,
+            agent_name="coder",
+            workflow="generate_code",
+            status=RunStatus.AWAITING_CONFIRMATION,
+            current_stage="awaiting_user_confirmation",
+            prompt="pending",
+            estimate_seconds=10,
+            plan_text="plan",
+            design_text=None,
+            test_text=None,
+            review_text=None,
+            review_iterations=0,
+            approved=False,
+            result_text=None,
+            error_text=None,
+            created_at=now,
+            updated_at=now,
+        )
+    )
+
+    result = use_case.approve("run-3")
+
+    assert result is not None
+    assert result.dispatched is False
+    assert result.status == RunStatus.FAILED.value
+    assert result.error_text == "Background worker is stopping and cannot accept new runs."
+    assert repository.get("run-3").status == RunStatus.FAILED
 
 
 @pytest.mark.asyncio

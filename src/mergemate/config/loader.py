@@ -8,7 +8,17 @@ import yaml
 from mergemate.config.models import AppConfig
 
 PACKAGE_DEFAULTS_PATH = Path(__file__).with_name("defaults.yaml")
-DEFAULT_LOCAL_CONFIG_PATH = Path.cwd() / "config" / "config.yaml"
+
+
+def _discover_default_local_config_path() -> Path:
+    package_path = PACKAGE_DEFAULTS_PATH.resolve()
+    for candidate in package_path.parents:
+        if (candidate / "pyproject.toml").exists():
+            return candidate / "config" / "config.yaml"
+    return Path.cwd() / "config" / "config.yaml"
+
+
+DEFAULT_LOCAL_CONFIG_PATH = _discover_default_local_config_path()
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
@@ -31,14 +41,15 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
 def resolve_config_path(explicit_path: Path | None = None) -> Path:
     if explicit_path is not None:
         return explicit_path.expanduser().resolve()
-    return DEFAULT_LOCAL_CONFIG_PATH.resolve()
+    return _discover_default_local_config_path().resolve()
 
 
 def load_runtime_settings(explicit_path: Path | None = None) -> AppConfig:
     defaults = _read_yaml(PACKAGE_DEFAULTS_PATH)
-    effective = _deep_merge(defaults, _read_yaml(DEFAULT_LOCAL_CONFIG_PATH.resolve()))
+    local_config_path = _discover_default_local_config_path().resolve()
+    effective = _deep_merge(defaults, _read_yaml(local_config_path))
     if explicit_path is not None:
         resolved_explicit_path = explicit_path.expanduser().resolve()
-        if resolved_explicit_path != DEFAULT_LOCAL_CONFIG_PATH.resolve():
+        if resolved_explicit_path != local_config_path:
             effective = _deep_merge(effective, _read_yaml(resolved_explicit_path))
     return AppConfig.model_validate(effective)

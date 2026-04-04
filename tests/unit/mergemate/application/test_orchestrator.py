@@ -155,6 +155,15 @@ class ToolServiceStub:
         self.calls.append((run_id, agent_name, resume_stage))
         return self.runtime_context
 
+    async def build_runtime_tool_context_async(
+        self,
+        run_id: str,
+        agent_name: str,
+        *,
+        resume_stage: str = "retrieve_context",
+    ) -> str:
+        return self.build_runtime_tool_context(run_id, agent_name, resume_stage=resume_stage)
+
 
 class DocumentationServiceStub:
     def __init__(self) -> None:

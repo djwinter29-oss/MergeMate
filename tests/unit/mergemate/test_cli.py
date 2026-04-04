@@ -66,7 +66,7 @@ def test_validate_config_prints_resolved_paths(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_print_config_path_outputs_default_path(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "DEFAULT_LOCAL_CONFIG_PATH", Path("/tmp/default.yaml"))
+    monkeypatch.setattr(cli, "resolve_config_path", lambda config=None: Path("/tmp/default.yaml"))
 
     result = runner.invoke(cli.app, ["print-config-path"])
 

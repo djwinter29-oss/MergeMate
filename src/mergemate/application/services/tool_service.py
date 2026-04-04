@@ -1,5 +1,7 @@
 """Tool selection and invocation service."""
 
+import asyncio
+
 from mergemate.domain.runs.value_objects import RunStatus
 
 
@@ -65,6 +67,14 @@ class ToolService:
             current_stage=resume_stage,
         )
 
+    @staticmethod
+    def _tool_exception_result(tool_name: str, error: Exception) -> dict[str, str]:
+        detail = str(error).strip() or error.__class__.__name__
+        return {
+            "status": "error",
+            "detail": f"Tool {tool_name} failed: {detail}",
+        }
+
     def execute_enabled_tool(
         self,
         agent_name: str,
@@ -100,7 +110,10 @@ class ToolService:
             entering=True,
         )
         self._record_tool_event(run_id, tool_name, action=action, status="started", detail="Invoking tool.")
-        result = tool.invoke(payload)
+        try:
+            result = tool.invoke(payload)
+        except Exception as error:
+            result = self._tool_exception_result(tool_name, error)
         self._record_tool_event(
             run_id,
             tool_name,
@@ -133,6 +146,44 @@ class ToolService:
             ):
                 continue
             result = self.execute_enabled_tool(
+                agent_name,
+                tool_name,
+                {"action": metadata.default_action},
+                run_id=run_id,
+                resume_stage=resume_stage,
+            )
+            lines.extend(
+                (
+                    "",
+                    f"{metadata.context_key or tool_name} ({result['status']}):",
+                    result.get("detail", "").strip() or "(no detail)",
+                )
+            )
+        return "\n".join(lines).strip()
+
+    async def build_runtime_tool_context_async(
+        self,
+        run_id: str,
+        agent_name: str,
+        *,
+        resume_stage: str = "retrieve_context",
+    ) -> str:
+        enabled_tools = self.list_enabled_tools(agent_name)
+        if not enabled_tools:
+            return ""
+
+        lines = ["Enabled runtime tools:", *[f"- {tool_name}" for tool_name in enabled_tools]]
+        for tool_name in enabled_tools:
+            metadata = self._tool_registry.get_tool_metadata(tool_name)
+            if (
+                metadata is None
+                or metadata.runtime_mode != "context"
+                or metadata.default_action is None
+                or not metadata.read_only
+            ):
+                continue
+            result = await asyncio.to_thread(
+                self.execute_enabled_tool,
                 agent_name,
                 tool_name,
                 {"action": metadata.default_action},

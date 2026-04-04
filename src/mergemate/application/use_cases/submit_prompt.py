@@ -23,6 +23,7 @@ class ApproveRunResult:
     run_id: str
     dispatched: bool
     status: str
+    error_text: str | None = None
 
 
 class PromptSubmissionError(RuntimeError):
@@ -107,7 +108,7 @@ class SubmitPromptUseCase:
                 current_stage="queued_for_execution",
             )
             self._run_repository.approve(run.run_id)
-            self._dispatcher.dispatch_run(run.run_id, on_finished=on_finished)
+            self._dispatch_or_fail(run.run_id, on_finished=on_finished, raise_on_error=True)
             final_status = RunStatus.QUEUED.value
         return SubmitPromptResult(
             run_id=run.run_id,
@@ -164,5 +165,34 @@ class SubmitPromptUseCase:
         approved_run = self._run_repository.approve(run_id)
         if approved_run is None:
             return None
-        self._dispatcher.dispatch_run(run_id, on_finished=on_finished)
+        error_text = self._dispatch_or_fail(run_id, on_finished=on_finished, raise_on_error=False)
+        if error_text is not None:
+            return ApproveRunResult(
+                run_id=run_id,
+                dispatched=False,
+                status=RunStatus.FAILED.value,
+                error_text=error_text,
+            )
         return ApproveRunResult(run_id=approved_run.run_id, dispatched=True, status=approved_run.status.value)
+
+    def _dispatch_or_fail(
+        self,
+        run_id: str,
+        *,
+        on_finished=None,
+        raise_on_error: bool,
+    ) -> str | None:
+        try:
+            self._dispatcher.dispatch_run(run_id, on_finished=on_finished)
+        except RuntimeError as exc:
+            error_text = str(exc)
+            self._run_repository.update_status(
+                run_id,
+                RunStatus.FAILED,
+                current_stage="queued_for_execution",
+                error_text=error_text,
+            )
+            if raise_on_error:
+                raise PromptSubmissionError(run_id, error_text) from exc
+            return error_text
+        return None

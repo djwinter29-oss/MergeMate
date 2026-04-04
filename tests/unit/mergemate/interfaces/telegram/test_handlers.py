@@ -278,6 +278,16 @@ async def test_approve_command_handles_missing_failed_and_not_needed_runs(monkey
     await handlers.approve_command(UpdateStub(fail_message), ContextStub(ApplicationStub(fail_runtime), args=["run-1"]))
     assert fail_message.replies == ["Run approval failed."]
 
+    failed_dispatch_runtime = _runtime(
+        approve=ApproveRunStub(SimpleNamespace(run_id="run-shutdown", dispatched=False, status="failed", error_text="Background worker is stopping and cannot accept new runs.")),
+    )
+    failed_dispatch_message = MessageStub("/approve run-shutdown")
+    await handlers.approve_command(
+        UpdateStub(failed_dispatch_message),
+        ContextStub(ApplicationStub(failed_dispatch_runtime), args=["run-shutdown"]),
+    )
+    assert failed_dispatch_message.replies == ["Background worker is stopping and cannot accept new runs."]
+
     noop_message = MessageStub("/approve run-3")
     await handlers.approve_command(UpdateStub(noop_message), ContextStub(application, args=["run-3"]))
     assert "was not re-approved" in noop_message.replies[0]

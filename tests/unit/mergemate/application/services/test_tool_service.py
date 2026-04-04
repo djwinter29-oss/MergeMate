@@ -1,5 +1,8 @@
 from dataclasses import dataclass
 
+import pytest
+
+from mergemate.application.services import tool_service as tool_service_module
 from mergemate.application.services.tool_service import ToolService
 from mergemate.domain.tools.entities import ToolMetadata
 
@@ -13,6 +16,17 @@ class ToolStub:
     def invoke(self, payload: dict[str, str]) -> dict[str, str]:
         self.payloads.append(payload)
         return self._response
+
+
+class RaisingToolStub:
+    def __init__(self, error: Exception, metadata: ToolMetadata | None = None) -> None:
+        self._error = error
+        self.metadata = metadata
+        self.payloads = []
+
+    def invoke(self, payload: dict[str, str]) -> dict[str, str]:
+        self.payloads.append(payload)
+        raise self._error
 
 
 class RegistryStub:
@@ -295,6 +309,42 @@ def test_build_runtime_tool_context_returns_empty_for_agent_without_enabled_tool
     assert service.build_runtime_tool_context("run-1", "coder") == ""
 
 
+@pytest.mark.asyncio
+async def test_build_runtime_tool_context_async_offloads_tool_invocation(monkeypatch: pytest.MonkeyPatch) -> None:
+    git_tool = ToolStub(
+        {"status": "ok", "detail": "main"},
+        ToolMetadata(
+            name="git_repository",
+            runtime_mode="context",
+            default_action="status",
+            read_only=True,
+            context_key="git",
+            blocks_run_state="waiting_tool",
+        ),
+    )
+    service = ToolService(
+        RegistryStub({"git_repository": git_tool}),
+        SettingsStub(
+            source_control=SourceControlConfigStub(),
+            agents={"coder": AgentConfigStub(tools=["git_repository"])},
+        ),
+    )
+    calls = []
+
+    async def fake_to_thread(func, *args, **kwargs):
+        calls.append((func, args, kwargs))
+        return func(*args, **kwargs)
+
+    monkeypatch.setattr(tool_service_module.asyncio, "to_thread", fake_to_thread)
+
+    context = await service.build_runtime_tool_context_async("run-1", "coder")
+
+    assert len(calls) == 1
+    assert "git (ok):" in context
+    assert "main" in context
+    assert git_tool.payloads == [{"action": "status"}]
+
+
 def test_execute_enabled_tool_records_tool_events_and_waiting_state() -> None:
     tool = ToolStub(
         {"status": "ok", "detail": "done"},
@@ -341,6 +391,56 @@ def test_execute_enabled_tool_records_tool_events_and_waiting_state() -> None:
             "action": "check",
             "status": "ok",
             "detail": "done",
+        },
+    ]
+
+
+def test_execute_enabled_tool_records_failure_and_restores_run_state_when_tool_raises() -> None:
+    tool = RaisingToolStub(
+        RuntimeError("checker crashed"),
+        ToolMetadata(
+            name="syntax_checker",
+            runtime_mode="manual",
+            read_only=True,
+            blocks_run_state="waiting_tool",
+        ),
+    )
+    run_repository = RunRepositoryStub()
+    tool_event_repository = ToolEventRepositoryStub(events=[])
+    service = ToolService(
+        RegistryStub({"syntax_checker": tool}),
+        SettingsStub(source_control=SourceControlConfigStub(), agents={"coder": AgentConfigStub(tools=["syntax_checker"])}),
+        run_repository=run_repository,
+        tool_event_repository=tool_event_repository,
+    )
+
+    result = service.execute_enabled_tool(
+        "coder",
+        "syntax_checker",
+        {"action": "check", "source": "x = 1"},
+        run_id="run-1",
+        resume_stage="implementation",
+    )
+
+    assert result == {"status": "error", "detail": "Tool syntax_checker failed: checker crashed"}
+    assert run_repository.transitions == [
+        ("run-1", "waiting_tool", "tool:syntax_checker"),
+        ("run-1", "running", "implementation"),
+    ]
+    assert tool_event_repository.events == [
+        {
+            "run_id": "run-1",
+            "tool_name": "syntax_checker",
+            "action": "check",
+            "status": "started",
+            "detail": "Invoking tool.",
+        },
+        {
+            "run_id": "run-1",
+            "tool_name": "syntax_checker",
+            "action": "check",
+            "status": "error",
+            "detail": "Tool syntax_checker failed: checker crashed",
         },
     ]
 

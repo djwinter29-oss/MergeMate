@@ -14,6 +14,14 @@ from mergemate.interfaces.telegram.handlers import (
 from mergemate.interfaces.telegram.progress_notifier import stop_progress_watchers
 
 
+async def stop_runtime_tasks(application: Application) -> None:
+    runtime = application.bot_data.get("runtime")
+    worker = getattr(runtime, "worker", None)
+    if worker is not None:
+        await worker.stop()
+    await stop_progress_watchers(application)
+
+
 class TelegramBotRuntime:
     def __init__(self, runtime) -> None:
         self._runtime = runtime
@@ -23,8 +31,8 @@ class TelegramBotRuntime:
             raise ValueError("Only polling mode is implemented in the MVP draft")
 
         builder = ApplicationBuilder().token(self._runtime.settings.resolve_telegram_token())
-        builder = builder.post_stop(stop_progress_watchers)
-        builder = builder.post_shutdown(stop_progress_watchers)
+        builder = builder.post_stop(stop_runtime_tasks)
+        builder = builder.post_shutdown(stop_runtime_tasks)
         application = builder.build()
         application.bot_data["runtime"] = self._runtime
         application.bot_data.setdefault("progress_watchers", {})

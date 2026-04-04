@@ -56,11 +56,12 @@ class FilterStub:
 @dataclass(slots=True)
 class RuntimeStub:
     settings: object
+    worker: object | None = None
 
 
 def test_build_application_registers_handlers(monkeypatch: pytest.MonkeyPatch) -> None:
     builder = BuilderStub()
-    runtime = RuntimeStub(settings=SimpleNamespace(telegram=SimpleNamespace(mode="polling"), resolve_telegram_token=lambda: "token"))
+    runtime = RuntimeStub(settings=SimpleNamespace(telegram=SimpleNamespace(mode="polling"), resolve_telegram_token=lambda: "token"), worker=SimpleNamespace())
 
     monkeypatch.setattr(telegram_bot, "ApplicationBuilder", lambda: builder)
     monkeypatch.setattr(telegram_bot, "CommandHandler", lambda name, fn: ("command", name, fn.__name__))
@@ -76,8 +77,8 @@ def test_build_application_registers_handlers(monkeypatch: pytest.MonkeyPatch) -
 
     assert application is builder.application
     assert builder.token_value == "token"
-    assert builder.post_shutdown_callback is telegram_bot.stop_progress_watchers
-    assert builder.post_stop_callback is telegram_bot.stop_progress_watchers
+    assert builder.post_shutdown_callback is telegram_bot.stop_runtime_tasks
+    assert builder.post_stop_callback is telegram_bot.stop_runtime_tasks
     assert application.bot_data["runtime"] is runtime
     assert application.bot_data["progress_watchers"] == {}
     assert application.handlers[0] == ("command", "start", "start_command")
@@ -103,3 +104,24 @@ def test_run_polling_uses_all_updates(monkeypatch: pytest.MonkeyPatch) -> None:
     bot_runtime.run_polling()
 
     assert application.run_polling_calls == ["all-types"]
+
+
+@pytest.mark.asyncio
+async def test_stop_runtime_tasks_stops_watchers_and_worker(monkeypatch: pytest.MonkeyPatch) -> None:
+    stopped = []
+
+    async def fake_stop_progress_watchers(application) -> None:
+        stopped.append("watchers")
+
+    class WorkerStub:
+        async def stop(self) -> None:
+            stopped.append("worker")
+
+    application = ApplicationStub()
+    application.bot_data["runtime"] = RuntimeStub(settings=SimpleNamespace(), worker=WorkerStub())
+
+    monkeypatch.setattr(telegram_bot, "stop_progress_watchers", fake_stop_progress_watchers)
+
+    await telegram_bot.stop_runtime_tasks(application)
+
+    assert stopped == ["worker", "watchers"]

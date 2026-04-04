@@ -65,7 +65,7 @@ class AgentOrchestrator:
             agent_name=run.agent_name,
         )
         if execution_plan.requires_tool_context:
-            tool_context = self._tool_service.build_runtime_tool_context(
+            tool_context = await self._tool_service.build_runtime_tool_context_async(
                 run.run_id,
                 run.agent_name,
                 resume_stage="retrieve_context",

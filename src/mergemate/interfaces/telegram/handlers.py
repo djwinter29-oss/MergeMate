@@ -4,6 +4,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from mergemate.application.use_cases.submit_prompt import PromptSubmissionError
+from mergemate.domain.runs.value_objects import RunStatus
 from mergemate.interfaces.telegram.models import TelegramRequest
 from mergemate.interfaces.telegram.presenter import (
     format_approval_started,
@@ -140,6 +141,9 @@ async def approve_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     )
     if run is None:
         await message.reply_text("Run approval failed.")
+        return
+    if not run.dispatched and run.status == RunStatus.FAILED.value and getattr(run, "error_text", None):
+        await message.reply_text(run.error_text)
         return
     if not run.dispatched:
         await message.reply_text(format_approval_not_needed(run.run_id, run.status))
