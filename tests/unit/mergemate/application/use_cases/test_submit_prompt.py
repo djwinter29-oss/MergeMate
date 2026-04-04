@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import pytest
 
 from mergemate.application.use_cases.submit_prompt import PromptSubmissionError, SubmitPromptUseCase
+from mergemate.domain.runs.repository import ApprovalDecision
 from mergemate.domain.runs.value_objects import RunStatus
 
 
@@ -11,6 +12,7 @@ class InMemoryRunRepository:
         self.runs = {}
         self.return_none_on_update = False
         self.return_none_on_approve = False
+        self.transition_on_approve = True
         self.status_updates = []
 
     def create(self, run) -> None:
@@ -31,21 +33,37 @@ class InMemoryRunRepository:
 
     def approve(self, run_id: str):
         if self.return_none_on_approve:
-            return None
+            return ApprovalDecision(run=None, transitioned=False)
         run = self.runs[run_id]
         if run.approved:
-            return run
+            return ApprovalDecision(run=run, transitioned=False)
         if run.status == RunStatus.AWAITING_CONFIRMATION:
-            run.approved = True
-            run.status = RunStatus.QUEUED
-            run.current_stage = "queued_for_execution"
-            return run
+            if self.transition_on_approve:
+                run.approved = True
+                run.status = RunStatus.QUEUED
+                run.current_stage = "queued_for_execution"
+                return ApprovalDecision(run=run, transitioned=True)
+            return ApprovalDecision(run=run, transitioned=False)
         if run.status == RunStatus.QUEUED:
-            run.approved = True
-        return run
+            if self.transition_on_approve:
+                run.approved = True
+                return ApprovalDecision(run=run, transitioned=True)
+            return ApprovalDecision(run=run, transitioned=False)
+        return ApprovalDecision(run=run, transitioned=False)
 
-    def update_status(self, run_id: str, status: RunStatus, *, error_text: str | None = None, current_stage=None, result_text=None):
+    def update_status(
+        self,
+        run_id: str,
+        status: RunStatus,
+        *,
+        expected_current_status: RunStatus | None = None,
+        error_text: str | None = None,
+        current_stage=None,
+        result_text=None,
+    ):
         run = self.runs[run_id]
+        if expected_current_status is not None and run.status != expected_current_status:
+            return run
         run.status = status
         if current_stage is not None:
             run.current_stage = current_stage
@@ -374,6 +392,53 @@ def test_approve_marks_run_failed_when_dispatch_rejects_during_shutdown() -> Non
     assert result.status == RunStatus.FAILED.value
     assert result.error_text == "Background worker is stopping and cannot accept new runs."
     assert repository.get("run-3").status == RunStatus.FAILED
+
+
+def test_approve_does_not_dispatch_when_transition_was_already_claimed() -> None:
+    repository = InMemoryRunRepository()
+    repository.transition_on_approve = False
+    dispatcher = DispatcherStub()
+    use_case = SubmitPromptUseCase(
+        repository,
+        ContextServiceStub(),
+        dispatcher,
+        WorkflowServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
+    )
+    from datetime import UTC, datetime
+    from mergemate.domain.runs.entities import AgentRun
+
+    now = datetime.now(UTC)
+    repository.create(
+        AgentRun(
+            run_id="run-race",
+            chat_id=1,
+            user_id=2,
+            agent_name="coder",
+            workflow="generate_code",
+            status=RunStatus.QUEUED,
+            current_stage="queued_for_execution",
+            prompt="pending",
+            estimate_seconds=10,
+            plan_text="plan",
+            design_text=None,
+            test_text=None,
+            review_text=None,
+            review_iterations=0,
+            approved=True,
+            result_text=None,
+            error_text=None,
+            created_at=now,
+            updated_at=now,
+        )
+    )
+
+    result = use_case.approve("run-race")
+
+    assert result is not None
+    assert result.dispatched is False
+    assert result.status == RunStatus.QUEUED.value
+    assert dispatcher.dispatched_run_ids == []
 
 
 @pytest.mark.asyncio

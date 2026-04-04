@@ -134,6 +134,10 @@ The default workflow is:
 6. For `generate_code`, MergeMate retrieves context, writes an architecture document under `docs/architecture/`, generates implementation output, writes a test plan under `docs/testing/`, and writes a review report under `docs/reviews/`
 7. MergeMate sends stage updates while the run is active and a final completion or failure message at the end
 
+If a status, tool-history, progress, or terminal message is too large for Telegram, MergeMate splits it into multiple messages automatically.
+
+If Telegram temporarily fails to accept a progress update, MergeMate logs the failure and continues watching the run instead of permanently stopping progress notifications.
+
 Workflow documents are written under the active docs root, typically `docs/architecture/`, `docs/testing/`, and `docs/reviews/` under the configured workspace root.
 
 For direct workflows such as debugging and explanation, MergeMate still drafts and confirms a plan, but the execution step runs a direct single-agent call and does not emit the architecture, test-plan, or review documents.
@@ -145,8 +149,10 @@ Useful Telegram commands:
 - `/status <run_id>`: inspect a specific run
 - `/approve`: approve the latest awaiting run in the current chat
 - `/approve <run_id>`: approve a specific run
-- `/cancel`: cancel the latest run in the current chat
-- `/cancel <run_id>`: cancel a specific run
+- `/cancel`: cancel the latest run in the current chat if it is still awaiting confirmation
+- `/cancel <run_id>`: cancel a specific run if it is still awaiting confirmation
+
+After a run has been approved, MergeMate does not currently support cancelling queued or running work from Telegram.
 
 ## Role-Based Provider Configuration
 

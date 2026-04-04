@@ -37,17 +37,28 @@ class AgentOrchestrator:
         run = self._run_repository.get(run_id)
         if run is None:
             raise ValueError(f"Run {run_id} was not found")
-        if run.status == RunStatus.CANCELLED:
+        if run.status in {
+            RunStatus.COMPLETED,
+            RunStatus.FAILED,
+            RunStatus.CANCELLED,
+            RunStatus.RUNNING,
+            RunStatus.WAITING_TOOL,
+        }:
             return run
         if not run.approved:
+            return run
+        if run.status != RunStatus.QUEUED:
             return run
 
         run = self._run_repository.update_status(
             run_id,
             RunStatus.RUNNING,
+            expected_current_status=RunStatus.QUEUED,
             current_stage="retrieve_context",
         )
         assert run is not None
+        if run.status != RunStatus.RUNNING:
+            return run
 
         recent_messages = self._context_service.load_recent_messages(run.chat_id)
         if recent_messages and recent_messages[-1]["role"] == "user" and recent_messages[-1]["content"] == run.prompt:

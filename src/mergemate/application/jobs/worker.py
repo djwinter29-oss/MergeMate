@@ -15,6 +15,7 @@ class BackgroundRunWorker:
         self._run_repository = run_repository
         self._semaphore = asyncio.Semaphore(max_concurrent_runs)
         self._tasks: set[asyncio.Task[None]] = set()
+        self._active_run_ids: set[str] = set()
         self._stopping = False
 
     def enqueue(
@@ -24,9 +25,13 @@ class BackgroundRunWorker:
     ) -> None:
         if self._stopping:
             raise RuntimeError("Background worker is stopping and cannot accept new runs.")
+        if run_id in self._active_run_ids:
+            return
+        self._active_run_ids.add(run_id)
         task = asyncio.create_task(self._consume(run_id, on_finished=on_finished))
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
+        task.add_done_callback(lambda completed_task: self._active_run_ids.discard(run_id))
 
     async def stop(self) -> None:
         self._stopping = True
@@ -36,6 +41,7 @@ class BackgroundRunWorker:
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
         self._tasks.clear()
+        self._active_run_ids.clear()
 
     async def _consume(
         self,

@@ -67,10 +67,11 @@ def test_approve_does_not_transition_completed_run(tmp_path) -> None:
 
     approved = repository.approve("run-1")
 
-    assert approved is not None
-    assert approved.status == RunStatus.COMPLETED
-    assert approved.current_stage == "completed"
-    assert approved.approved is True
+    assert approved.run is not None
+    assert approved.transitioned is False
+    assert approved.run.status == RunStatus.COMPLETED
+    assert approved.run.current_stage == "completed"
+    assert approved.run.approved is True
 
 
 def test_approve_marks_queued_run_as_approved_without_resetting_stage(tmp_path) -> None:
@@ -84,10 +85,11 @@ def test_approve_marks_queued_run_as_approved_without_resetting_stage(tmp_path) 
 
     approved = repository.approve("run-1")
 
-    assert approved is not None
-    assert approved.status == RunStatus.QUEUED
-    assert approved.current_stage == "queued_for_execution"
-    assert approved.approved is True
+    assert approved.run is not None
+    assert approved.transitioned is True
+    assert approved.run.status == RunStatus.QUEUED
+    assert approved.run.current_stage == "queued_for_execution"
+    assert approved.run.approved is True
 
 
 def test_run_repository_round_trip_and_updates(tmp_path) -> None:
@@ -114,6 +116,14 @@ def test_run_repository_round_trip_and_updates(tmp_path) -> None:
     assert updated.result_text == "partial"
     assert updated.error_text == "warning"
 
+    preserved = repository.update_status(
+        "run-1",
+        RunStatus.CANCELLED,
+        expected_current_status=RunStatus.AWAITING_CONFIRMATION,
+    )
+    assert preserved is not None
+    assert preserved.status == RunStatus.RUNNING
+
     artifacted = repository.save_artifacts(
         "run-1",
         current_stage="review",
@@ -135,7 +145,9 @@ def test_run_repository_round_trip_and_updates(tmp_path) -> None:
     assert repository.get("missing") is None
     assert repository.update_status("missing", RunStatus.FAILED) is None
     assert repository.update_plan("missing", "plan") is None
-    assert repository.approve("missing") is None
+    approved_missing = repository.approve("missing")
+    assert approved_missing.run is None
+    assert approved_missing.transitioned is False
     assert repository.save_artifacts("missing", result_text="x") is None
 
 
@@ -175,8 +187,25 @@ def test_database_initialize_handles_existing_schema_and_non_approvable_status(t
 
     approved = repository.approve("run-2")
 
-    assert approved is not None
-    assert approved.status == RunStatus.FAILED
+    assert approved.run is not None
+    assert approved.transitioned is False
+    assert approved.run.status == RunStatus.FAILED
+
+
+def test_approve_is_atomic_after_first_transition(tmp_path) -> None:
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repository = SQLiteRunRepository(database)
+    repository.create(_build_run())
+
+    first = repository.approve("run-1")
+    second = repository.approve("run-1")
+
+    assert first.run is not None
+    assert first.transitioned is True
+    assert second.run is not None
+    assert second.transitioned is False
+    assert second.run.status == RunStatus.QUEUED
 
 
 def test_ensure_column_adds_missing_column(tmp_path) -> None:

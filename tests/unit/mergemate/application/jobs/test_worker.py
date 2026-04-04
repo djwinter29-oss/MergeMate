@@ -41,6 +41,17 @@ class BlockingOrchestratorStub:
             raise
 
 
+class PendingOrchestratorStub:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+        self.release = asyncio.Event()
+
+    async def process_run(self, run_id: str):
+        self.calls.append(run_id)
+        await self.release.wait()
+        return RunStub(run_id=run_id, status=RunStatus.COMPLETED)
+
+
 class RunRepositoryStub:
     def __init__(self) -> None:
         self.calls: list[tuple[str, RunStatus, str | None]] = []
@@ -108,6 +119,23 @@ async def test_enqueue_tracks_and_discards_completed_task() -> None:
 
     assert orchestrator.calls == ["run-3"]
     assert len(worker._tasks) == 0
+
+
+@pytest.mark.asyncio
+async def test_enqueue_ignores_duplicate_active_run_ids() -> None:
+    orchestrator = PendingOrchestratorStub()
+    repository = RunRepositoryStub()
+    worker = BackgroundRunWorker(orchestrator, repository, max_concurrent_runs=1)
+
+    worker.enqueue("run-dup")
+    worker.enqueue("run-dup")
+    await asyncio.sleep(0)
+
+    assert orchestrator.calls == ["run-dup"]
+
+    orchestrator.release.set()
+    await asyncio.gather(*list(worker._tasks))
+    assert worker._active_run_ids == set()
 
 
 @pytest.mark.asyncio

@@ -73,6 +73,19 @@ def test_config_model_resolves_workspace_database_docs_and_absolute_paths(tmp_pa
     assert config.resolve_workspace_root(config_path) == (tmp_path / "absolute-workspace").resolve()
 
 
+def test_config_model_preview_paths_do_not_create_workspace(tmp_path: Path) -> None:
+    config = _build_config()
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("config: true\n", encoding="utf-8")
+
+    workspace_root = config.preview_workspace_root(config_path)
+    database_path = config.preview_database_path(config_path)
+
+    assert workspace_root == (tmp_path / "workspace").resolve()
+    assert database_path == (tmp_path / "workspace" / ".state" / "runtime.db").resolve()
+    assert workspace_root.exists() is False
+
+
 def test_config_model_expands_environment_based_provider_override(monkeypatch: pytest.MonkeyPatch) -> None:
     config = _build_config()
     monkeypatch.setenv("SECONDARY_KEY", "secondary-secret")

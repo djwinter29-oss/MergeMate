@@ -51,11 +51,15 @@ class DirectExecutionPlan:
 
     async def execute(self, runtime: ExecutionRuntime, execution: ExecutionContext):
         run = execution.run
+        if runtime.is_cancelled(run.run_id):
+            return runtime.run_repository.get(run.run_id)
         direct_result = await runtime.workflow_service.execute_direct(
             self._agent_name,
             execution.system_prompt,
             execution.context_text,
         )
+        if runtime.is_cancelled(run.run_id):
+            return runtime.run_repository.get(run.run_id)
         runtime.run_repository.save_artifacts(
             run.run_id,
             current_stage=self.stages[0].current_stage,

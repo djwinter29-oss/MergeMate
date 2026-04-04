@@ -22,7 +22,18 @@ class RunRepositoryStub:
     def list_for_chat(self, chat_id: int, limit: int = 1):
         return [self.run] if chat_id == 10 else []
 
-    def update_status(self, run_id: str, status: RunStatus, *, current_stage=None, result_text=None, error_text=None):
+    def update_status(
+        self,
+        run_id: str,
+        status: RunStatus,
+        *,
+        expected_current_status: RunStatus | None = None,
+        current_stage=None,
+        result_text=None,
+        error_text=None,
+    ):
+        if expected_current_status is not None and self.run.status != expected_current_status:
+            return self.run
         self.updated.append((run_id, status))
         self.run.status = status
         return self.run
@@ -66,3 +77,20 @@ def test_cancel_run_rejects_non_awaiting_confirmation_status() -> None:
     assert result.cancelled is False
     assert result.status == RunStatus.RUNNING.value
     assert repository.updated == []
+
+
+def test_cancel_run_does_not_override_concurrent_status_transition() -> None:
+    repository = RunRepositoryStub()
+    use_case = CancelRunUseCase(repository)
+
+    def concurrent_update(*args, **kwargs):
+        repository.run.status = RunStatus.QUEUED
+        return repository.run
+
+    repository.update_status = concurrent_update
+
+    result = use_case.execute("run-1", chat_id=10)
+
+    assert result is not None
+    assert result.cancelled is False
+    assert result.status == RunStatus.QUEUED.value

@@ -1,4 +1,4 @@
-"""Cancel a queued or running job."""
+"""Cancel a run that is still awaiting confirmation."""
 
 from dataclasses import dataclass
 
@@ -36,9 +36,19 @@ class CancelRunUseCase:
                 status=target_run.status.value,
             )
 
-        cancelled_run = self._run_repository.update_status(target_run.run_id, RunStatus.CANCELLED)
+        cancelled_run = self._run_repository.update_status(
+            target_run.run_id,
+            RunStatus.CANCELLED,
+            expected_current_status=RunStatus.AWAITING_CONFIRMATION,
+        )
         if cancelled_run is None:
             return None
+        if cancelled_run.status != RunStatus.CANCELLED:
+            return CancelRunResult(
+                run_id=cancelled_run.run_id,
+                cancelled=False,
+                status=cancelled_run.status.value,
+            )
         return CancelRunResult(
             run_id=target_run.run_id,
             cancelled=True,

@@ -56,7 +56,12 @@ def test_run_bot_prints_config_and_runs(monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_validate_config_prints_resolved_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli, "resolve_config_path", lambda config: Path("/tmp/config.yaml"))
-    monkeypatch.setattr(cli, "bootstrap", lambda config: _runtime())
+    settings = SimpleNamespace(
+        resolve_telegram_token=lambda: "token",
+        preview_database_path=lambda resolved: Path("/tmp/runtime.db"),
+    )
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "bootstrap", lambda config: (_ for _ in ()).throw(AssertionError("bootstrap should not be called")))
 
     result = runner.invoke(cli.app, ["validate-config"])
 
@@ -72,6 +77,20 @@ def test_validate_config_fails_for_missing_explicit_path(monkeypatch: pytest.Mon
 
     assert result.exit_code != 0
     assert isinstance(result.exception, FileNotFoundError)
+
+
+def test_validate_config_fails_when_telegram_token_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "resolve_config_path", lambda config: Path("/tmp/config.yaml"))
+    settings = SimpleNamespace(
+        resolve_telegram_token=lambda: (_ for _ in ()).throw(ValueError("Telegram bot token not found in environment variable TELEGRAM_TOKEN")),
+        preview_database_path=lambda resolved: Path("/tmp/runtime.db"),
+    )
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+
+    result = runner.invoke(cli.app, ["validate-config"])
+
+    assert result.exit_code != 0
+    assert isinstance(result.exception, ValueError)
 
 
 def test_print_config_path_outputs_default_path(monkeypatch: pytest.MonkeyPatch) -> None:

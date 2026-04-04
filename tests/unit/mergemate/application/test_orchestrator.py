@@ -60,6 +60,7 @@ class RunRepositoryStub:
         run_id: str,
         status: RunStatus,
         *,
+        expected_current_status: RunStatus | None = None,
         current_stage: str | None = None,
         result_text: str | None = None,
         error_text: str | None = None,
@@ -67,6 +68,8 @@ class RunRepositoryStub:
         run = self.get(run_id)
         if run is None:
             return None
+        if expected_current_status is not None and run.status != expected_current_status:
+            return run
         run.status = status
         if current_stage is not None:
             run.current_stage = current_stage
@@ -389,6 +392,36 @@ async def test_process_run_executes_non_generate_workflow_directly() -> None:
 
 
 @pytest.mark.asyncio
+async def test_process_run_returns_cancelled_direct_run_without_persisting_success() -> None:
+    repository = RunRepositoryStub(_build_run(workflow="debug_code", agent_name="debugger"))
+    context_service = ContextServiceStub()
+    learning_service = LearningServiceStub()
+    workflow_service = WorkflowServiceStub()
+    orchestrator = AgentOrchestrator(
+        run_repository=repository,
+        context_service=context_service,
+        documentation_service=DocumentationServiceStub(),
+        learning_service=learning_service,
+        prompt_service=PromptServiceStub(),
+        tool_service=ToolServiceStub(),
+        workflow_service=workflow_service,
+        llm_gateway=None,
+        settings=SettingsStub(),
+    )
+
+    sequence = iter([False, True])
+    orchestrator._is_cancelled = lambda run_id: next(sequence, False)
+    repository.run.status = RunStatus.CANCELLED
+
+    run = await orchestrator.process_run("run-1")
+
+    assert run is not None
+    assert run.status == RunStatus.CANCELLED
+    assert context_service.appended_messages == []
+    assert learning_service.saved == []
+
+
+@pytest.mark.asyncio
 async def test_process_run_raises_when_run_is_missing() -> None:
     orchestrator = AgentOrchestrator(
         run_repository=RunRepositoryStub(_build_run()),
@@ -438,6 +471,37 @@ async def test_process_run_returns_early_for_cancelled_or_unapproved_runs() -> N
         settings=SettingsStub(),
     ).process_run("run-1")
     assert unapproved.approved is False
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.RUNNING, RunStatus.WAITING_TOOL])
+async def test_process_run_returns_early_for_terminal_or_active_runs(status) -> None:
+    run = _build_run()
+    run.status = status
+    repository = RunRepositoryStub(run)
+    context_service = ContextServiceStub()
+    learning_service = LearningServiceStub()
+    tool_service = ToolServiceStub()
+    workflow_service = WorkflowServiceStub()
+
+    result = await AgentOrchestrator(
+        run_repository=repository,
+        context_service=context_service,
+        documentation_service=DocumentationServiceStub(),
+        learning_service=learning_service,
+        prompt_service=PromptServiceStub(),
+        tool_service=tool_service,
+        workflow_service=workflow_service,
+        llm_gateway=None,
+        settings=SettingsStub(),
+    ).process_run("run-1")
+
+    assert result.status == status
+    assert context_service.appended_messages == []
+    assert learning_service.saved == []
+    assert tool_service.calls == []
+    assert workflow_service.direct_calls == []
+    assert workflow_service.generate_code_calls == 0
 
 
 @pytest.mark.asyncio

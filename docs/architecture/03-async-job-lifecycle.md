@@ -24,6 +24,13 @@ When a prompt is submitted:
 4. Status can later be retrieved with a command.
 5. Important transitions trigger proactive progress updates while the run is non-terminal.
 
+## Dispatch Semantics
+
+- A run is intended to execute once per approved dispatch.
+- Duplicate enqueue attempts for the same active run are treated as a correctness bug, not as an accepted retry mechanism.
+- The worker and orchestrator should therefore refuse to restart runs that are already active or terminal.
+- If resumable or at-least-once execution is introduced later, that behavior should be designed explicitly rather than emerging from duplicate background dispatch.
+
 ## Estimation Strategy
 
 The MVP uses static workflow-based estimates instead of dynamic prediction:
@@ -36,12 +43,12 @@ This is intentionally simple and should be replaced later by telemetry-informed 
 
 ## Cancellation
 
-Cancellation is best-effort in the MVP:
+Cancellation is intentionally limited in the MVP:
 
-1. Queued runs can be cancelled before execution.
-2. Running multi-stage jobs can be marked cancelled and checked between design, implementation, testing, review, and replanning steps.
-3. Direct-execution workflows still depend on provider completion boundaries, so cancellation is only observed before or after the direct model call.
-4. Provider calls already in flight may complete before cancellation is observed.
+1. User-driven cancellation through Telegram is only supported while a run is in `awaiting_confirmation`.
+2. Once a run has been approved and moved into `queued`, `running`, or `waiting_tool`, Telegram does not offer a user cancellation path.
+3. Shutdown or policy interruptions may still move a run into `failed` or `cancelled`, but that is a runtime safety behavior rather than an interactive user control.
+4. Broader queued and running cancellation remains a future enhancement.
 
 ## Failure Handling
 
@@ -49,3 +56,4 @@ Cancellation is best-effort in the MVP:
 - Preserve enough failure detail for debugging.
 - Send a concise failure message to the user.
 - Avoid leaving the user without a visible terminal state.
+- Treat delivery-channel failures such as Telegram send errors as transient operational issues when possible: log them, preserve run state, and keep polling-based progress delivery alive for later retries.

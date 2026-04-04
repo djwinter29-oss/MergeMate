@@ -65,6 +65,7 @@ class ToolService:
             self._run_repository.update_status(
                 run_id,
                 RunStatus.WAITING_TOOL,
+                expected_current_status=RunStatus.RUNNING,
                 current_stage=f"tool:{tool_name}",
             )
             return
@@ -73,6 +74,7 @@ class ToolService:
         self._run_repository.update_status(
             run_id,
             RunStatus.RUNNING,
+            expected_current_status=RunStatus.WAITING_TOOL,
             current_stage=resume_stage,
         )
 

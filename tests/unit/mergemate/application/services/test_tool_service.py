@@ -80,12 +80,23 @@ class RunRepositoryStub:
     def get(self, run_id: str):
         return self.runs.get(run_id)
 
-    def update_status(self, run_id, status, *, current_stage=None, result_text=None, error_text=None):
+    def update_status(
+        self,
+        run_id,
+        status,
+        *,
+        expected_current_status=None,
+        current_stage=None,
+        result_text=None,
+        error_text=None,
+    ):
         self.transitions.append((run_id, status.value, current_stage))
         run = self.runs.get(run_id)
         if run is None:
             run = SimpleNamespace(run_id=run_id, status=status, current_stage=current_stage, error_text=error_text)
             self.runs[run_id] = run
+        if expected_current_status is not None and run.status != expected_current_status:
+            return run
         run.status = status
         if current_stage is not None:
             run.current_stage = current_stage
@@ -511,6 +522,44 @@ def test_execute_enabled_tool_does_not_restore_running_after_terminal_transition
         ("run-1", "waiting_tool", "tool:git_repository"),
         ("run-1", "failed", "retrieve_context"),
     ]
+
+
+def test_execute_enabled_tool_does_not_reenter_waiting_tool_after_concurrent_failure() -> None:
+    run_repository = RunRepositoryStub()
+    run_repository.runs["run-1"] = SimpleNamespace(
+        run_id="run-1",
+        status=tool_service_module.RunStatus.FAILED,
+        current_stage="retrieve_context",
+        error_text="Run interrupted during shutdown.",
+    )
+    tool = ToolStub(
+        {"status": "ok", "detail": "done"},
+        ToolMetadata(
+            name="git_repository",
+            runtime_mode="context",
+            default_action="status",
+            read_only=True,
+            context_key="git",
+            blocks_run_state="waiting_tool",
+        ),
+    )
+    service = ToolService(
+        RegistryStub({"git_repository": tool}),
+        SettingsStub(source_control=SourceControlConfigStub(), agents={"coder": AgentConfigStub(tools=["git_repository"])}),
+        run_repository=run_repository,
+        tool_event_repository=ToolEventRepositoryStub(events=[]),
+    )
+
+    result = service.execute_enabled_tool(
+        "coder",
+        "git_repository",
+        {"action": "status"},
+        run_id="run-1",
+        resume_stage="retrieve_context",
+    )
+
+    assert result == {"status": "ok", "detail": "done"}
+    assert run_repository.runs["run-1"].status == tool_service_module.RunStatus.FAILED
 
 
 def test_get_repository_context_skips_listed_tools_without_instances() -> None:

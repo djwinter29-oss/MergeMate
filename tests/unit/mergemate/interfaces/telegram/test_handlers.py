@@ -176,6 +176,39 @@ async def test_status_command_handles_missing_and_existing_runs() -> None:
 
 
 @pytest.mark.asyncio
+async def test_status_command_splits_oversized_messages() -> None:
+    long_detail = "x" * (handlers.TELEGRAM_MESSAGE_LIMIT + 250)
+    now = __import__("datetime").datetime.now(__import__("datetime").UTC)
+    run = SimpleNamespace(
+        run_id="run-1",
+        status=RunStatus.RUNNING,
+        current_stage="implementation",
+        review_iterations=1,
+        approved=True,
+        estimate_seconds=15,
+        created_at=now,
+        tool_events=[
+            {
+                "tool_name": "syntax_checker",
+                "action": "check",
+                "status": "error",
+                "detail": long_detail,
+                "created_at": now.isoformat(),
+            }
+        ],
+        latest_tool_event=None,
+    )
+    runtime = _runtime(latest=GetRunStatusStub([run]))
+    application = ApplicationStub(runtime)
+    status_message = MessageStub("/status run-1")
+
+    await handlers.status_command(UpdateStub(status_message), ContextStub(application, args=["run-1"]))
+
+    assert len(status_message.replies) == 2
+    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for reply in status_message.replies)
+
+
+@pytest.mark.asyncio
 async def test_tools_command_handles_missing_existing_and_latest_runs() -> None:
     now = __import__("datetime").datetime.now(__import__("datetime").UTC)
     run_with_tools = SimpleNamespace(
@@ -207,6 +240,31 @@ async def test_tools_command_handles_missing_existing_and_latest_runs() -> None:
     await handlers.tools_command(UpdateStub(latest_message), ContextStub(application))
     assert "Tool activity for run run-1:" in latest_message.replies[0]
     assert runtime.get_run_status.calls == [(None, 5, 10), ("run-1", 5, 10), (None, 5, 10)]
+
+
+@pytest.mark.asyncio
+async def test_tools_command_splits_oversized_messages() -> None:
+    now = __import__("datetime").datetime.now(__import__("datetime").UTC)
+    run_with_tools = SimpleNamespace(
+        run_id="run-1",
+        tool_events=[
+            {
+                "tool_name": "syntax_checker",
+                "action": "check",
+                "status": "ok",
+                "detail": "x" * (handlers.TELEGRAM_MESSAGE_LIMIT + 250),
+                "created_at": now.isoformat(),
+            }
+        ],
+    )
+    runtime = _runtime(latest=GetRunStatusStub([run_with_tools]))
+    application = ApplicationStub(runtime)
+    tools_message = MessageStub("/tools run-1")
+
+    await handlers.tools_command(UpdateStub(tools_message), ContextStub(application, args=["run-1"]))
+
+    assert len(tools_message.replies) == 2
+    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for reply in tools_message.replies)
 
 
 @pytest.mark.asyncio
@@ -500,3 +558,20 @@ async def test_notify_terminal_update_formats_terminal_messages() -> None:
         (5, "Run run-2 was cancelled."),
         (5, "Run run-3 failed.\n\nboom"),
     ]
+
+
+@pytest.mark.asyncio
+async def test_notify_terminal_update_splits_oversized_messages() -> None:
+    runtime = _runtime()
+    application = ApplicationStub(runtime)
+    long_text = "x" * (handlers.TELEGRAM_MESSAGE_LIMIT + 250)
+
+    await handlers._notify_terminal_update(
+        application,
+        5,
+        SimpleNamespace(status=RunStatus.COMPLETED, run_id="run-long", result_text=long_text, error_text=None),
+    )
+
+    assert len(application.bot.messages) == 2
+    assert all(len(message_text) <= handlers.TELEGRAM_MESSAGE_LIMIT for _, message_text in application.bot.messages)
+    assert application.bot.messages[0][1].startswith("Run run-long completed.")

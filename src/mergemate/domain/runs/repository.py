@@ -1,9 +1,16 @@
 """Run repository contract."""
 
+from dataclasses import dataclass
 from typing import Protocol
 
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.runs.value_objects import RunStatus
+
+
+@dataclass(slots=True)
+class ApprovalDecision:
+    run: AgentRun | None
+    transitioned: bool
 
 
 class AgentRunRepository(Protocol):
@@ -18,6 +25,7 @@ class AgentRunRepository(Protocol):
         run_id: str,
         status: RunStatus,
         *,
+        expected_current_status: RunStatus | None = None,
         current_stage: str | None = None,
         result_text: str | None = None,
         error_text: str | None = None,
@@ -32,7 +40,7 @@ class AgentRunRepository(Protocol):
         current_stage: str | None = None,
     ) -> AgentRun | None: ...
 
-    def approve(self, run_id: str) -> AgentRun | None: ...
+    def approve(self, run_id: str) -> ApprovalDecision: ...
 
     def save_artifacts(
         self,

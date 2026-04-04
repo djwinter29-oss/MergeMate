@@ -128,14 +128,23 @@ class AppConfig(BaseModel):
             return database_path
         return (workspace_root / database_path).resolve()
 
+    def preview_database_path(self, config_path: Path) -> Path:
+        workspace_root = self.preview_workspace_root(config_path)
+        database_path = Path(self.storage.database_path).expanduser()
+        if database_path.is_absolute():
+            return database_path.resolve()
+        return (workspace_root / database_path).resolve()
+
     def resolve_workspace_root(self, config_path: Path) -> Path:
-        workspace_root = Path(self.storage.workspace_root).expanduser()
-        if workspace_root.is_absolute():
-            resolved_workspace_root = workspace_root.resolve()
-        else:
-            resolved_workspace_root = (config_path.parent / workspace_root).resolve()
+        resolved_workspace_root = self.preview_workspace_root(config_path)
         resolved_workspace_root.mkdir(parents=True, exist_ok=True)
         return resolved_workspace_root
+
+    def preview_workspace_root(self, config_path: Path) -> Path:
+        workspace_root = Path(self.storage.workspace_root).expanduser()
+        if workspace_root.is_absolute():
+            return workspace_root.resolve()
+        return (config_path.parent / workspace_root).resolve()
 
     def resolve_docs_root(self, config_path: Path) -> Path:
         return (self.resolve_workspace_root(config_path) / "docs").resolve()

@@ -5,6 +5,7 @@ from telegram.ext import ContextTypes
 
 from mergemate.application.use_cases.submit_prompt import PromptSubmissionError
 from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.interfaces.telegram import message_utils
 from mergemate.interfaces.telegram.models import TelegramRequest
 from mergemate.interfaces.telegram.presenter import (
     format_approval_started,
@@ -20,6 +21,9 @@ from mergemate.interfaces.telegram.presenter import (
     format_welcome,
 )
 from mergemate.interfaces.telegram.progress_notifier import start_progress_watcher
+
+
+TELEGRAM_MESSAGE_LIMIT = message_utils.TELEGRAM_MESSAGE_LIMIT
 
 
 def _runtime(context: ContextTypes.DEFAULT_TYPE):
@@ -71,7 +75,10 @@ async def _notify_terminal_update(application, chat_id: int, run) -> None:
         text = format_cancelled(run.run_id)
     else:
         text = format_failure(run.run_id, run.error_text)
-    await application.bot.send_message(chat_id=chat_id, text=text)
+    await message_utils.send_text_chunks(
+        lambda chunk: application.bot.send_message(chat_id=chat_id, text=chunk),
+        text,
+    )
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -94,7 +101,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if run is None:
         await message.reply_text("No runs found for this chat.")
         return
-    await message.reply_text(format_detailed_status(run))
+    await message_utils.send_text_chunks(message.reply_text, format_detailed_status(run))
 
 
 async def tools_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -112,7 +119,7 @@ async def tools_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if run is None:
         await message.reply_text("No runs found for this chat.")
         return
-    await message.reply_text(format_tool_history(run))
+    await message_utils.send_text_chunks(message.reply_text, format_tool_history(run))
 
 
 async def approve_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

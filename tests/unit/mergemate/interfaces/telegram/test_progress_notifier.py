@@ -11,16 +11,20 @@ from mergemate.interfaces.telegram.progress_notifier import start_progress_watch
 
 
 class BotStub:
-    def __init__(self) -> None:
+    def __init__(self, *, fail_first_send: bool = False) -> None:
         self.messages = []
+        self.fail_first_send = fail_first_send
 
     async def send_message(self, chat_id: int, text: str) -> None:
+        if self.fail_first_send:
+            self.fail_first_send = False
+            raise RuntimeError("telegram unavailable")
         self.messages.append((chat_id, text))
 
 
 class ApplicationStub:
-    def __init__(self) -> None:
-        self.bot = BotStub()
+    def __init__(self, *, fail_first_send: bool = False) -> None:
+        self.bot = BotStub(fail_first_send=fail_first_send)
         self.bot_data = {}
         self.created_tasks = []
 
@@ -160,6 +164,59 @@ async def test_watch_run_progress_sends_update_for_new_tool_activity_on_same_sta
 
     assert len(application.bot.messages) == 2
     assert "Latest tool: syntax_checker check [started] - Invoking tool.." in application.bot.messages[1][1]
+
+
+@pytest.mark.asyncio
+async def test_watch_run_progress_splits_oversized_updates(monkeypatch) -> None:
+    async def _sleep(_seconds: int) -> None:
+        return None
+
+    monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
+    application = ApplicationStub()
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(
+                _build_run(RunStatus.WAITING_TOOL, "tool:syntax_checker"),
+                tool_events=[
+                    {
+                        "tool_name": "syntax_checker",
+                        "action": "check",
+                        "status": "started",
+                        "detail": "x" * 5000,
+                    }
+                ],
+            ),
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+        ]
+    )
+
+    await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
+
+    assert len(application.bot.messages) == 2
+    assert all(len(message_text) <= 4000 for _, message_text in application.bot.messages)
+
+
+@pytest.mark.asyncio
+async def test_watch_run_progress_logs_and_retries_after_send_failure(monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
+    async def _sleep(_seconds: int) -> None:
+        return None
+
+    monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
+    application = ApplicationStub(fail_first_send=True)
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+        ]
+    )
+
+    with caplog.at_level("ERROR"):
+        await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
+
+    assert len(application.bot.messages) == 1
+    assert "stage=retrieve_context" in application.bot.messages[0][1]
+    assert "progress update delivery failed" in caplog.text
 
 
 @pytest.mark.asyncio

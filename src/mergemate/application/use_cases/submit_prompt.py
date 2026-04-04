@@ -107,7 +107,9 @@ class SubmitPromptUseCase:
                 plan_text,
                 current_stage="queued_for_execution",
             )
-            self._run_repository.approve(run.run_id)
+            approval = self._run_repository.approve(run.run_id)
+            if approval.run is None:
+                raise PromptSubmissionError(run.run_id, "Run approval failed before dispatch.")
             self._dispatch_or_fail(run.run_id, on_finished=on_finished, raise_on_error=True)
             final_status = RunStatus.QUEUED.value
         return SubmitPromptResult(
@@ -172,9 +174,12 @@ class SubmitPromptUseCase:
         if existing.approved or existing.status != RunStatus.AWAITING_CONFIRMATION:
             return ApproveRunResult(run_id=existing.run_id, dispatched=False, status=existing.status.value)
 
-        approved_run = self._run_repository.approve(run_id)
+        approval = self._run_repository.approve(run_id)
+        approved_run = approval.run
         if approved_run is None:
             return None
+        if not approval.transitioned:
+            return ApproveRunResult(run_id=approved_run.run_id, dispatched=False, status=approved_run.status.value)
         error_text = self._dispatch_or_fail(run_id, on_finished=on_finished, raise_on_error=False)
         if error_text is not None:
             return ApproveRunResult(

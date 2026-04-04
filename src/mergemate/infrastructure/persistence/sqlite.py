@@ -7,6 +7,7 @@ from pathlib import Path
 import sqlite3
 
 from mergemate.domain.runs.entities import AgentRun
+from mergemate.domain.runs.repository import ApprovalDecision
 from mergemate.domain.runs.value_objects import RunStatus
 
 
@@ -177,6 +178,7 @@ class SQLiteRunRepository:
         run_id: str,
         status: RunStatus,
         *,
+        expected_current_status: RunStatus | None = None,
         current_stage: str | None = None,
         result_text: str | None = None,
         error_text: str | None = None,
@@ -186,9 +188,7 @@ class SQLiteRunRepository:
             return None
 
         updated_at = datetime.now(UTC)
-        with self._database.connection() as connection:
-            connection.execute(
-                """
+        query = """
                 UPDATE agent_runs
                 SET status = ?,
                     current_stage = ?,
@@ -196,16 +196,20 @@ class SQLiteRunRepository:
                     error_text = ?,
                     updated_at = ?
                 WHERE run_id = ?
-                """,
-                (
-                    status.value,
-                    current_stage or existing.current_stage,
-                    result_text if result_text is not None else existing.result_text,
-                    error_text if error_text is not None else existing.error_text,
-                    updated_at.isoformat(),
-                    run_id,
-                ),
-            )
+                """
+        parameters: list[object] = [
+            status.value,
+            current_stage or existing.current_stage,
+            result_text if result_text is not None else existing.result_text,
+            error_text if error_text is not None else existing.error_text,
+            updated_at.isoformat(),
+            run_id,
+        ]
+        if expected_current_status is not None:
+            query += " AND status = ?"
+            parameters.append(expected_current_status.value)
+        with self._database.connection() as connection:
+            connection.execute(query, tuple(parameters))
         return self.get(run_id)
 
     def update_plan(
@@ -236,14 +240,14 @@ class SQLiteRunRepository:
             )
         return self.get(run_id)
 
-    def approve(self, run_id: str) -> AgentRun | None:
+    def approve(self, run_id: str) -> ApprovalDecision:
         existing = self.get(run_id)
         if existing is None:
-            return None
+            return ApprovalDecision(run=None, transitioned=False)
         if existing.approved:
-            return existing
+            return ApprovalDecision(run=existing, transitioned=False)
         if existing.status not in {RunStatus.AWAITING_CONFIRMATION, RunStatus.QUEUED}:
-            return existing
+            return ApprovalDecision(run=existing, transitioned=False)
 
         next_status = RunStatus.QUEUED.value if existing.status == RunStatus.AWAITING_CONFIRMATION else existing.status.value
         next_stage = (
@@ -252,15 +256,17 @@ class SQLiteRunRepository:
             else existing.current_stage
         )
         with self._database.connection() as connection:
-            connection.execute(
+            cursor = connection.execute(
                 """
                 UPDATE agent_runs
                 SET approved = 1, status = ?, current_stage = ?, updated_at = ?
                 WHERE run_id = ?
+                  AND approved = 0
+                  AND status = ?
                 """,
-                (next_status, next_stage, datetime.now(UTC).isoformat(), run_id),
+                (next_status, next_stage, datetime.now(UTC).isoformat(), run_id, existing.status.value),
             )
-        return self.get(run_id)
+        return ApprovalDecision(run=self.get(run_id), transitioned=cursor.rowcount > 0)
 
     def save_artifacts(
         self,

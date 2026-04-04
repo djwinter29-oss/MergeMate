@@ -1,11 +1,14 @@
 """Polling-based Telegram progress notifications for in-flight runs."""
 
 import asyncio
+import logging
 
 from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.interfaces.telegram.message_utils import send_text_chunks
 from mergemate.interfaces.telegram.presenter import format_progress_update
 
 PROGRESS_WATCHERS_KEY = "progress_watchers"
+logger = logging.getLogger(__name__)
 
 
 def _tool_event_signature(run) -> tuple[str, str, str, str] | None:
@@ -67,5 +70,13 @@ async def watch_run_progress(application, runtime, chat_id: int, run_id: str) ->
         if snapshot == last_snapshot:
             continue
 
+        try:
+            await send_text_chunks(
+                lambda chunk: application.bot.send_message(chat_id=chat_id, text=chunk),
+                format_progress_update(run),
+            )
+        except Exception:
+            logger.exception("Run %s progress update delivery failed", run_id)
+            continue
+
         last_snapshot = snapshot
-        await application.bot.send_message(chat_id=chat_id, text=format_progress_update(run))

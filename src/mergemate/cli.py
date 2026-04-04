@@ -5,7 +5,7 @@ from pathlib import Path
 import typer
 
 from mergemate.bootstrap import bootstrap
-from mergemate.config.loader import resolve_config_path
+from mergemate.config.loader import load_runtime_settings, resolve_config_path
 from mergemate.interfaces.telegram.bot import TelegramBotRuntime
 
 app = typer.Typer(help="MergeMate command line interface")
@@ -28,9 +28,11 @@ def validate_config(
 ) -> None:
     """Validate and print the resolved configuration path."""
     resolved_path = resolve_config_path(config)
-    runtime = bootstrap(config)
+    settings = load_runtime_settings(config)
+    settings.resolve_telegram_token()
+    resolved_database_path = settings.preview_database_path(resolved_path)
     typer.echo(f"Configuration is valid: {resolved_path}")
-    typer.echo(f"Resolved database path: {runtime.database.path}")
+    typer.echo(f"Resolved database path: {resolved_database_path}")
 
 
 @app.command("print-config-path")
