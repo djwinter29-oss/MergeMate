@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from mergemate.application.use_cases.submit_prompt import SubmitPromptUseCase
+from mergemate.application.use_cases.submit_prompt import PromptSubmissionError, SubmitPromptUseCase
 from mergemate.domain.runs.value_objects import RunStatus
 
 
@@ -165,7 +165,7 @@ async def test_execute_marks_run_failed_when_plan_drafting_raises() -> None:
         SettingsStub(WorkflowControlConfigStub(require_confirmation=False)),
     )
 
-    with pytest.raises(RuntimeError, match="planner unavailable"):
+    with pytest.raises(PromptSubmissionError, match="planner unavailable"):
         await use_case.execute(
             chat_id=1,
             user_id=2,

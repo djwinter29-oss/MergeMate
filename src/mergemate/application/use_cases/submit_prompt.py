@@ -25,6 +25,13 @@ class ApproveRunResult:
     status: str
 
 
+class PromptSubmissionError(RuntimeError):
+    def __init__(self, run_id: str, error_text: str) -> None:
+        super().__init__(error_text)
+        self.run_id = run_id
+        self.error_text = error_text
+
+
 class SubmitPromptUseCase:
     def __init__(
         self,
@@ -82,13 +89,14 @@ class SubmitPromptUseCase:
         try:
             plan_text = await self._workflow_service.draft_plan(prompt)
         except Exception as exc:
+            error_text = str(exc)
             self._run_repository.update_status(
                 run.run_id,
                 RunStatus.FAILED,
                 current_stage="planning",
-                error_text=str(exc),
+                error_text=error_text,
             )
-            raise
+            raise PromptSubmissionError(run.run_id, error_text) from exc
         if require_confirmation:
             self._run_repository.update_plan(run.run_id, plan_text)
             final_status = RunStatus.AWAITING_CONFIRMATION.value

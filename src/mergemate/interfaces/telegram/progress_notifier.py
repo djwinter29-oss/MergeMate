@@ -5,6 +5,8 @@ import asyncio
 from mergemate.domain.runs.value_objects import RunStatus
 from mergemate.interfaces.telegram.presenter import format_progress_update
 
+PROGRESS_WATCHERS_KEY = "progress_watchers"
+
 
 def _tool_event_signature(run) -> tuple[str, str, str, str] | None:
     latest_tool_event = getattr(run, "latest_tool_event", None)
@@ -16,6 +18,36 @@ def _tool_event_signature(run) -> tuple[str, str, str, str] | None:
         latest_tool_event["status"],
         latest_tool_event["detail"],
     )
+
+
+def _watcher_registry(application) -> dict[str, asyncio.Task[None]]:
+    return application.bot_data.setdefault(PROGRESS_WATCHERS_KEY, {})
+
+
+def start_progress_watcher(application, runtime, chat_id: int, run_id: str) -> None:
+    registry = _watcher_registry(application)
+    existing_task = registry.get(run_id)
+    if existing_task is not None and not existing_task.done():
+        return
+
+    task = application.create_task(watch_run_progress(application, runtime, chat_id, run_id))
+    registry[run_id] = task
+
+    def _cleanup(completed_task: asyncio.Task[None]) -> None:
+        if registry.get(run_id) is completed_task:
+            registry.pop(run_id, None)
+
+    task.add_done_callback(_cleanup)
+
+
+async def stop_progress_watchers(application) -> None:
+    registry = application.bot_data.get(PROGRESS_WATCHERS_KEY, {})
+    tasks = [task for task in registry.values() if not task.done()]
+    for task in tasks:
+        task.cancel()
+    if tasks:
+        await asyncio.gather(*tasks, return_exceptions=True)
+    registry.clear()
 
 
 async def watch_run_progress(application, runtime, chat_id: int, run_id: str) -> None:

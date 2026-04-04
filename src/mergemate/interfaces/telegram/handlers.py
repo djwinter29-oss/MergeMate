@@ -3,11 +3,13 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from mergemate.application.use_cases.submit_prompt import PromptSubmissionError
 from mergemate.interfaces.telegram.models import TelegramRequest
 from mergemate.interfaces.telegram.presenter import (
     format_approval_started,
     format_approval_not_needed,
     format_auto_execution_started,
+    format_cancellation_not_allowed,
     format_cancelled,
     format_completion,
     format_detailed_status,
@@ -16,7 +18,7 @@ from mergemate.interfaces.telegram.presenter import (
     format_tool_history,
     format_welcome,
 )
-from mergemate.interfaces.telegram.progress_notifier import watch_run_progress
+from mergemate.interfaces.telegram.progress_notifier import start_progress_watcher
 
 
 def _runtime(context: ContextTypes.DEFAULT_TYPE):
@@ -24,16 +26,15 @@ def _runtime(context: ContextTypes.DEFAULT_TYPE):
 
 
 def _start_progress_watcher(application, runtime, chat_id: int, run_id: str) -> None:
-    application.create_task(watch_run_progress(application, runtime, chat_id, run_id))
+    start_progress_watcher(application, runtime, chat_id, run_id)
 
 
-def _build_request(update: Update, runtime) -> TelegramRequest:
+def _build_request(update: Update, runtime) -> TelegramRequest | None:
     message = update.effective_message
     user = update.effective_user
     chat = update.effective_chat
-    assert message is not None
-    assert user is not None
-    assert chat is not None
+    if message is None or user is None or chat is None:
+        return None
     return TelegramRequest(
         chat_id=chat.id,
         user_id=user.id,
@@ -159,6 +160,9 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     if run is None:
         await message.reply_text("No run could be cancelled.")
         return
+    if not run.cancelled:
+        await message.reply_text(format_cancellation_not_allowed(run.run_id, run.status))
+        return
     await message.reply_text(format_cancelled(run.run_id))
 
 
@@ -166,7 +170,7 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     runtime = _runtime(context)
     request = _build_request(update, runtime)
     message = update.effective_message
-    if message is None or not request.message_text.strip():
+    if message is None or request is None or not request.message_text.strip():
         return
 
     latest_run = runtime.get_run_status.execute(chat_id=request.chat_id)
@@ -191,14 +195,20 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     agent_config = runtime.settings.agents.get(request.agent_name)
     workflow = agent_config.workflow if agent_config is not None else "generate_code"
-    submit_result = await runtime.submit_prompt.execute(
-        chat_id=request.chat_id,
-        user_id=request.user_id,
-        agent_name=request.agent_name,
-        workflow=workflow,
-        prompt=request.message_text,
-        on_finished=lambda run: _notify_terminal_update(context.application, request.chat_id, run),
-    )
+    try:
+        submit_result = await runtime.submit_prompt.execute(
+            chat_id=request.chat_id,
+            user_id=request.user_id,
+            agent_name=request.agent_name,
+            workflow=workflow,
+            prompt=request.message_text,
+            on_finished=lambda run: _notify_terminal_update(context.application, request.chat_id, run),
+        )
+    except PromptSubmissionError as exc:
+        failed_run = runtime.get_run_status.execute(exc.run_id, chat_id=request.chat_id)
+        error_text = failed_run.error_text if failed_run is not None and failed_run.error_text else exc.error_text
+        await message.reply_text(error_text)
+        return
     if submit_result.status != "awaiting_confirmation":
         await message.reply_text(
             format_auto_execution_started(

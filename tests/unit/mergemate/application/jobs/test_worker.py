@@ -85,3 +85,21 @@ async def test_enqueue_tracks_and_discards_completed_task() -> None:
 
     assert orchestrator.calls == ["run-3"]
     assert len(worker._tasks) == 0
+
+
+@pytest.mark.asyncio
+async def test_consume_logs_and_swallows_on_finished_failures(caplog: pytest.LogCaptureFixture) -> None:
+    completed_run = RunStub(run_id="run-4", status=RunStatus.COMPLETED)
+    orchestrator = OrchestratorStub(result=completed_run)
+    repository = RunRepositoryStub()
+    worker = BackgroundRunWorker(orchestrator, repository, max_concurrent_runs=1)
+
+    async def on_finished(run) -> None:
+        raise RuntimeError("telegram down")
+
+    with caplog.at_level("ERROR"):
+        await worker._consume("run-4", on_finished=on_finished)
+
+    assert orchestrator.calls == ["run-4"]
+    assert repository.calls == []
+    assert "completion callback failed" in caplog.text

@@ -42,4 +42,7 @@ class BackgroundRunWorker:
                 )
 
             if on_finished is not None and run is not None:
-                await on_finished(run)
+                try:
+                    await on_finished(run)
+                except Exception:
+                    logger.exception("Run %s completion callback failed", run_id)

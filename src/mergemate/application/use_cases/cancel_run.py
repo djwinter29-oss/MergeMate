@@ -1,6 +1,15 @@
 """Cancel a queued or running job."""
 
+from dataclasses import dataclass
+
 from mergemate.domain.runs.value_objects import RunStatus
+
+
+@dataclass(slots=True)
+class CancelRunResult:
+    run_id: str
+    cancelled: bool
+    status: str
 
 
 class CancelRunUseCase:
@@ -20,4 +29,18 @@ class CancelRunUseCase:
         if target_run is None:
             return None
 
-        return self._run_repository.update_status(target_run.run_id, RunStatus.CANCELLED)
+        if target_run.status != RunStatus.AWAITING_CONFIRMATION:
+            return CancelRunResult(
+                run_id=target_run.run_id,
+                cancelled=False,
+                status=target_run.status.value,
+            )
+
+        cancelled_run = self._run_repository.update_status(target_run.run_id, RunStatus.CANCELLED)
+        if cancelled_run is None:
+            return None
+        return CancelRunResult(
+            run_id=target_run.run_id,
+            cancelled=True,
+            status=RunStatus.CANCELLED.value,
+        )

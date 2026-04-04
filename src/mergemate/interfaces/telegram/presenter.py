@@ -107,6 +107,13 @@ def format_cancelled(run_id: str) -> str:
     return f"Run {run_id} was cancelled."
 
 
+def format_cancellation_not_allowed(run_id: str, status: str) -> str:
+    return (
+        f"Run {run_id} cannot be cancelled because it is in status '{status}'. "
+        "Only runs awaiting confirmation can be cancelled."
+    )
+
+
 def format_welcome(default_agent: str) -> str:
     return (
         "MergeMate is running. Send a normal message to capture requirements and draft a plan. "

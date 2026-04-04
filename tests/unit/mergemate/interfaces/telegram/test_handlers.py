@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from mergemate.application.use_cases.submit_prompt import PromptSubmissionError
 from mergemate.domain.runs.value_objects import RunStatus
 from mergemate.interfaces.telegram import handlers
 
@@ -85,14 +86,17 @@ class GetRunStatusStub:
 
 
 class SubmitPromptStub:
-    def __init__(self, execute_result=None, revise_result=None) -> None:
+    def __init__(self, execute_result=None, revise_result=None, execute_error: Exception | None = None) -> None:
         self.execute_result = execute_result
         self.revise_result = revise_result
+        self.execute_error = execute_error
         self.execute_calls = []
         self.revise_calls = []
 
     async def execute(self, **kwargs):
         self.execute_calls.append(kwargs)
+        if self.execute_error is not None:
+            raise self.execute_error
         return self.execute_result
 
     async def revise_plan_for_chat(self, run_id: str, feedback: str, *, chat_id: int | None = None):
@@ -310,13 +314,20 @@ async def test_approve_command_uses_latest_run_when_no_argument(monkeypatch: pyt
 
 
 @pytest.mark.asyncio
-async def test_cancel_command_handles_missing_and_successful_cancel() -> None:
+async def test_cancel_command_handles_missing_noop_and_successful_cancel() -> None:
     runtime = _runtime(cancel=CancelRunStub(None))
     missing_message = MessageStub("/cancel")
     await handlers.cancel_command(UpdateStub(missing_message), ContextStub(ApplicationStub(runtime)))
     assert missing_message.replies == ["No run could be cancelled."]
 
-    runtime = _runtime(cancel=CancelRunStub(SimpleNamespace(run_id="run-5")))
+    runtime = _runtime(cancel=CancelRunStub(SimpleNamespace(run_id="run-4", cancelled=False, status="running")))
+    noop_message = MessageStub("/cancel run-4")
+    await handlers.cancel_command(UpdateStub(noop_message), ContextStub(ApplicationStub(runtime), args=["run-4"]))
+    assert noop_message.replies == [
+        "Run run-4 cannot be cancelled because it is in status 'running'. Only runs awaiting confirmation can be cancelled."
+    ]
+
+    runtime = _runtime(cancel=CancelRunStub(SimpleNamespace(run_id="run-5", cancelled=True, status="cancelled")))
     message = MessageStub("/cancel run-5")
     await handlers.cancel_command(UpdateStub(message), ContextStub(ApplicationStub(runtime), args=["run-5"]))
     assert message.replies == ["Run run-5 was cancelled."]
@@ -336,20 +347,34 @@ def test_build_request_uses_runtime_default_agent() -> None:
     runtime = _runtime(default_agent="reviewer")
     request = handlers._build_request(UpdateStub(MessageStub("hello")), runtime)
 
+    assert request is not None
     assert request.chat_id == 5
     assert request.user_id == 3
     assert request.message_text == "hello"
     assert request.agent_name == "reviewer"
 
 
+def test_build_request_returns_none_for_incomplete_update() -> None:
+    runtime = _runtime()
+
+    assert handlers._build_request(UpdateStub(None), runtime) is None
+    assert handlers._build_request(UpdateStub(MessageStub("hello"), effective_user=None), runtime) is None
+    assert handlers._build_request(UpdateStub(MessageStub("hello"), effective_chat=None), runtime) is None
+
+
 def test_start_progress_watcher_creates_task(monkeypatch: pytest.MonkeyPatch) -> None:
     runtime = _runtime()
     application = ApplicationStub(runtime)
-    monkeypatch.setattr(handlers, "watch_run_progress", lambda application, runtime, chat_id, run_id: "watcher")
+    started = []
+    monkeypatch.setattr(
+        handlers,
+        "start_progress_watcher",
+        lambda application, runtime, chat_id, run_id: started.append((chat_id, run_id)),
+    )
 
     handlers._start_progress_watcher(application, runtime, 5, "run-1")
 
-    assert application.created_tasks == ["watcher"]
+    assert started == [(5, "run-1")]
 
 
 @pytest.mark.asyncio
@@ -359,6 +384,17 @@ async def test_approve_and_cancel_commands_return_when_message_or_chat_missing()
 
     await handlers.approve_command(UpdateStub(MessageStub("/approve"), effective_chat=None), ContextStub(application))
     await handlers.cancel_command(UpdateStub(MessageStub("/cancel"), effective_chat=None), ContextStub(application))
+
+    assert application.bot.messages == []
+
+
+@pytest.mark.asyncio
+async def test_handle_prompt_returns_when_user_or_chat_missing() -> None:
+    runtime = _runtime()
+    application = ApplicationStub(runtime)
+
+    await handlers.handle_prompt(UpdateStub(MessageStub("hello"), effective_user=None), ContextStub(application))
+    await handlers.handle_prompt(UpdateStub(MessageStub("hello"), effective_chat=None), ContextStub(application))
 
     assert application.bot.messages == []
 
@@ -402,6 +438,20 @@ async def test_handle_prompt_handles_auto_execution_and_confirmation(monkeypatch
     confirm_message = MessageStub("build it")
     await handlers.handle_prompt(UpdateStub(confirm_message), ContextStub(ApplicationStub(confirm_runtime)))
     assert "Requirements captured for run run-9." in confirm_message.replies[0]
+
+
+@pytest.mark.asyncio
+async def test_handle_prompt_replies_with_stored_error_text_when_submission_fails() -> None:
+    failed_run = RunStub(run_id="run-10", status=RunStatus.FAILED, error_text="planner unavailable")
+    runtime = _runtime(
+        latest=GetRunStatusStub([None, failed_run]),
+        submit=SubmitPromptStub(execute_error=PromptSubmissionError("run-10", "planner unavailable")),
+    )
+    message = MessageStub("build it")
+
+    await handlers.handle_prompt(UpdateStub(message), ContextStub(ApplicationStub(runtime)))
+
+    assert message.replies == ["planner unavailable"]
 
 
 @pytest.mark.asyncio

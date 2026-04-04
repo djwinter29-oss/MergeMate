@@ -23,9 +23,19 @@ class BuilderStub:
     def __init__(self) -> None:
         self.token_value = None
         self.application = ApplicationStub()
+        self.post_shutdown_callback = None
+        self.post_stop_callback = None
 
     def token(self, value: str):
         self.token_value = value
+        return self
+
+    def post_shutdown(self, callback):
+        self.post_shutdown_callback = callback
+        return self
+
+    def post_stop(self, callback):
+        self.post_stop_callback = callback
         return self
 
     def build(self):
@@ -66,7 +76,10 @@ def test_build_application_registers_handlers(monkeypatch: pytest.MonkeyPatch) -
 
     assert application is builder.application
     assert builder.token_value == "token"
+    assert builder.post_shutdown_callback is telegram_bot.stop_progress_watchers
+    assert builder.post_stop_callback is telegram_bot.stop_progress_watchers
     assert application.bot_data["runtime"] is runtime
+    assert application.bot_data["progress_watchers"] == {}
     assert application.handlers[0] == ("command", "start", "start_command")
     assert ("command", "tools", "tools_command") in application.handlers
     assert application.handlers[-1] == ("message", "handle_prompt")
