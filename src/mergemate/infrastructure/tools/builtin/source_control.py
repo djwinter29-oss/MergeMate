@@ -14,13 +14,19 @@ class _BaseCliTool:
         self._working_directory = working_directory
 
     def _run(self, args: list[str]) -> dict[str, str]:
-        completed = subprocess.run(
-            [self._executable, *args],
-            cwd=self._working_directory,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            completed = subprocess.run(
+                [self._executable, *args],
+                cwd=self._working_directory,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except FileNotFoundError:
+            return {
+                "status": "error",
+                "detail": f"Executable {self._executable} was not found.",
+            }
         output = completed.stdout.strip() or completed.stderr.strip()
         if completed.returncode != 0:
             return {"status": "error", "detail": output or f"{self._executable} command failed"}

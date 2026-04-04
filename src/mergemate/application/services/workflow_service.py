@@ -121,5 +121,8 @@ class WorkflowService:
 
     @staticmethod
     def has_high_concerns(review_text: str) -> bool:
-        first_line = review_text.strip().splitlines()[0].lower()
+        lines = review_text.strip().splitlines()
+        if not lines:
+            return False
+        first_line = lines[0].lower()
         return first_line.startswith("high_concerns: yes")

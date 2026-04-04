@@ -40,7 +40,13 @@ class PackageInstallerTool:
             }
 
         command = [self._pip_executable, "-m", "pip", "install", package_name]
-        completed = subprocess.run(command, capture_output=True, text=True, check=False)
+        try:
+            completed = subprocess.run(command, capture_output=True, text=True, check=False)
+        except FileNotFoundError:
+            return {
+                "status": "error",
+                "detail": f"Executable {self._pip_executable} was not found.",
+            }
         if completed.returncode != 0:
             return {
                 "status": "error",

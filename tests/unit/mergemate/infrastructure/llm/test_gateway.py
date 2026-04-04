@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import asyncio
 
 import pytest
 
@@ -14,6 +15,21 @@ class ClientStub:
         self.calls.append((system_prompt, user_prompt))
         if isinstance(self.result, Exception):
             raise self.result
+        return self.result
+
+
+class DelayedClientStub:
+    def __init__(self, result: str, *, delay_seconds: float) -> None:
+        self.result = result
+        self.delay_seconds = delay_seconds
+        self.cancelled = False
+
+    async def generate(self, system_prompt: str, user_prompt: str) -> str:
+        try:
+            await asyncio.sleep(self.delay_seconds)
+        except asyncio.CancelledError:
+            self.cancelled = True
+            raise
         return self.result
 
 
@@ -65,6 +81,22 @@ async def test_generate_returns_first_success_for_parallel_mode() -> None:
     result = await gateway.generate("coder", "system", "user")
 
     assert result == "first"
+
+
+@pytest.mark.asyncio
+async def test_generate_first_success_cancels_slower_parallel_calls() -> None:
+    fast = DelayedClientStub("fast", delay_seconds=0.01)
+    slow = DelayedClientStub("slow", delay_seconds=5)
+    settings = SettingsStub(
+        provider_names=["fast", "slow"],
+        agents={"coder": AgentStub(parallel_mode="parallel", combine_strategy="first_success")},
+    )
+    gateway = ParallelLLMGateway(settings, {"fast": fast, "slow": slow})
+
+    result = await gateway.generate("coder", "system", "user")
+
+    assert result == "fast"
+    assert slow.cancelled is True
 
 
 @pytest.mark.asyncio

@@ -77,3 +77,18 @@ def test_git_repository_tool_uses_all_supported_actions(monkeypatch) -> None:
         ["git", "remote", "-v"],
         ["git", "diff", "--stat"],
     ]
+
+
+def test_cli_tools_surface_missing_executables(monkeypatch) -> None:
+    def fake_run(command, cwd, capture_output, text, check):
+        raise FileNotFoundError(command[0])
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    git_result = GitRepositoryTool("git", Path(".")).invoke({"action": "status"})
+    github_result = GitHubCliTool("gh", Path(".")).invoke({"action": "auth_status"})
+    gitlab_result = GitLabCliTool("glab", Path(".")).invoke({"action": "mr_status"})
+
+    assert git_result == {"status": "error", "detail": "Executable git was not found."}
+    assert github_result == {"status": "error", "detail": "Executable gh was not found."}
+    assert gitlab_result == {"status": "error", "detail": "Executable glab was not found."}

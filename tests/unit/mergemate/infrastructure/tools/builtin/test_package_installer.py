@@ -39,3 +39,15 @@ def test_package_installer_surfaces_subprocess_error(monkeypatch) -> None:
     result = tool.invoke({"package_name": "requests"})
 
     assert result == {"status": "error", "detail": "failed"}
+
+
+def test_package_installer_surfaces_missing_executable(monkeypatch) -> None:
+    def fake_run(command, capture_output, text, check):
+        raise FileNotFoundError(command[0])
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    tool = PackageInstallerTool(allow_package_install=True, allowed_packages=[], pip_executable="python3")
+
+    result = tool.invoke({"package_name": "requests"})
+
+    assert result == {"status": "error", "detail": "Executable python3 was not found."}

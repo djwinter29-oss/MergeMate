@@ -11,6 +11,7 @@ class InMemoryRunRepository:
         self.runs = {}
         self.return_none_on_update = False
         self.return_none_on_approve = False
+        self.status_updates = []
 
     def create(self, run) -> None:
         self.runs[run.run_id] = run
@@ -43,6 +44,16 @@ class InMemoryRunRepository:
             run.approved = True
         return run
 
+    def update_status(self, run_id: str, status: RunStatus, *, error_text: str | None = None, current_stage=None, result_text=None):
+        run = self.runs[run_id]
+        run.status = status
+        if current_stage is not None:
+            run.current_stage = current_stage
+        if error_text is not None:
+            run.error_text = error_text
+        self.status_updates.append((run_id, status, error_text, current_stage))
+        return run
+
 
 class ContextServiceStub:
     def __init__(self) -> None:
@@ -71,6 +82,11 @@ class WorkflowServiceStub:
     async def draft_plan(self, prompt: str, prior_feedback: str | None = None) -> str:
         suffix = f"\nfeedback:{prior_feedback}" if prior_feedback else ""
         return f"plan for {prompt}{suffix}"
+
+
+class FailingWorkflowServiceStub:
+    async def draft_plan(self, prompt: str, prior_feedback: str | None = None) -> str:
+        raise RuntimeError("planner unavailable")
 
 
 @dataclass(slots=True)
@@ -134,6 +150,37 @@ async def test_execute_auto_dispatches_when_confirmation_disabled() -> None:
     assert saved_run is not None
     assert saved_run.approved is True
     assert saved_run.current_stage == "queued_for_execution"
+
+
+@pytest.mark.asyncio
+async def test_execute_marks_run_failed_when_plan_drafting_raises() -> None:
+    repository = InMemoryRunRepository()
+    context_service = ContextServiceStub()
+    dispatcher = DispatcherStub()
+    use_case = SubmitPromptUseCase(
+        repository,
+        context_service,
+        dispatcher,
+        FailingWorkflowServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=False)),
+    )
+
+    with pytest.raises(RuntimeError, match="planner unavailable"):
+        await use_case.execute(
+            chat_id=1,
+            user_id=2,
+            agent_name="coder",
+            workflow="generate_code",
+            prompt="build feature",
+        )
+
+    assert dispatcher.dispatched_run_ids == []
+    assert context_service.messages == [(1, "user", "build feature")]
+    assert len(repository.runs) == 1
+    saved_run = next(iter(repository.runs.values()))
+    assert saved_run.status == RunStatus.FAILED
+    assert saved_run.current_stage == "planning"
+    assert saved_run.error_text == "planner unavailable"
 
 
 def test_approve_is_idempotent_for_completed_run() -> None:

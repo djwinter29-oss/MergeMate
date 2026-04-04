@@ -140,6 +140,11 @@ def test_has_high_concerns_reads_first_line_only() -> None:
     assert WorkflowService.has_high_concerns("HIGH_CONCERNS: no\nissue") is False
 
 
+def test_has_high_concerns_returns_false_for_blank_output() -> None:
+    assert WorkflowService.has_high_concerns("") is False
+    assert WorkflowService.has_high_concerns("   \n\n") is False
+
+
 def test_build_execution_plan_returns_expected_plan_types() -> None:
     service = WorkflowService(GatewayStub(), SettingsStub())
 

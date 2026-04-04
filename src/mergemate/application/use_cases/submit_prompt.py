@@ -79,7 +79,16 @@ class SubmitPromptUseCase:
         )
         self._run_repository.create(run)
         self._context_service.append_message(chat_id, "user", prompt)
-        plan_text = await self._workflow_service.draft_plan(prompt)
+        try:
+            plan_text = await self._workflow_service.draft_plan(prompt)
+        except Exception as exc:
+            self._run_repository.update_status(
+                run.run_id,
+                RunStatus.FAILED,
+                current_stage="planning",
+                error_text=str(exc),
+            )
+            raise
         if require_confirmation:
             self._run_repository.update_plan(run.run_id, plan_text)
             final_status = RunStatus.AWAITING_CONFIRMATION.value

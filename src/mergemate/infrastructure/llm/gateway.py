@@ -21,6 +21,9 @@ class ParallelLLMGateway:
         if parallel_mode != "parallel" or len(available_names) == 1:
             return await self._clients[available_names[0]].generate(system_prompt, user_prompt)
 
+        if combine_strategy == "first_success":
+            return await self._generate_first_success(available_names, system_prompt, user_prompt)
+
         tasks = [
             self._generate_from_provider(name, system_prompt, user_prompt)
             for name in available_names
@@ -43,6 +46,56 @@ class ParallelLLMGateway:
             return successful_results[0][1]
 
         return self._format_sectioned_results(successful_results, failures)
+
+    async def _generate_first_success(
+        self,
+        provider_names: list[str],
+        system_prompt: str,
+        user_prompt: str,
+    ) -> str:
+        tasks = [
+            asyncio.create_task(
+                self._generate_first_success_result(name, system_prompt, user_prompt)
+            )
+            for name in provider_names
+        ]
+        failures: list[tuple[str, str]] = []
+
+        try:
+            for task in asyncio.as_completed(tasks):
+                provider_name, result, error_detail = await task
+                if error_detail is not None:
+                    failures.append((provider_name, error_detail))
+                    continue
+
+                for pending_task in tasks:
+                    if pending_task is not task and not pending_task.done():
+                        pending_task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+                return result
+        finally:
+            for pending_task in tasks:
+                if not pending_task.done():
+                    pending_task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+        failure_detail = "; ".join(f"{name}: {detail}" for name, detail in failures)
+        raise RuntimeError(f"All parallel model calls failed. {failure_detail}")
+
+    async def _generate_first_success_result(
+        self,
+        provider_name: str,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> tuple[str, str | None, str | None]:
+        try:
+            return (
+                provider_name,
+                await self._generate_from_provider(provider_name, system_prompt, user_prompt),
+                None,
+            )
+        except Exception as exc:
+            return provider_name, None, str(exc)
 
     async def _generate_from_provider(
         self,
