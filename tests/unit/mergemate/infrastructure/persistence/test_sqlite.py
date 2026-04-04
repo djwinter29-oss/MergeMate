@@ -208,6 +208,28 @@ def test_approve_is_atomic_after_first_transition(tmp_path) -> None:
     assert second.run.status == RunStatus.QUEUED
 
 
+def test_try_update_status_reports_lost_transition(tmp_path) -> None:
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repository = SQLiteRunRepository(database)
+    run = _build_run()
+    run.status = RunStatus.RUNNING
+    run.current_stage = "retrieve_context"
+    repository.create(run)
+
+    decision = repository.try_update_status(
+        "run-1",
+        RunStatus.WAITING_TOOL,
+        expected_current_status=RunStatus.QUEUED,
+        current_stage="tool:git_repository",
+    )
+
+    assert decision.run is not None
+    assert decision.transitioned is False
+    assert decision.run.status == RunStatus.RUNNING
+    assert decision.run.current_stage == "retrieve_context"
+
+
 def test_ensure_column_adds_missing_column(tmp_path) -> None:
     database_path = tmp_path / "state.db"
     connection = sqlite3.connect(database_path)

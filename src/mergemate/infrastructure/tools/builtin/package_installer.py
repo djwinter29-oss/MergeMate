@@ -22,10 +22,12 @@ class PackageInstallerTool:
         allow_package_install: bool,
         allowed_packages: list[str],
         pip_executable: str,
+        timeout_seconds: int,
     ) -> None:
         self._allow_package_install = allow_package_install
         self._allowed_packages = set(allowed_packages)
         self._pip_executable = pip_executable
+        self._timeout_seconds = timeout_seconds
 
     def invoke(self, payload: dict[str, str]) -> dict[str, str]:
         package_name = payload.get("package_name", "").strip()
@@ -41,11 +43,22 @@ class PackageInstallerTool:
 
         command = [self._pip_executable, "-m", "pip", "install", package_name]
         try:
-            completed = subprocess.run(command, capture_output=True, text=True, check=False)
+            completed = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=self._timeout_seconds,
+            )
         except FileNotFoundError:
             return {
                 "status": "error",
                 "detail": f"Executable {self._pip_executable} was not found.",
+            }
+        except subprocess.TimeoutExpired:
+            return {
+                "status": "error",
+                "detail": f"pip install timed out after {self._timeout_seconds}s.",
             }
         if completed.returncode != 0:
             return {

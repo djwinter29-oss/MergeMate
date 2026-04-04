@@ -65,3 +65,9 @@ This lets one deployment use different models for planning, design, implementati
 ## Workspace Root
 
 Relative runtime paths are resolved from `storage.workspace_root`. It defaults to `./workspace` relative to the active config file and is created automatically when resolved. This is the base folder for process state such as the SQLite database, final workflow documents under `docs/`, and relative repository working directories unless a path is configured as absolute.
+
+## Runtime Constraints
+
+- `runtime.max_concurrent_runs` must remain a positive integer so accepted work can always make progress.
+- `runtime.default_request_timeout_seconds` must remain a positive integer and is the shared upper bound for operator-facing local CLI work such as repository and package-management commands unless a more specific timeout is introduced.
+- Provider-level `timeout_seconds` and runtime polling intervals should also remain positive integers so the runtime does not degrade into immediate failures or invalid scheduler behavior.

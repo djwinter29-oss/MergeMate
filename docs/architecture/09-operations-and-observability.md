@@ -26,5 +26,6 @@ Observability should support debugging startup, run lifecycle, and operator-visi
 ## Runtime Expectations
 
 - Progress delivery should degrade gracefully when Telegram rejects or temporarily fails a send. A failed progress update should be logged without terminating the watcher for that run.
-- User-visible Telegram messages may need chunking to remain within platform payload limits. This applies to terminal output as well as large `/status`, `/tools`, or progress messages that include verbose tool detail.
-- A run that is already `running`, `waiting_tool`, `completed`, `failed`, or `cancelled` should not be re-entered by a duplicate background dispatch.
+- User-visible Telegram messages may need chunking to remain within platform payload limits. This applies to terminal output as well as large planning, error, `/status`, `/tools`, or progress messages that include verbose tool detail.
+- A run that is already `running`, `waiting_tool`, `completed`, `failed`, or `cancelled` should not be re-entered by a duplicate background dispatch, including when multiple runtime instances share the same persisted state.
+- Local CLI dependencies such as `git`, `gh`, `glab`, and `pip` are operational dependencies and should fail within a bounded timeout instead of blocking worker capacity indefinitely.

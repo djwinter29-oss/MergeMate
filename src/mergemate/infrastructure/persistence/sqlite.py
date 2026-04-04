@@ -7,7 +7,7 @@ from pathlib import Path
 import sqlite3
 
 from mergemate.domain.runs.entities import AgentRun
-from mergemate.domain.runs.repository import ApprovalDecision
+from mergemate.domain.runs.repository import ApprovalDecision, StatusUpdateDecision
 from mergemate.domain.runs.value_objects import RunStatus
 
 
@@ -173,7 +173,7 @@ class SQLiteRunRepository:
             ).fetchall()
         return [self._row_to_run(row) for row in rows]
 
-    def update_status(
+    def try_update_status(
         self,
         run_id: str,
         status: RunStatus,
@@ -182,10 +182,10 @@ class SQLiteRunRepository:
         current_stage: str | None = None,
         result_text: str | None = None,
         error_text: str | None = None,
-    ) -> AgentRun | None:
+    ) -> StatusUpdateDecision:
         existing = self.get(run_id)
         if existing is None:
-            return None
+            return StatusUpdateDecision(run=None, transitioned=False)
 
         updated_at = datetime.now(UTC)
         query = """
@@ -209,8 +209,28 @@ class SQLiteRunRepository:
             query += " AND status = ?"
             parameters.append(expected_current_status.value)
         with self._database.connection() as connection:
-            connection.execute(query, tuple(parameters))
-        return self.get(run_id)
+            cursor = connection.execute(query, tuple(parameters))
+        return StatusUpdateDecision(run=self.get(run_id), transitioned=cursor.rowcount > 0)
+
+    def update_status(
+        self,
+        run_id: str,
+        status: RunStatus,
+        *,
+        expected_current_status: RunStatus | None = None,
+        current_stage: str | None = None,
+        result_text: str | None = None,
+        error_text: str | None = None,
+    ) -> AgentRun | None:
+        decision = self.try_update_status(
+            run_id,
+            status,
+            expected_current_status=expected_current_status,
+            current_stage=current_stage,
+            result_text=result_text,
+            error_text=error_text,
+        )
+        return decision.run
 
     def update_plan(
         self,

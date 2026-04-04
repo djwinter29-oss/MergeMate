@@ -29,6 +29,7 @@ When a prompt is submitted:
 - A run is intended to execute once per approved dispatch.
 - Duplicate enqueue attempts for the same active run are treated as a correctness bug, not as an accepted retry mechanism.
 - The worker and orchestrator should therefore refuse to restart runs that are already active or terminal.
+- Because run state is persisted in SQLite, duplicate-dispatch protection must hold across runtime instances that share the same database, not only inside one in-memory worker.
 - If resumable or at-least-once execution is introduced later, that behavior should be designed explicitly rather than emerging from duplicate background dispatch.
 
 ## Estimation Strategy

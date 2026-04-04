@@ -100,6 +100,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
                 allow_package_install=settings.tools.allow_package_install,
                 allowed_packages=settings.tools.allowed_packages,
                 pip_executable=settings.tools.pip_executable,
+                timeout_seconds=settings.runtime.default_request_timeout_seconds,
             ),
             "syntax_checker": SyntaxCheckerTool(),
             **(
@@ -107,6 +108,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
                     "git_repository": GitRepositoryTool(
                         settings.source_control.git_executable,
                         working_directory,
+                        settings.runtime.default_request_timeout_seconds,
                     )
                 }
                 if settings.source_control.enable_git
@@ -117,6 +119,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
                     "github_cli": GitHubCliTool(
                         settings.source_control.github_executable,
                         working_directory,
+                        settings.runtime.default_request_timeout_seconds,
                     )
                 }
                 if settings.source_control.enable_github
@@ -127,6 +130,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
                     "gitlab_cli": GitLabCliTool(
                         settings.source_control.gitlab_executable,
                         working_directory,
+                        settings.runtime.default_request_timeout_seconds,
                     )
                 }
                 if settings.source_control.enable_gitlab

@@ -13,12 +13,29 @@ class ApprovalDecision:
     transitioned: bool
 
 
+@dataclass(slots=True)
+class StatusUpdateDecision:
+    run: AgentRun | None
+    transitioned: bool
+
+
 class AgentRunRepository(Protocol):
     def create(self, run: AgentRun) -> None: ...
 
     def get(self, run_id: str) -> AgentRun | None: ...
 
     def list_for_chat(self, chat_id: int, limit: int = 5) -> list[AgentRun]: ...
+
+    def try_update_status(
+        self,
+        run_id: str,
+        status: RunStatus,
+        *,
+        expected_current_status: RunStatus | None = None,
+        current_stage: str | None = None,
+        result_text: str | None = None,
+        error_text: str | None = None,
+    ) -> StatusUpdateDecision: ...
 
     def update_status(
         self,

@@ -123,3 +123,41 @@ async def test_generate_supports_unprefixed_api_key_headers(monkeypatch: pytest.
 
     assert result == "ok"
     assert captured_headers["api-key"] == "raw-key"
+
+
+@pytest.mark.asyncio
+async def test_generate_rejects_invalid_provider_response(monkeypatch: pytest.MonkeyPatch) -> None:
+    class ResponseStub:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, object]:
+            return {"choices": []}
+
+    class AsyncClientStub:
+        def __init__(self, *, timeout: int) -> None:
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb) -> None:
+            return None
+
+        async def post(self, url: str, *, headers: dict[str, str], json: dict[str, object]) -> ResponseStub:
+            return ResponseStub()
+
+    monkeypatch.setattr(openai_adapter.httpx, "AsyncClient", AsyncClientStub)
+
+    adapter = OpenAIAdapter(
+        model="gpt-5.4",
+        api_key="secret-key",
+        timeout_seconds=45,
+        provider_url="https://api.example.com/v1/chat/completions",
+        api_key_header="Authorization",
+        api_key_prefix="Bearer",
+        extra_headers={},
+    )
+
+    with pytest.raises(RuntimeError, match="invalid response"):
+        await adapter.generate("system prompt", "user prompt")

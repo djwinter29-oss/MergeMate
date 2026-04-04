@@ -50,14 +50,15 @@ class AgentOrchestrator:
         if run.status != RunStatus.QUEUED:
             return run
 
-        run = self._run_repository.update_status(
+        start_decision = self._run_repository.try_update_status(
             run_id,
             RunStatus.RUNNING,
             expected_current_status=RunStatus.QUEUED,
             current_stage="retrieve_context",
         )
+        run = start_decision.run
         assert run is not None
-        if run.status != RunStatus.RUNNING:
+        if not start_decision.transitioned:
             return run
 
         recent_messages = self._context_service.load_recent_messages(run.chat_id)

@@ -150,7 +150,7 @@ async def approve_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await message.reply_text("Run approval failed.")
         return
     if not run.dispatched and run.status == RunStatus.FAILED.value and getattr(run, "error_text", None):
-        await message.reply_text(run.error_text)
+        await message_utils.send_text_chunks(message.reply_text, run.error_text)
         return
     if not run.dispatched:
         await message.reply_text(format_approval_not_needed(run.run_id, run.status))
@@ -195,12 +195,13 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         except PromptSubmissionError as exc:
             failed_run = runtime.get_run_status.execute(exc.run_id, chat_id=request.chat_id)
             error_text = failed_run.error_text if failed_run is not None and failed_run.error_text else exc.error_text
-            await message.reply_text(error_text)
+            await message_utils.send_text_chunks(message.reply_text, error_text)
             return
         if revised is None:
             await message.reply_text("Could not revise the current plan.")
             return
-        await message.reply_text(
+        await message_utils.send_text_chunks(
+            message.reply_text,
             format_plan_for_confirmation(
                 revised.run_id,
                 runtime.settings.resolve_agent_name_for_workflow("planning"),
@@ -224,10 +225,11 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     except PromptSubmissionError as exc:
         failed_run = runtime.get_run_status.execute(exc.run_id, chat_id=request.chat_id)
         error_text = failed_run.error_text if failed_run is not None and failed_run.error_text else exc.error_text
-        await message.reply_text(error_text)
+        await message_utils.send_text_chunks(message.reply_text, error_text)
         return
     if submit_result.status != "awaiting_confirmation":
-        await message.reply_text(
+        await message_utils.send_text_chunks(
+            message.reply_text,
             format_auto_execution_started(
                 submit_result.run_id,
                 submit_result.plan_text or "",
@@ -236,7 +238,8 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
         _start_progress_watcher(context.application, runtime, request.chat_id, submit_result.run_id)
         return
-    await message.reply_text(
+    await message_utils.send_text_chunks(
+        message.reply_text,
         format_plan_for_confirmation(
             submit_result.run_id,
             runtime.settings.resolve_agent_name_for_workflow("planning"),

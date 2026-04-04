@@ -36,3 +36,5 @@ In the current MVP, phase 1 runtime integration is limited to safe context colle
 Package installation is not enabled by default. Operators must explicitly turn it on in config and can restrict installation to an allowlist. This keeps the capability available for agent-assisted workflows without making runtime dependency changes implicit.
 
 Source-control platform support assumes the operator has already authenticated with the local CLI utilities. The MVP does not manage OAuth or tokens itself; it delegates to the existing authenticated environment.
+
+Built-in CLI-backed tools should use bounded execution time so a hung local process does not hold a run in `waiting_tool` indefinitely or exhaust worker capacity.

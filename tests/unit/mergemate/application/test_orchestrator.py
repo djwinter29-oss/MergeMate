@@ -50,6 +50,27 @@ class RunRepositoryStub:
         self.run = run
         self.cancel_on_design = cancel_on_design
 
+    def try_update_status(
+        self,
+        run_id: str,
+        status: RunStatus,
+        *,
+        expected_current_status: RunStatus | None = None,
+        current_stage: str | None = None,
+        result_text: str | None = None,
+        error_text: str | None = None,
+    ):
+        run = self.update_status(
+            run_id,
+            status,
+            expected_current_status=expected_current_status,
+            current_stage=current_stage,
+            result_text=result_text,
+            error_text=error_text,
+        )
+        transitioned = run is not None and (expected_current_status is None or run.status == status)
+        return SimpleNamespace(run=run, transitioned=transitioned)
+
     def get(self, run_id: str) -> AgentRun | None:
         if self.run.run_id != run_id:
             return None

@@ -489,6 +489,25 @@ async def test_handle_prompt_revises_existing_plan_and_handles_failure() -> None
 
 
 @pytest.mark.asyncio
+async def test_handle_prompt_splits_oversized_revised_plan() -> None:
+    long_plan = "x" * (handlers.TELEGRAM_MESSAGE_LIMIT + 250)
+    latest = GetRunStatusStub([RunStub(run_id="run-6", status=RunStatus.AWAITING_CONFIRMATION)])
+    runtime = _runtime(
+        latest=latest,
+        submit=SubmitPromptStub(
+            revise_result=SimpleNamespace(run_id="run-6", plan_text=long_plan, estimate_seconds=10)
+        ),
+    )
+    application = ApplicationStub(runtime)
+    message = MessageStub("add tests")
+
+    await handlers.handle_prompt(UpdateStub(message), ContextStub(application))
+
+    assert len(message.replies) == 2
+    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for reply in message.replies)
+
+
+@pytest.mark.asyncio
 async def test_handle_prompt_replies_with_error_when_plan_revision_fails() -> None:
     failed_run = RunStub(run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION, error_text="planner unavailable")
     runtime = _runtime(
@@ -508,6 +527,30 @@ async def test_handle_prompt_replies_with_error_when_plan_revision_fails() -> No
     await handlers.handle_prompt(UpdateStub(message), ContextStub(ApplicationStub(runtime)))
 
     assert message.replies == ["planner unavailable"]
+
+
+@pytest.mark.asyncio
+async def test_handle_prompt_splits_oversized_revision_error() -> None:
+    long_error = "x" * (handlers.TELEGRAM_MESSAGE_LIMIT + 250)
+    failed_run = RunStub(run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION, error_text=long_error)
+    runtime = _runtime(
+        latest=GetRunStatusStub([
+            RunStub(run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION),
+            failed_run,
+        ]),
+        submit=SubmitPromptStub(revise_result=None, execute_error=None),
+    )
+
+    async def failing_revise_plan_for_chat(run_id: str, feedback: str, *, chat_id: int | None = None):
+        raise PromptSubmissionError(run_id, long_error)
+
+    runtime.submit_prompt.revise_plan_for_chat = failing_revise_plan_for_chat
+    message = MessageStub("add logs")
+
+    await handlers.handle_prompt(UpdateStub(message), ContextStub(ApplicationStub(runtime)))
+
+    assert len(message.replies) == 2
+    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for reply in message.replies)
 
 
 @pytest.mark.asyncio
@@ -531,6 +574,27 @@ async def test_handle_prompt_handles_auto_execution_and_confirmation(monkeypatch
 
 
 @pytest.mark.asyncio
+async def test_handle_prompt_splits_oversized_auto_execution_and_confirmation_messages(monkeypatch: pytest.MonkeyPatch) -> None:
+    started = []
+    monkeypatch.setattr(handlers, "_start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    long_plan = "x" * (handlers.TELEGRAM_MESSAGE_LIMIT + 250)
+
+    auto_submit = SubmitPromptStub(execute_result=SimpleNamespace(run_id="run-8", status="queued", plan_text=long_plan, estimate_seconds=12))
+    auto_runtime = _runtime(latest=GetRunStatusStub([None]), submit=auto_submit, workflow="debug_code")
+    auto_message = MessageStub("debug it")
+    await handlers.handle_prompt(UpdateStub(auto_message), ContextStub(ApplicationStub(auto_runtime)))
+    assert len(auto_message.replies) == 2
+    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for reply in auto_message.replies)
+
+    confirm_submit = SubmitPromptStub(execute_result=SimpleNamespace(run_id="run-9", status="awaiting_confirmation", plan_text=long_plan, estimate_seconds=18))
+    confirm_runtime = _runtime(latest=GetRunStatusStub([None]), submit=confirm_submit)
+    confirm_message = MessageStub("build it")
+    await handlers.handle_prompt(UpdateStub(confirm_message), ContextStub(ApplicationStub(confirm_runtime)))
+    assert len(confirm_message.replies) == 2
+    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for reply in confirm_message.replies)
+
+
+@pytest.mark.asyncio
 async def test_handle_prompt_replies_with_stored_error_text_when_submission_fails() -> None:
     failed_run = RunStub(run_id="run-10", status=RunStatus.FAILED, error_text="planner unavailable")
     runtime = _runtime(
@@ -542,6 +606,45 @@ async def test_handle_prompt_replies_with_stored_error_text_when_submission_fail
     await handlers.handle_prompt(UpdateStub(message), ContextStub(ApplicationStub(runtime)))
 
     assert message.replies == ["planner unavailable"]
+
+
+@pytest.mark.asyncio
+async def test_handle_prompt_splits_oversized_submission_error() -> None:
+    long_error = "x" * (handlers.TELEGRAM_MESSAGE_LIMIT + 250)
+    failed_run = RunStub(run_id="run-10", status=RunStatus.FAILED, error_text=long_error)
+    runtime = _runtime(
+        latest=GetRunStatusStub([None, failed_run]),
+        submit=SubmitPromptStub(execute_error=PromptSubmissionError("run-10", long_error)),
+    )
+    message = MessageStub("build it")
+
+    await handlers.handle_prompt(UpdateStub(message), ContextStub(ApplicationStub(runtime)))
+
+    assert len(message.replies) == 2
+    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for reply in message.replies)
+
+
+@pytest.mark.asyncio
+async def test_approve_command_splits_oversized_stored_error_text() -> None:
+    runtime = _runtime(
+        approve=ApproveRunStub(
+            SimpleNamespace(
+                run_id="run-shutdown",
+                dispatched=False,
+                status="failed",
+                error_text="x" * (handlers.TELEGRAM_MESSAGE_LIMIT + 250),
+            )
+        ),
+    )
+    message = MessageStub("/approve run-shutdown")
+
+    await handlers.approve_command(
+        UpdateStub(message),
+        ContextStub(ApplicationStub(runtime), args=["run-shutdown"]),
+    )
+
+    assert len(message.replies) == 2
+    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for reply in message.replies)
 
 
 @pytest.mark.asyncio

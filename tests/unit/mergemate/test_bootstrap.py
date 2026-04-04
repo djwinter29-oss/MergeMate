@@ -37,7 +37,7 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
                 extra_headers={"X-Test": "1"},
             )
         },
-        runtime=SimpleNamespace(max_concurrent_runs=4),
+        runtime=SimpleNamespace(max_concurrent_runs=4, default_request_timeout_seconds=90),
         workflow_control=SimpleNamespace(),
         resolve_database_path=lambda resolved: tmp_path / "workspace" / ".state" / "runtime.db",
         resolve_docs_root=lambda resolved: tmp_path / "workspace" / "docs",
@@ -123,9 +123,9 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
     monkeypatch.setattr(bootstrap_module, "CodeFormatterTool", lambda: "formatter")
     monkeypatch.setattr(bootstrap_module, "PackageInstallerTool", lambda **kwargs: ("package_installer", kwargs))
     monkeypatch.setattr(bootstrap_module, "SyntaxCheckerTool", lambda: "syntax_checker")
-    monkeypatch.setattr(bootstrap_module, "GitRepositoryTool", lambda executable, cwd: ("git_repository", executable, cwd))
-    monkeypatch.setattr(bootstrap_module, "GitHubCliTool", lambda executable, cwd: ("github_cli", executable, cwd))
-    monkeypatch.setattr(bootstrap_module, "GitLabCliTool", lambda executable, cwd: ("gitlab_cli", executable, cwd))
+    monkeypatch.setattr(bootstrap_module, "GitRepositoryTool", lambda executable, cwd, timeout_seconds: ("git_repository", executable, cwd, timeout_seconds))
+    monkeypatch.setattr(bootstrap_module, "GitHubCliTool", lambda executable, cwd, timeout_seconds: ("github_cli", executable, cwd, timeout_seconds))
+    monkeypatch.setattr(bootstrap_module, "GitLabCliTool", lambda executable, cwd, timeout_seconds: ("gitlab_cli", executable, cwd, timeout_seconds))
     monkeypatch.setattr(bootstrap_module, "ToolRegistry", ToolRegistryStub)
     monkeypatch.setattr(bootstrap_module, "ToolService", ToolServiceStub)
     monkeypatch.setattr(bootstrap_module, "WorkflowService", WorkflowServiceStub)
@@ -167,7 +167,7 @@ def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Pa
             gitlab_executable="glab",
         ),
         providers={},
-        runtime=SimpleNamespace(max_concurrent_runs=1),
+        runtime=SimpleNamespace(max_concurrent_runs=1, default_request_timeout_seconds=90),
         workflow_control=SimpleNamespace(),
         resolve_database_path=lambda resolved: tmp_path / "db.sqlite",
         resolve_docs_root=lambda resolved: tmp_path / "docs",

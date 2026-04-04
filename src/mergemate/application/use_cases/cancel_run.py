@@ -36,14 +36,15 @@ class CancelRunUseCase:
                 status=target_run.status.value,
             )
 
-        cancelled_run = self._run_repository.update_status(
+        cancellation = self._run_repository.try_update_status(
             target_run.run_id,
             RunStatus.CANCELLED,
             expected_current_status=RunStatus.AWAITING_CONFIRMATION,
         )
+        cancelled_run = cancellation.run
         if cancelled_run is None:
             return None
-        if cancelled_run.status != RunStatus.CANCELLED:
+        if not cancellation.transitioned:
             return CancelRunResult(
                 run_id=cancelled_run.run_id,
                 cancelled=False,

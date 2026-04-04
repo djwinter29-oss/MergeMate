@@ -77,6 +77,27 @@ class RunRepositoryStub:
         self.transitions = []
         self.runs = {}
 
+    def try_update_status(
+        self,
+        run_id,
+        status,
+        *,
+        expected_current_status=None,
+        current_stage=None,
+        result_text=None,
+        error_text=None,
+    ):
+        run = self.update_status(
+            run_id,
+            status,
+            expected_current_status=expected_current_status,
+            current_stage=current_stage,
+            result_text=result_text,
+            error_text=error_text,
+        )
+        transitioned = run is not None and (expected_current_status is None or run.status == status)
+        return SimpleNamespace(run=run, transitioned=transitioned)
+
     def get(self, run_id: str):
         return self.runs.get(run_id)
 

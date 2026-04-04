@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from mergemate.config.models import AppConfig
 
@@ -107,3 +108,30 @@ def test_config_model_raises_for_unknown_workflow() -> None:
 
     with pytest.raises(ValueError, match="No configured agent found"):
         config.resolve_agent_name_for_workflow("planning")
+
+
+def test_config_model_rejects_non_positive_concurrency() -> None:
+    payload = _build_config().model_dump()
+    payload["runtime"]["max_concurrent_runs"] = 0
+
+    with pytest.raises(ValidationError, match="greater than or equal to 1"):
+        AppConfig.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    ("section", "key"),
+    [
+        ("runtime", "status_update_interval_seconds"),
+        ("runtime", "default_request_timeout_seconds"),
+        ("providers", "timeout_seconds"),
+    ],
+)
+def test_config_model_rejects_non_positive_timeout_values(section: str, key: str) -> None:
+    payload = _build_config().model_dump()
+    if section == "providers":
+        payload["providers"]["primary"][key] = 0
+    else:
+        payload[section][key] = 0
+
+    with pytest.raises(ValidationError, match="greater than or equal to 1"):
+        AppConfig.model_validate(payload)

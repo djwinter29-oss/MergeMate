@@ -13,7 +13,7 @@ class LoggingConfig(BaseModel):
 class ProviderConfig(BaseModel):
     api_key_env: str
     model: str
-    timeout_seconds: int = 90
+    timeout_seconds: int = Field(default=90, ge=1)
     provider_url: str = "https://api.openai.com/v1/chat/completions"
     api_key_header: str = "Authorization"
     api_key_prefix: str = "Bearer"
@@ -54,9 +54,9 @@ class SourceControlConfig(BaseModel):
 
 
 class RuntimeConfig(BaseModel):
-    max_concurrent_runs: int = 2
-    status_update_interval_seconds: int = 5
-    default_request_timeout_seconds: int = 300
+    max_concurrent_runs: int = Field(default=2, ge=1)
+    status_update_interval_seconds: int = Field(default=5, ge=1)
+    default_request_timeout_seconds: int = Field(default=300, ge=1)
 
 
 class WorkflowControlConfig(BaseModel):

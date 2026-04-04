@@ -16,6 +16,27 @@ class RunRepositoryStub:
         self.run = RunStub("run-1", 10)
         self.updated = []
 
+    def try_update_status(
+        self,
+        run_id: str,
+        status: RunStatus,
+        *,
+        expected_current_status: RunStatus | None = None,
+        current_stage=None,
+        result_text=None,
+        error_text=None,
+    ):
+        run = self.update_status(
+            run_id,
+            status,
+            expected_current_status=expected_current_status,
+            current_stage=current_stage,
+            result_text=result_text,
+            error_text=error_text,
+        )
+        transitioned = run is not None and (expected_current_status is None or run.status == status)
+        return RunDecisionStub(run=run, transitioned=transitioned)
+
     def get(self, run_id: str):
         return self.run if run_id == "run-1" else None
 
@@ -37,6 +58,12 @@ class RunRepositoryStub:
         self.updated.append((run_id, status))
         self.run.status = status
         return self.run
+
+
+@dataclass(slots=True)
+class RunDecisionStub:
+    run: RunStub | None
+    transitioned: bool
 
 
 def test_cancel_run_by_run_id_and_chat_scope() -> None:
@@ -85,9 +112,9 @@ def test_cancel_run_does_not_override_concurrent_status_transition() -> None:
 
     def concurrent_update(*args, **kwargs):
         repository.run.status = RunStatus.QUEUED
-        return repository.run
+        return RunDecisionStub(run=repository.run, transitioned=False)
 
-    repository.update_status = concurrent_update
+    repository.try_update_status = concurrent_update
 
     result = use_case.execute("run-1", chat_id=10)
 

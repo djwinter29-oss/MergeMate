@@ -62,7 +62,7 @@ class ToolService:
         }:
             return
         if entering:
-            self._run_repository.update_status(
+            self._run_repository.try_update_status(
                 run_id,
                 RunStatus.WAITING_TOOL,
                 expected_current_status=RunStatus.RUNNING,
@@ -71,7 +71,7 @@ class ToolService:
             return
         if current_run is not None and current_run.status != RunStatus.WAITING_TOOL:
             return
-        self._run_repository.update_status(
+        self._run_repository.try_update_status(
             run_id,
             RunStatus.RUNNING,
             expected_current_status=RunStatus.WAITING_TOOL,
