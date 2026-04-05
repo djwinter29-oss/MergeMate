@@ -7,7 +7,12 @@ import pytest
 
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.runs.value_objects import RunStatus
-from mergemate.interfaces.telegram.progress_notifier import start_progress_watcher, stop_progress_watchers, watch_run_progress
+from mergemate.interfaces.telegram.progress_notifier import (
+    notify_terminal_update,
+    start_progress_watcher,
+    stop_progress_watchers,
+    watch_run_progress,
+)
 
 
 class BotStub:
@@ -119,9 +124,10 @@ async def test_watch_run_progress_sends_updates_for_stage_changes(monkeypatch) -
 
     await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
 
-    assert len(application.bot.messages) == 2
+    assert len(application.bot.messages) == 3
     assert "stage=retrieve_context" in application.bot.messages[0][1]
     assert "stage=implementation" in application.bot.messages[1][1]
+    assert "Run run-1 completed." in application.bot.messages[2][1]
 
 
 @pytest.mark.asyncio
@@ -162,8 +168,9 @@ async def test_watch_run_progress_sends_update_for_new_tool_activity_on_same_sta
 
     await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
 
-    assert len(application.bot.messages) == 2
+    assert len(application.bot.messages) == 3
     assert "Latest tool: syntax_checker check [started] - Invoking tool.." in application.bot.messages[1][1]
+    assert "Run run-1 completed." in application.bot.messages[2][1]
 
 
 @pytest.mark.asyncio
@@ -192,7 +199,7 @@ async def test_watch_run_progress_splits_oversized_updates(monkeypatch) -> None:
 
     await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
 
-    assert len(application.bot.messages) == 2
+    assert len(application.bot.messages) == 3
     assert all(len(message_text) <= 4000 for _, message_text in application.bot.messages)
 
 
@@ -214,9 +221,51 @@ async def test_watch_run_progress_logs_and_retries_after_send_failure(monkeypatc
     with caplog.at_level("ERROR"):
         await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
 
-    assert len(application.bot.messages) == 1
+    assert len(application.bot.messages) == 2
     assert "stage=retrieve_context" in application.bot.messages[0][1]
+    assert "Run run-1 completed." in application.bot.messages[1][1]
     assert "progress update delivery failed" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_watch_run_progress_retries_terminal_delivery_after_send_failure(monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
+    async def _sleep(_seconds: int) -> None:
+        return None
+
+    monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
+    application = ApplicationStub(fail_first_send=True)
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+        ]
+    )
+
+    with caplog.at_level("ERROR"):
+        await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
+
+    assert len(application.bot.messages) == 1
+    assert "Run run-1 completed." in application.bot.messages[0][1]
+    assert "progress update delivery failed" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_watch_run_progress_skips_duplicate_terminal_delivery_after_immediate_send(monkeypatch) -> None:
+    async def _sleep(_seconds: int) -> None:
+        return None
+
+    monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
+    application = ApplicationStub()
+    terminal_run = _build_snapshot(_build_run(RunStatus.COMPLETED, "completed"))
+    runtime = RuntimeStub([terminal_run, terminal_run])
+
+    delivered = await notify_terminal_update(application, chat_id=99, run=terminal_run)
+    assert delivered is True
+
+    await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
+
+    assert len(application.bot.messages) == 1
+    assert application.bot_data["terminal_deliveries"] == {"run-1"}
 
 
 @pytest.mark.asyncio
@@ -270,3 +319,32 @@ async def test_stop_progress_watchers_cancels_active_tasks(monkeypatch) -> None:
 
     assert cancelled.is_set() is True
     assert application.bot_data["progress_watchers"] == {}
+
+
+@pytest.mark.asyncio
+async def test_start_progress_watcher_cleanup_clears_terminal_delivery_tracking(monkeypatch) -> None:
+    async def fake_watch_run_progress(application, runtime, chat_id: int, run_id: str) -> None:
+        application.bot_data.setdefault("terminal_deliveries", set()).add(run_id)
+
+    monkeypatch.setattr(
+        "mergemate.interfaces.telegram.progress_notifier.watch_run_progress",
+        fake_watch_run_progress,
+    )
+    application = ApplicationStub()
+    runtime = RuntimeStub([])
+
+    start_progress_watcher(application, runtime, 99, "run-1")
+    await asyncio.gather(*application.created_tasks)
+
+    assert application.bot_data["progress_watchers"] == {}
+    assert application.bot_data["terminal_deliveries"] == set()
+
+
+@pytest.mark.asyncio
+async def test_stop_progress_watchers_clears_terminal_delivery_registry() -> None:
+    application = ApplicationStub()
+    application.bot_data["terminal_deliveries"] = {"run-1", "run-2"}
+
+    await stop_progress_watchers(application)
+
+    assert application.bot_data["terminal_deliveries"] == set()

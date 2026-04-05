@@ -84,6 +84,8 @@ Validate configuration:
 mergemate validate-config
 ```
 
+`validate-config` now also rejects unknown provider aliases referenced by `default_provider` or agent `provider_names` before the bot starts.
+
 Print the default project-local config path:
 
 ```bash
@@ -136,7 +138,7 @@ The default workflow is:
 
 If a status, tool-history, progress, or terminal message is too large for Telegram, MergeMate splits it into multiple messages automatically.
 
-If Telegram temporarily fails to accept a progress update, MergeMate logs the failure and continues watching the run instead of permanently stopping progress notifications.
+If Telegram temporarily fails to accept a progress update or final terminal update, MergeMate logs the failure and keeps the watcher alive long enough to retry delivery instead of permanently dropping the notification.
 
 Workflow documents are written under the active docs root, typically `docs/architecture/`, `docs/testing/`, and `docs/reviews/` under the configured workspace root.
 
@@ -147,6 +149,7 @@ Useful Telegram commands:
 - `/start`: show the welcome message
 - `/status`: show the latest run status for the current chat
 - `/status <run_id>`: inspect a specific run
+- `/tools [run_id] [limit]`: show recent tool activity, with `limit` capped at 50 entries per request
 - `/approve`: approve the latest awaiting run in the current chat
 - `/approve <run_id>`: approve a specific run
 - `/cancel`: cancel the latest run in the current chat if it is still awaiting confirmation

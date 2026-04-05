@@ -2,12 +2,7 @@
 
 from pathlib import Path
 
-
-PROMPT_FILE_BY_WORKFLOW = {
-    "generate_code": "code_generation.md",
-    "debug_code": "debugging.md",
-    "explain_code": "explanation.md",
-}
+from mergemate.domain.shared import workflow_prompt_file
 
 
 class PromptService:
@@ -15,7 +10,7 @@ class PromptService:
         self._prompts_root = prompts_root
 
     def _load_system_prompt(self, workflow: str) -> str:
-        prompt_name = PROMPT_FILE_BY_WORKFLOW.get(workflow, "base.md")
+        prompt_name = workflow_prompt_file(workflow)
         return (self._prompts_root / "system" / prompt_name).read_text(encoding="utf-8").strip()
 
     def render(

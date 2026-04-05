@@ -1,7 +1,7 @@
 """Workflow orchestration entrypoint."""
 
 from mergemate.application.execution_plan import ExecutionContext, ExecutionRuntime
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.runs.value_objects import RunStage, RunStatus
 
 
 class AgentOrchestrator:
@@ -13,6 +13,7 @@ class AgentOrchestrator:
         context_service,
         documentation_service,
         learning_service,
+        planning_service,
         prompt_service,
         tool_service,
         workflow_service,
@@ -23,6 +24,7 @@ class AgentOrchestrator:
         self._context_service = context_service
         self._documentation_service = documentation_service
         self._learning_service = learning_service
+        self._planning_service = planning_service
         self._prompt_service = prompt_service
         self._tool_service = tool_service
         self._workflow_service = workflow_service
@@ -54,7 +56,7 @@ class AgentOrchestrator:
             run_id,
             RunStatus.RUNNING,
             expected_current_status=RunStatus.QUEUED,
-            current_stage="retrieve_context",
+            current_stage=RunStage.RETRIEVE_CONTEXT,
         )
         run = start_decision.run
         assert run is not None
@@ -80,7 +82,7 @@ class AgentOrchestrator:
             tool_context = await self._tool_service.build_runtime_tool_context_async(
                 run.run_id,
                 run.agent_name,
-                resume_stage="retrieve_context",
+                resume_stage=RunStage.RETRIEVE_CONTEXT,
             )
             if tool_context:
                 context_text = f"{context_text}\n\nRuntime tool context:\n{tool_context}".strip()
@@ -90,6 +92,7 @@ class AgentOrchestrator:
             context_service=self._context_service,
             documentation_service=self._documentation_service,
             learning_service=self._learning_service,
+            planning_service=self._planning_service,
             workflow_service=self._workflow_service,
             settings=self._settings,
             is_cancelled=self._is_cancelled,

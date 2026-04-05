@@ -9,6 +9,7 @@ from mergemate.application.orchestrator import AgentOrchestrator
 from mergemate.application.services.context_service import ContextService
 from mergemate.application.services.documentation_service import DocumentationService
 from mergemate.application.services.learning_service import LearningService
+from mergemate.application.services.planning_service import PlanningService
 from mergemate.application.services.prompt_service import PromptService
 from mergemate.application.services.tool_service import ToolService
 from mergemate.application.services.workflow_service import WorkflowService
@@ -49,6 +50,7 @@ class MergeMateRuntime:
     tool_event_repository: SQLiteToolEventRepository
     learning_service: LearningService
     tool_service: ToolService
+    planning_service: PlanningService
     workflow_service: WorkflowService
     submit_prompt: SubmitPromptUseCase
     approve_run: ApproveRunUseCase
@@ -144,6 +146,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
         run_repository=run_repository,
         tool_event_repository=tool_event_repository,
     )
+    planning_service = PlanningService(llm_gateway, settings)
     workflow_service = WorkflowService(llm_gateway, settings)
 
     orchestrator = AgentOrchestrator(
@@ -151,6 +154,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
         context_service=context_service,
         documentation_service=documentation_service,
         learning_service=learning_service,
+        planning_service=planning_service,
         prompt_service=prompt_service,
         tool_service=tool_service,
         workflow_service=workflow_service,
@@ -168,7 +172,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
         run_repository,
         context_service,
         dispatcher,
-        workflow_service,
+        planning_service,
         settings,
     )
 
@@ -182,6 +186,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
         tool_event_repository=tool_event_repository,
         learning_service=learning_service,
         tool_service=tool_service,
+        planning_service=planning_service,
         workflow_service=workflow_service,
         submit_prompt=submit_prompt_use_case,
         approve_run=ApproveRunUseCase(submit_prompt_use_case),

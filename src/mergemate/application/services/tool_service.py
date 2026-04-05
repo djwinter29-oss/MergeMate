@@ -2,7 +2,7 @@
 
 import asyncio
 
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.runs.value_objects import RunStage, RunStatus, tool_stage
 
 
 class ToolService:
@@ -49,7 +49,7 @@ class ToolService:
         *,
         blocks_run_state: str | None,
         tool_name: str,
-        resume_stage: str,
+        resume_stage: str | RunStage,
         entering: bool,
     ) -> None:
         if run_id is None or self._run_repository is None or blocks_run_state != RunStatus.WAITING_TOOL.value:
@@ -66,7 +66,7 @@ class ToolService:
                 run_id,
                 RunStatus.WAITING_TOOL,
                 expected_current_status=RunStatus.RUNNING,
-                current_stage=f"tool:{tool_name}",
+                current_stage=tool_stage(tool_name),
             )
             return
         if current_run is not None and current_run.status != RunStatus.WAITING_TOOL:
@@ -93,7 +93,7 @@ class ToolService:
         payload: dict[str, str],
         *,
         run_id: str | None = None,
-        resume_stage: str = "retrieve_context",
+        resume_stage: str | RunStage = RunStage.RETRIEVE_CONTEXT,
     ) -> dict[str, str]:
         agent = self._settings.agents.get(agent_name)
         configured_tools = agent.tools if agent is not None else []
@@ -141,7 +141,13 @@ class ToolService:
         )
         return result
 
-    def build_runtime_tool_context(self, run_id: str, agent_name: str, *, resume_stage: str = "retrieve_context") -> str:
+    def build_runtime_tool_context(
+        self,
+        run_id: str,
+        agent_name: str,
+        *,
+        resume_stage: str | RunStage = RunStage.RETRIEVE_CONTEXT,
+    ) -> str:
         enabled_tools = self.list_enabled_tools(agent_name)
         if not enabled_tools:
             return ""
@@ -177,7 +183,7 @@ class ToolService:
         run_id: str,
         agent_name: str,
         *,
-        resume_stage: str = "retrieve_context",
+        resume_stage: str | RunStage = RunStage.RETRIEVE_CONTEXT,
     ) -> str:
         enabled_tools = self.list_enabled_tools(agent_name)
         if not enabled_tools:

@@ -7,7 +7,7 @@ from uuid import uuid4
 from mergemate.application.jobs.dispatcher import RunDispatcher
 from mergemate.application.jobs.estimator import estimate_duration
 from mergemate.domain.runs.entities import AgentRun
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.runs.value_objects import RunStage, RunStatus
 
 
 @dataclass(slots=True)
@@ -39,13 +39,13 @@ class SubmitPromptUseCase:
         run_repository,
         context_service,
         dispatcher: RunDispatcher,
-        workflow_service,
+        planning_service,
         settings,
     ) -> None:
         self._run_repository = run_repository
         self._context_service = context_service
         self._dispatcher = dispatcher
-        self._workflow_service = workflow_service
+        self._planning_service = planning_service
         self._settings = settings
 
     async def execute(
@@ -71,7 +71,7 @@ class SubmitPromptUseCase:
             agent_name=agent_name,
             workflow=workflow,
             status=initial_status,
-            current_stage="planning",
+            current_stage=RunStage.PLANNING,
             prompt=prompt,
             estimate_seconds=estimate_seconds,
             plan_text=None,
@@ -88,13 +88,13 @@ class SubmitPromptUseCase:
         self._run_repository.create(run)
         self._context_service.append_message(chat_id, "user", prompt)
         try:
-            plan_text = await self._workflow_service.draft_plan(prompt)
+            plan_text = await self._planning_service.draft_plan(prompt)
         except Exception as exc:
             error_text = str(exc)
             self._run_repository.update_status(
                 run.run_id,
                 RunStatus.FAILED,
-                current_stage="planning",
+                current_stage=RunStage.PLANNING,
                 error_text=error_text,
             )
             raise PromptSubmissionError(run.run_id, error_text) from exc
@@ -105,7 +105,7 @@ class SubmitPromptUseCase:
             self._run_repository.update_plan(
                 run.run_id,
                 plan_text,
-                current_stage="queued_for_execution",
+                current_stage=RunStage.QUEUED_FOR_EXECUTION,
             )
             approval = self._run_repository.approve(run.run_id)
             if approval.run is None:
@@ -134,9 +134,11 @@ class SubmitPromptUseCase:
             return None
         if chat_id is not None and existing.chat_id != chat_id:
             return None
-        updated_prompt = f"{existing.prompt}\n\nAdditional user feedback:\n{feedback.strip()}"
         try:
-            plan_text = await self._workflow_service.draft_plan(updated_prompt)
+            updated_prompt, plan_text = await self._planning_service.revise_plan(
+                existing.prompt,
+                feedback,
+            )
         except Exception as exc:
             error_text = str(exc)
             self._run_repository.update_status(
@@ -204,7 +206,7 @@ class SubmitPromptUseCase:
             self._run_repository.update_status(
                 run_id,
                 RunStatus.FAILED,
-                current_stage="queued_for_execution",
+                current_stage=RunStage.QUEUED_FOR_EXECUTION,
                 error_text=error_text,
             )
             if raise_on_error:

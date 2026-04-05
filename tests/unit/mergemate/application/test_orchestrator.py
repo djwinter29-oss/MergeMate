@@ -247,7 +247,6 @@ class WorkflowServiceStub:
         self.design_calls = []
         self.test_calls = []
         self.review_calls = []
-        self.replan_calls = []
 
     @staticmethod
     def uses_multi_stage_delivery(workflow: str) -> bool:
@@ -281,10 +280,6 @@ class WorkflowServiceStub:
         self.review_calls.append((plan_text, design_text, implementation_text, test_text))
         return "HIGH_CONCERNS: yes" if self.high_concerns else "HIGH_CONCERNS: no"
 
-    async def draft_plan(self, prompt: str, prior_feedback: str | None = None) -> str:
-        self.replan_calls.append((prompt, prior_feedback))
-        return "replanned"
-
     async def execute_direct(self, agent_name: str, system_prompt: str, user_prompt: str) -> str:
         self.direct_calls.append((agent_name, system_prompt, user_prompt))
         return "direct result"
@@ -292,6 +287,15 @@ class WorkflowServiceStub:
     @staticmethod
     def has_high_concerns(review_text: str) -> bool:
         return review_text.startswith("HIGH_CONCERNS: yes")
+
+
+class PlanningServiceStub:
+    def __init__(self) -> None:
+        self.replan_calls = []
+
+    async def draft_plan(self, prompt: str, prior_feedback: str | None = None) -> str:
+        self.replan_calls.append((prompt, prior_feedback))
+        return "replanned"
 
 
 def _build_run(*, workflow: str = "generate_code", agent_name: str = "coder") -> AgentRun:
@@ -331,6 +335,7 @@ async def test_process_run_stops_after_cancellation_between_steps() -> None:
         context_service=context_service,
         documentation_service=documentation_service,
         learning_service=learning_service,
+        planning_service=PlanningServiceStub(),
         prompt_service=PromptServiceStub(),
         tool_service=ToolServiceStub(),
         workflow_service=workflow_service,
@@ -362,6 +367,7 @@ async def test_process_run_writes_all_document_artifacts() -> None:
         context_service=context_service,
         documentation_service=documentation_service,
         learning_service=learning_service,
+        planning_service=PlanningServiceStub(),
         prompt_service=PromptServiceStub(),
         tool_service=ToolServiceStub(),
         workflow_service=workflow_service,
@@ -394,6 +400,7 @@ async def test_process_run_executes_non_generate_workflow_directly() -> None:
         context_service=context_service,
         documentation_service=documentation_service,
         learning_service=learning_service,
+        planning_service=PlanningServiceStub(),
         prompt_service=PromptServiceStub(),
         tool_service=ToolServiceStub(),
         workflow_service=workflow_service,
@@ -423,6 +430,7 @@ async def test_process_run_returns_cancelled_direct_run_without_persisting_succe
         context_service=context_service,
         documentation_service=DocumentationServiceStub(),
         learning_service=learning_service,
+        planning_service=PlanningServiceStub(),
         prompt_service=PromptServiceStub(),
         tool_service=ToolServiceStub(),
         workflow_service=workflow_service,
@@ -449,6 +457,7 @@ async def test_process_run_raises_when_run_is_missing() -> None:
         context_service=ContextServiceStub(),
         documentation_service=DocumentationServiceStub(),
         learning_service=LearningServiceStub(),
+        planning_service=PlanningServiceStub(),
         prompt_service=PromptServiceStub(),
         tool_service=ToolServiceStub(),
         workflow_service=WorkflowServiceStub(),
@@ -470,6 +479,7 @@ async def test_process_run_returns_early_for_cancelled_or_unapproved_runs() -> N
         context_service=ContextServiceStub(),
         documentation_service=DocumentationServiceStub(),
         learning_service=LearningServiceStub(),
+        planning_service=PlanningServiceStub(),
         prompt_service=PromptServiceStub(),
         tool_service=ToolServiceStub(),
         workflow_service=WorkflowServiceStub(),
@@ -485,6 +495,7 @@ async def test_process_run_returns_early_for_cancelled_or_unapproved_runs() -> N
         context_service=ContextServiceStub(),
         documentation_service=DocumentationServiceStub(),
         learning_service=LearningServiceStub(),
+        planning_service=PlanningServiceStub(),
         prompt_service=PromptServiceStub(),
         tool_service=ToolServiceStub(),
         workflow_service=WorkflowServiceStub(),
@@ -510,6 +521,7 @@ async def test_process_run_returns_early_for_terminal_or_active_runs(status) -> 
         context_service=context_service,
         documentation_service=DocumentationServiceStub(),
         learning_service=learning_service,
+        planning_service=PlanningServiceStub(),
         prompt_service=PromptServiceStub(),
         tool_service=tool_service,
         workflow_service=workflow_service,
@@ -535,11 +547,13 @@ async def test_process_run_trims_latest_duplicate_prompt_and_replans_on_review_c
         ]
     )
     workflow_service = WorkflowServiceStub(high_concerns=True, max_iterations=2)
+    planning_service = PlanningServiceStub()
     orchestrator = AgentOrchestrator(
         run_repository=repository,
         context_service=context_service,
         documentation_service=DocumentationServiceStub(),
         learning_service=LearningServiceStub(),
+        planning_service=planning_service,
         prompt_service=PromptServiceStub(),
         tool_service=ToolServiceStub(),
         workflow_service=workflow_service,
@@ -552,7 +566,7 @@ async def test_process_run_trims_latest_duplicate_prompt_and_replans_on_review_c
     assert run is not None
     assert run.status == RunStatus.COMPLETED
     assert workflow_service.design_calls[0] == ("approved plan", "context")
-    assert workflow_service.replan_calls == [("build a feature", "HIGH_CONCERNS: yes")]
+    assert planning_service.replan_calls == [("build a feature", "HIGH_CONCERNS: yes")]
     assert repository.run.plan_text == "replanned"
     assert repository.run.review_iterations == 2
 
@@ -567,6 +581,7 @@ async def test_process_run_includes_runtime_tool_context_for_direct_plans() -> N
         context_service=ContextServiceStub(),
         documentation_service=DocumentationServiceStub(),
         learning_service=LearningServiceStub(),
+        planning_service=PlanningServiceStub(),
         prompt_service=PromptServiceStub(),
         tool_service=tool_service,
         workflow_service=workflow_service,
@@ -599,6 +614,7 @@ async def test_process_run_returns_when_cancelled_at_intermediate_checkpoints(ca
         context_service=ContextServiceStub(),
         documentation_service=DocumentationServiceStub(),
         learning_service=LearningServiceStub(),
+        planning_service=PlanningServiceStub(),
         prompt_service=PromptServiceStub(),
         tool_service=ToolServiceStub(),
         workflow_service=WorkflowServiceStub(),
@@ -623,6 +639,7 @@ async def test_process_run_returns_when_cancelled_after_replanning() -> None:
         context_service=ContextServiceStub(),
         documentation_service=DocumentationServiceStub(),
         learning_service=LearningServiceStub(),
+        planning_service=PlanningServiceStub(),
         prompt_service=PromptServiceStub(),
         tool_service=ToolServiceStub(),
         workflow_service=WorkflowServiceStub(high_concerns=True, max_iterations=2),
@@ -653,6 +670,7 @@ async def test_process_run_returns_latest_cancelled_run_after_loop() -> None:
         context_service=ContextServiceStub(),
         documentation_service=DocumentationServiceStub(),
         learning_service=LearningServiceStub(),
+        planning_service=PlanningServiceStub(),
         prompt_service=PromptServiceStub(),
         tool_service=ToolServiceStub(),
         workflow_service=CancellingWorkflowService(),
@@ -677,6 +695,7 @@ async def test_process_run_appends_runtime_tool_context_to_execution_context() -
         context_service=ContextServiceStub(),
         documentation_service=DocumentationServiceStub(),
         learning_service=LearningServiceStub(),
+        planning_service=PlanningServiceStub(),
         prompt_service=PromptServiceStub(),
         tool_service=tool_service,
         workflow_service=workflow_service,

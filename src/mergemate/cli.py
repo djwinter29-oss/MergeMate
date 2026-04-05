@@ -30,6 +30,9 @@ def validate_config(
     resolved_path = resolve_config_path(config)
     settings = load_runtime_settings(config)
     settings.resolve_telegram_token()
+    settings.resolve_provider_api_key()
+    for agent_name in settings.agents:
+        settings.resolve_agent_provider_names(agent_name)
     resolved_database_path = settings.preview_database_path(resolved_path)
     typer.echo(f"Configuration is valid: {resolved_path}")
     typer.echo(f"Resolved database path: {resolved_database_path}")

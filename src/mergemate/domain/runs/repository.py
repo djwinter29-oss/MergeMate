@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from mergemate.domain.runs.entities import AgentRun
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.runs.value_objects import RunStage, RunStatus
 
 
 @dataclass(slots=True)
@@ -32,7 +32,7 @@ class AgentRunRepository(Protocol):
         status: RunStatus,
         *,
         expected_current_status: RunStatus | None = None,
-        current_stage: str | None = None,
+        current_stage: str | RunStage | None = None,
         result_text: str | None = None,
         error_text: str | None = None,
     ) -> StatusUpdateDecision: ...
@@ -43,7 +43,7 @@ class AgentRunRepository(Protocol):
         status: RunStatus,
         *,
         expected_current_status: RunStatus | None = None,
-        current_stage: str | None = None,
+        current_stage: str | RunStage | None = None,
         result_text: str | None = None,
         error_text: str | None = None,
     ) -> AgentRun | None: ...
@@ -54,7 +54,7 @@ class AgentRunRepository(Protocol):
         plan_text: str,
         prompt: str | None = None,
         *,
-        current_stage: str | None = None,
+        current_stage: str | RunStage | None = None,
     ) -> AgentRun | None: ...
 
     def approve(self, run_id: str) -> ApprovalDecision: ...
@@ -63,7 +63,7 @@ class AgentRunRepository(Protocol):
         self,
         run_id: str,
         *,
-        current_stage: str | None = None,
+        current_stage: str | RunStage | None = None,
         design_text: str | None = None,
         test_text: str | None = None,
         review_text: str | None = None,

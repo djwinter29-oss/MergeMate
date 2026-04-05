@@ -7,7 +7,7 @@ from mergemate.domain.conversations.entities import Conversation
 from mergemate.domain.conversations.repository import ConversationRepository
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.runs.repository import AgentRunRepository
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.runs.value_objects import RunStage, RunStatus, tool_stage
 from mergemate.domain.shared.enums import WorkflowName
 from mergemate.domain.tools.contracts import Tool
 from mergemate.domain.tools.entities import ToolDefinition
@@ -28,7 +28,7 @@ def test_domain_dataclasses_and_enums_are_constructible() -> None:
         agent_name="coder",
         workflow=WorkflowName.GENERATE_CODE,
         status=RunStatus.QUEUED,
-        current_stage="queued_for_execution",
+        current_stage=RunStage.QUEUED_FOR_EXECUTION,
         prompt="build feature",
         estimate_seconds=10,
         plan_text=None,
@@ -48,6 +48,7 @@ def test_domain_dataclasses_and_enums_are_constructible() -> None:
     assert tool.description == "formats code"
     assert progress.estimate_seconds == 10
     assert run.status == RunStatus.QUEUED
+    assert tool_stage("git_repository") == "tool:git_repository"
     assert default_agent_name() == "coder"
     assert WorkflowName.DEBUG_CODE == "debug_code"
 

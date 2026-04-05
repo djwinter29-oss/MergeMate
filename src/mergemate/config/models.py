@@ -3,7 +3,9 @@
 import os
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from mergemate.domain.shared import WorkflowName
 
 
 class LoggingConfig(BaseModel):
@@ -32,8 +34,8 @@ class StorageConfig(BaseModel):
 
 class LearningConfig(BaseModel):
     enabled: bool = True
-    max_context_items: int = 3
-    max_result_chars: int = 1200
+    max_context_items: int = Field(default=3, ge=1)
+    max_result_chars: int = Field(default=1200, ge=1)
 
 
 class ToolRuntimeConfig(BaseModel):
@@ -61,11 +63,11 @@ class RuntimeConfig(BaseModel):
 
 class WorkflowControlConfig(BaseModel):
     require_confirmation: bool = True
-    max_review_iterations: int = 5
+    max_review_iterations: int = Field(default=5, ge=1)
 
 
 class AgentConfig(BaseModel):
-    workflow: str
+    workflow: WorkflowName
     tools: list[str] = Field(default_factory=list)
     provider_names: list[str] = Field(default_factory=list)
     parallel_mode: str = "single"
@@ -86,6 +88,44 @@ class AppConfig(BaseModel):
     agents: dict[str, AgentConfig]
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
+    @model_validator(mode="after")
+    def validate_provider_references(self):
+        if self.default_agent not in self.agents:
+            raise ValueError(f"Default agent {self.default_agent} is not configured")
+
+        if self.default_provider not in self.providers:
+            raise ValueError(f"Default provider {self.default_provider} is not configured")
+
+        for agent_name, agent in self.agents.items():
+            for provider_name in agent.provider_names:
+                if provider_name not in self.providers:
+                    raise ValueError(
+                        f"Agent {agent_name} references unknown provider {provider_name}"
+                    )
+
+        available_workflows = {agent.workflow for agent in self.agents.values()}
+        if WorkflowName.PLANNING not in available_workflows:
+            raise ValueError("A planning agent must be configured")
+
+        if WorkflowName.GENERATE_CODE in available_workflows:
+            required_multi_stage_workflows = {
+                WorkflowName.DESIGN,
+                WorkflowName.TESTING,
+                WorkflowName.REVIEW,
+            }
+            missing_workflows = sorted(
+                workflow.value
+                for workflow in required_multi_stage_workflows
+                if workflow not in available_workflows
+            )
+            if missing_workflows:
+                missing_text = ", ".join(missing_workflows)
+                raise ValueError(
+                    "Generate-code workflows require configured agents for: "
+                    f"{missing_text}"
+                )
+        return self
+
     def resolve_provider_api_key(self, provider_name: str | None = None) -> str | None:
         provider = self.providers[provider_name or self.default_provider]
         return os.getenv(provider.api_key_env)
@@ -98,7 +138,7 @@ class AppConfig(BaseModel):
 
     def resolve_agent_name_for_workflow(
         self,
-        workflow: str,
+        workflow: str | WorkflowName,
         *,
         preferred_agent_name: str | None = None,
     ) -> str:

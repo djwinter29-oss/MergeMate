@@ -1,18 +1,17 @@
 """Workflow planning, design, implementation, testing, and review orchestration prompts."""
 
 from mergemate.application.execution_plan import DirectExecutionPlan, MultiStageExecutionPlan
+from mergemate.domain.shared import uses_multi_stage_delivery as workflow_uses_multi_stage_delivery
 
 
 class WorkflowService:
-    MULTI_STAGE_WORKFLOWS = {"generate_code"}
-
     def __init__(self, llm_gateway, settings) -> None:
         self._llm_gateway = llm_gateway
         self._settings = settings
 
     @classmethod
     def uses_multi_stage_delivery(cls, workflow: str) -> bool:
-        return workflow in cls.MULTI_STAGE_WORKFLOWS
+        return workflow_uses_multi_stage_delivery(workflow)
 
     def build_execution_plan(self, workflow: str, *, agent_name: str):
         if self.uses_multi_stage_delivery(workflow):
@@ -26,31 +25,6 @@ class WorkflowService:
         return self._settings.resolve_agent_name_for_workflow(
             workflow,
             preferred_agent_name=preferred_agent_name,
-        )
-
-    async def draft_plan(self, prompt: str, prior_feedback: str | None = None) -> str:
-        system_prompt = (
-            "You are the planning and coordination agent. Capture and confirm requirements. "
-            "Always produce a plan that includes design and how to test. "
-            "If requirements are unclear, include direct clarification questions. "
-            "You also coordinate operational decisions such as tool installation or settings updates when required."
-        )
-        user_prompt = (
-            f"User request:\n{prompt.strip()}\n\n"
-            "Return sections in this exact order:\n"
-            "1. Confirmed requirements\n"
-            "2. Open questions\n"
-            "3. Proposed plan\n"
-            "4. Design approach\n"
-            "5. Test approach\n"
-            "6. Approval instruction"
-        )
-        if prior_feedback:
-            user_prompt += f"\n\nIncorporate this feedback or reviewer concern:\n{prior_feedback.strip()}"
-        return await self._llm_gateway.generate(
-            self.resolve_stage_agent_name("planning"),
-            system_prompt,
-            user_prompt,
         )
 
     async def create_design(self, plan_text: str, context_text: str) -> str:

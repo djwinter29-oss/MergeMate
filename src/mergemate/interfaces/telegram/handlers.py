@@ -13,17 +13,16 @@ from mergemate.interfaces.telegram.presenter import (
     format_auto_execution_started,
     format_cancellation_not_allowed,
     format_cancelled,
-    format_completion,
     format_detailed_status,
-    format_failure,
     format_plan_for_confirmation,
     format_tool_history,
     format_welcome,
 )
-from mergemate.interfaces.telegram.progress_notifier import start_progress_watcher
+from mergemate.interfaces.telegram.progress_notifier import notify_terminal_update, start_progress_watcher
 
 
 TELEGRAM_MESSAGE_LIMIT = message_utils.TELEGRAM_MESSAGE_LIMIT
+MAX_TOOL_HISTORY_LIMIT = 50
 
 
 def _runtime(context: ContextTypes.DEFAULT_TYPE):
@@ -32,6 +31,10 @@ def _runtime(context: ContextTypes.DEFAULT_TYPE):
 
 def _start_progress_watcher(application, runtime, chat_id: int, run_id: str) -> None:
     start_progress_watcher(application, runtime, chat_id, run_id)
+
+
+async def _notify_terminal_update(application, chat_id: int, run) -> None:
+    await notify_terminal_update(application, chat_id, run)
 
 
 def _build_request(update: Update, runtime) -> TelegramRequest | None:
@@ -49,36 +52,33 @@ def _build_request(update: Update, runtime) -> TelegramRequest | None:
 
 
 def _parse_tools_command_args(args: list[str]) -> tuple[str | None, int, str | None]:
+    limit_error = (
+        f"Usage: /tools [run_id] [limit]. Limit must be a positive integer up to {MAX_TOOL_HISTORY_LIMIT}."
+    )
+
+    def _parse_limit(raw_value: str) -> int | None:
+        if not raw_value.isdigit():
+            return None
+        parsed_limit = int(raw_value)
+        if parsed_limit <= 0 or parsed_limit > MAX_TOOL_HISTORY_LIMIT:
+            return None
+        return parsed_limit
+
     if not args:
         return None, 10, None
     if len(args) == 1:
-        if args[0].isdigit():
-            limit = int(args[0])
-            if limit <= 0:
-                return None, 10, "Usage: /tools [run_id] [limit]. Limit must be a positive integer."
+        limit = _parse_limit(args[0])
+        if limit is not None:
             return None, limit, None
+        if args[0].isdigit():
+            return None, 10, limit_error
         return args[0], 10, None
     if len(args) == 2:
-        if not args[1].isdigit():
-            return None, 10, "Usage: /tools [run_id] [limit]. Limit must be a positive integer."
-        limit = int(args[1])
-        if limit <= 0:
-            return None, 10, "Usage: /tools [run_id] [limit]. Limit must be a positive integer."
+        limit = _parse_limit(args[1])
+        if limit is None:
+            return None, 10, limit_error
         return args[0], limit, None
     return None, 10, "Usage: /tools [run_id] [limit]."
-
-
-async def _notify_terminal_update(application, chat_id: int, run) -> None:
-    if run.status.value == "completed":
-        text = format_completion(run.run_id, run.result_text or "")
-    elif run.status.value == "cancelled":
-        text = format_cancelled(run.run_id)
-    else:
-        text = format_failure(run.run_id, run.error_text)
-    await message_utils.send_text_chunks(
-        lambda chunk: application.bot.send_message(chat_id=chat_id, text=chunk),
-        text,
-    )
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

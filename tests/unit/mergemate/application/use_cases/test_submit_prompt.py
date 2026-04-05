@@ -99,14 +99,21 @@ class DispatcherStub:
         return Result(run_id=run_id)
 
 
-class WorkflowServiceStub:
+class PlanningServiceStub:
     async def draft_plan(self, prompt: str, prior_feedback: str | None = None) -> str:
         suffix = f"\nfeedback:{prior_feedback}" if prior_feedback else ""
         return f"plan for {prompt}{suffix}"
 
+    async def revise_plan(self, existing_prompt: str, feedback: str) -> tuple[str, str]:
+        updated_prompt = f"{existing_prompt}\n\nAdditional user feedback:\n{feedback}"
+        return updated_prompt, f"plan for {updated_prompt}"
 
-class FailingWorkflowServiceStub:
+
+class FailingPlanningServiceStub:
     async def draft_plan(self, prompt: str, prior_feedback: str | None = None) -> str:
+        raise RuntimeError("planner unavailable")
+
+    async def revise_plan(self, existing_prompt: str, feedback: str) -> tuple[str, str]:
         raise RuntimeError("planner unavailable")
 
 
@@ -128,7 +135,7 @@ async def test_execute_waits_for_approval_when_confirmation_required() -> None:
         repository,
         ContextServiceStub(),
         dispatcher,
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
 
@@ -153,7 +160,7 @@ async def test_execute_auto_dispatches_when_confirmation_disabled() -> None:
         repository,
         ContextServiceStub(),
         dispatcher,
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=False)),
     )
 
@@ -182,7 +189,7 @@ async def test_execute_marks_run_failed_when_plan_drafting_raises() -> None:
         repository,
         context_service,
         dispatcher,
-        FailingWorkflowServiceStub(),
+        FailingPlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=False)),
     )
 
@@ -212,7 +219,7 @@ async def test_execute_marks_run_failed_when_dispatch_rejects_during_shutdown() 
         repository,
         ContextServiceStub(),
         dispatcher,
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=False)),
     )
 
@@ -238,7 +245,7 @@ def test_approve_is_idempotent_for_completed_run() -> None:
         repository,
         ContextServiceStub(),
         dispatcher,
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     run = next(iter(repository.runs.values()), None)
@@ -286,7 +293,7 @@ async def test_revise_plan_for_chat_rejects_other_chat() -> None:
         repository,
         ContextServiceStub(),
         dispatcher,
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     await use_case.execute(
@@ -310,7 +317,7 @@ def test_approve_rejects_run_from_other_chat() -> None:
         repository,
         ContextServiceStub(),
         dispatcher,
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     from datetime import UTC, datetime
@@ -354,7 +361,7 @@ def test_approve_marks_run_failed_when_dispatch_rejects_during_shutdown() -> Non
         repository,
         ContextServiceStub(),
         dispatcher,
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     from datetime import UTC, datetime
@@ -402,7 +409,7 @@ def test_approve_does_not_dispatch_when_transition_was_already_claimed() -> None
         repository,
         ContextServiceStub(),
         dispatcher,
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     from datetime import UTC, datetime
@@ -449,7 +456,7 @@ async def test_revise_plan_wrapper_returns_updated_result() -> None:
         repository,
         context_service,
         DispatcherStub(),
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     await use_case.execute(
@@ -476,7 +483,7 @@ async def test_revise_plan_for_chat_returns_none_when_update_fails() -> None:
         repository,
         ContextServiceStub(),
         DispatcherStub(),
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     await use_case.execute(
@@ -498,14 +505,14 @@ async def test_revise_plan_for_chat_raises_prompt_submission_error_when_planner_
         repository,
         ContextServiceStub(),
         DispatcherStub(),
-        FailingWorkflowServiceStub(),
+        FailingPlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     await SubmitPromptUseCase(
         repository,
         ContextServiceStub(),
         DispatcherStub(),
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     ).execute(
         chat_id=1,
@@ -531,7 +538,7 @@ def test_approve_returns_none_when_repository_approve_fails() -> None:
         repository,
         ContextServiceStub(),
         dispatcher,
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     from datetime import UTC, datetime
@@ -573,7 +580,7 @@ def test_approve_returns_not_dispatched_for_already_approved_run() -> None:
         repository,
         ContextServiceStub(),
         dispatcher,
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     from datetime import UTC, datetime
@@ -617,7 +624,7 @@ async def test_revise_plan_for_chat_returns_none_for_missing_run() -> None:
         InMemoryRunRepository(),
         ContextServiceStub(),
         DispatcherStub(),
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
 
@@ -629,7 +636,7 @@ def test_approve_returns_none_for_missing_run() -> None:
         InMemoryRunRepository(),
         ContextServiceStub(),
         DispatcherStub(),
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
 

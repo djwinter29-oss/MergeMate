@@ -5,6 +5,7 @@ import pytest
 
 from mergemate.application.execution_plan import DirectExecutionPlan, MultiStageExecutionPlan
 from mergemate.application.services.workflow_service import WorkflowService
+from mergemate.domain.shared import WorkflowName
 
 
 class GatewayStub:
@@ -51,17 +52,6 @@ class SettingsStub:
 
 
 @pytest.mark.asyncio
-async def test_draft_plan_uses_planner_agent() -> None:
-    gateway = GatewayStub()
-    service = WorkflowService(gateway, SettingsStub())
-
-    result = await service.draft_plan("build feature")
-
-    assert result == "response-from-planner"
-    assert gateway.calls[0][0] == "planner"
-
-
-@pytest.mark.asyncio
 async def test_create_design_uses_architect_agent() -> None:
     gateway = GatewayStub()
     service = WorkflowService(gateway, SettingsStub())
@@ -70,19 +60,6 @@ async def test_create_design_uses_architect_agent() -> None:
 
     assert result == "response-from-architect"
     assert gateway.calls[0][0] == "architect"
-
-
-@pytest.mark.asyncio
-async def test_draft_plan_includes_prior_feedback_when_present() -> None:
-    gateway = GatewayStub()
-    service = WorkflowService(gateway, SettingsStub())
-
-    result = await service.draft_plan("build login", prior_feedback="add audit logging")
-
-    assert result == "response-from-planner"
-    assert gateway.calls[0][0] == "planner"
-    assert "User request:\nbuild login" in gateway.calls[0][2]
-    assert "Incorporate this feedback or reviewer concern:\nadd audit logging" in gateway.calls[0][2]
 
 
 @pytest.mark.asyncio
@@ -133,6 +110,7 @@ def test_uses_multi_stage_delivery_is_explicit() -> None:
     assert WorkflowService.uses_multi_stage_delivery("generate_code") is True
     assert WorkflowService.uses_multi_stage_delivery("debug_code") is False
     assert WorkflowService.uses_multi_stage_delivery("explain_code") is False
+    assert WorkflowService.uses_multi_stage_delivery(WorkflowName.GENERATE_CODE) is True
 
 
 def test_has_high_concerns_reads_first_line_only() -> None:
@@ -150,3 +128,22 @@ def test_build_execution_plan_returns_expected_plan_types() -> None:
 
     assert isinstance(service.build_execution_plan("generate_code", agent_name="coder"), MultiStageExecutionPlan)
     assert isinstance(service.build_execution_plan("debug_code", agent_name="debugger"), DirectExecutionPlan)
+
+
+def test_build_execution_plan_accepts_workflow_enum() -> None:
+    service = WorkflowService(GatewayStub(), SettingsStub())
+
+    assert isinstance(
+        service.build_execution_plan(WorkflowName.DEBUG_CODE, agent_name="debugger"),
+        DirectExecutionPlan,
+    )
+
+
+def test_build_execution_plan_rejects_non_positive_review_iterations() -> None:
+    service = WorkflowService(
+        GatewayStub(),
+        SettingsStub(workflow_control=WorkflowControlStub(max_review_iterations=0)),
+    )
+
+    with pytest.raises(ValueError, match="max_iterations must be at least 1"):
+        service.build_execution_plan("generate_code", agent_name="coder")

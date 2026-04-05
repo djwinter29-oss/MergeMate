@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from mergemate.application.services.prompt_service import PromptService
+from mergemate.domain.shared import WorkflowName
 
 
 def _write_prompt(root: Path, name: str, content: str) -> None:
@@ -17,6 +18,16 @@ def test_render_uses_workflow_specific_prompt_file(tmp_path: Path) -> None:
 
     assert system_prompt == "system-code"
     assert user_prompt == "build feature"
+
+
+def test_render_accepts_workflow_enum(tmp_path: Path) -> None:
+    _write_prompt(tmp_path, "debugging.md", "debug-system")
+    service = PromptService(tmp_path)
+
+    system_prompt, user_prompt = service.render(WorkflowName.DEBUG_CODE, [], [], "debug this")
+
+    assert system_prompt == "debug-system"
+    assert user_prompt == "debug this"
 
 
 def test_render_falls_back_to_base_prompt(tmp_path: Path) -> None:

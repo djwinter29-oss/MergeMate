@@ -3,13 +3,13 @@
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.runs.value_objects import RunStage, RunStatus
 
 
 @dataclass(slots=True, frozen=True)
 class StageDescriptor:
     name: str
-    current_stage: str
+    current_stage: str | RunStage
     uses_tool_context: bool = False
     checks_cancellation_before: bool = False
     checks_cancellation_after: bool = False
@@ -28,6 +28,7 @@ class ExecutionRuntime:
     context_service: Any
     documentation_service: Any
     learning_service: Any
+    planning_service: Any
     workflow_service: Any
     settings: Any
     is_cancelled: Callable[[str], bool]
@@ -37,7 +38,7 @@ class DirectExecutionPlan:
     stages = (
         StageDescriptor(
             name="execution",
-            current_stage="execution",
+            current_stage=RunStage.EXECUTION,
             uses_tool_context=True,
         ),
     )
@@ -75,7 +76,7 @@ class DirectExecutionPlan:
         completed_run = runtime.run_repository.update_status(
             run.run_id,
             RunStatus.COMPLETED,
-            current_stage="completed",
+            current_stage=RunStage.COMPLETED,
             result_text=direct_result,
         )
         assert completed_run is not None
@@ -86,36 +87,38 @@ class MultiStageExecutionPlan:
     stages = (
         StageDescriptor(
             name="design",
-            current_stage="design",
+            current_stage=RunStage.DESIGN,
             uses_tool_context=True,
             checks_cancellation_before=True,
             checks_cancellation_after=True,
         ),
         StageDescriptor(
             name="implementation",
-            current_stage="implementation",
+            current_stage=RunStage.IMPLEMENTATION,
             uses_tool_context=True,
             checks_cancellation_after=True,
         ),
         StageDescriptor(
             name="testing",
-            current_stage="testing",
+            current_stage=RunStage.TESTING,
             checks_cancellation_after=True,
         ),
         StageDescriptor(
             name="review",
-            current_stage="review",
+            current_stage=RunStage.REVIEW,
             checks_cancellation_after=True,
         ),
         StageDescriptor(
             name="replanning",
-            current_stage="internal_replanning",
+            current_stage=RunStage.INTERNAL_REPLANNING,
             checks_cancellation_after=True,
         ),
     )
 
     def __init__(self, agent_name: str, max_iterations: int) -> None:
         self._agent_name = agent_name
+        if max_iterations < 1:
+            raise ValueError("max_iterations must be at least 1")
         self._max_iterations = max_iterations
 
     @property
@@ -221,7 +224,7 @@ class MultiStageExecutionPlan:
             if iteration >= self._max_iterations:
                 break
 
-            current_plan = await runtime.workflow_service.draft_plan(run.prompt, prior_feedback=review_text)
+            current_plan = await runtime.planning_service.draft_plan(run.prompt, prior_feedback=review_text)
             runtime.run_repository.update_plan(
                 run.run_id,
                 current_plan,
@@ -255,7 +258,7 @@ class MultiStageExecutionPlan:
         completed_run = runtime.run_repository.update_status(
             run.run_id,
             RunStatus.COMPLETED,
-            current_stage="completed",
+            current_stage=RunStage.COMPLETED,
             result_text=final_result,
         )
         assert completed_run is not None

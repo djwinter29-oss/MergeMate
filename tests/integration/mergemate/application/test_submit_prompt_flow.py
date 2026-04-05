@@ -24,10 +24,14 @@ class WorkerStub:
         self.calls.append(run_id)
 
 
-class WorkflowServiceStub:
+class PlanningServiceStub:
     async def draft_plan(self, prompt: str, prior_feedback: str | None = None) -> str:
         suffix = f"\n\nPrior feedback:\n{prior_feedback}" if prior_feedback else ""
         return f"# Approved Plan\n1. {prompt.strip()}{suffix}"
+
+    async def revise_plan(self, existing_prompt: str, feedback: str) -> tuple[str, str]:
+        updated_prompt = f"{existing_prompt}\n\nAdditional user feedback:\n{feedback.strip()}"
+        return updated_prompt, f"# Approved Plan\n1. {updated_prompt}"
 
 
 @dataclass(slots=True)
@@ -53,7 +57,7 @@ def sqlite_runtime(tmp_path):
         run_repository,
         context_service,
         dispatcher,
-        WorkflowServiceStub(),
+        PlanningServiceStub(),
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     return {

@@ -58,6 +58,9 @@ def test_validate_config_prints_resolved_paths(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(cli, "resolve_config_path", lambda config: Path("/tmp/config.yaml"))
     settings = SimpleNamespace(
         resolve_telegram_token=lambda: "token",
+        resolve_provider_api_key=lambda provider_name=None: "provider-token",
+        resolve_agent_provider_names=lambda agent_name: ["primary"],
+        agents={"coder": SimpleNamespace()},
         preview_database_path=lambda resolved: Path("/tmp/runtime.db"),
     )
     monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
@@ -83,6 +86,28 @@ def test_validate_config_fails_when_telegram_token_is_missing(monkeypatch: pytes
     monkeypatch.setattr(cli, "resolve_config_path", lambda config: Path("/tmp/config.yaml"))
     settings = SimpleNamespace(
         resolve_telegram_token=lambda: (_ for _ in ()).throw(ValueError("Telegram bot token not found in environment variable TELEGRAM_TOKEN")),
+        resolve_provider_api_key=lambda provider_name=None: "provider-token",
+        resolve_agent_provider_names=lambda agent_name: ["primary"],
+        agents={"coder": SimpleNamespace()},
+        preview_database_path=lambda resolved: Path("/tmp/runtime.db"),
+    )
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+
+    result = runner.invoke(cli.app, ["validate-config"])
+
+    assert result.exit_code != 0
+    assert isinstance(result.exception, ValueError)
+
+
+def test_validate_config_fails_when_provider_reference_is_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "resolve_config_path", lambda config: Path("/tmp/config.yaml"))
+    settings = SimpleNamespace(
+        resolve_telegram_token=lambda: "token",
+        resolve_provider_api_key=lambda provider_name=None: "provider-token",
+        resolve_agent_provider_names=lambda agent_name: (_ for _ in ()).throw(
+            ValueError("Agent coder references unknown provider missing")
+        ),
+        agents={"coder": SimpleNamespace()},
         preview_database_path=lambda resolved: Path("/tmp/runtime.db"),
     )
     monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)

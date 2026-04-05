@@ -5,6 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from mergemate.config.models import AppConfig
+from mergemate.domain.shared import WorkflowName
 
 
 def _build_config() -> AppConfig:
@@ -27,8 +28,12 @@ def _build_config() -> AppConfig:
             "source_control": {"working_directory": "repo"},
             "runtime": {"max_concurrent_runs": 2},
             "agents": {
+                "planner": {"workflow": "planning"},
+                "architect": {"workflow": "design"},
                 "coder": {"workflow": "generate_code", "provider_names": ["secondary"]},
-                "reviewer": {"workflow": "explain_code"},
+                "tester": {"workflow": "testing"},
+                "reviewer": {"workflow": "review"},
+                "explainer": {"workflow": "explain_code"},
             },
         }
     )
@@ -39,6 +44,7 @@ def test_config_model_resolves_provider_names_and_api_keys(monkeypatch: pytest.M
     monkeypatch.setenv("PRIMARY_KEY", "primary-secret")
 
     assert config.resolve_provider_api_key() == "primary-secret"
+    assert config.agents["coder"].workflow == WorkflowName.GENERATE_CODE
     assert config.resolve_agent_provider_names("coder") == ["secondary"]
     assert config.resolve_agent_provider_names("missing") == ["primary"]
     assert config.resolve_agent_provider_names("reviewer") == ["primary"]
@@ -107,12 +113,28 @@ def test_config_model_raises_for_unknown_workflow() -> None:
     config = _build_config()
 
     with pytest.raises(ValueError, match="No configured agent found"):
-        config.resolve_agent_name_for_workflow("planning")
+        config.resolve_agent_name_for_workflow("debug_code")
 
 
 def test_config_model_rejects_non_positive_concurrency() -> None:
     payload = _build_config().model_dump()
     payload["runtime"]["max_concurrent_runs"] = 0
+
+    with pytest.raises(ValidationError, match="greater than or equal to 1"):
+        AppConfig.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    ("section", "key"),
+    [
+        ("learning", "max_context_items"),
+        ("learning", "max_result_chars"),
+        ("workflow_control", "max_review_iterations"),
+    ],
+)
+def test_config_model_rejects_non_positive_learning_and_review_values(section: str, key: str) -> None:
+    payload = _build_config().model_dump()
+    payload.setdefault(section, {})[key] = 0
 
     with pytest.raises(ValidationError, match="greater than or equal to 1"):
         AppConfig.model_validate(payload)
@@ -134,4 +156,53 @@ def test_config_model_rejects_non_positive_timeout_values(section: str, key: str
         payload[section][key] = 0
 
     with pytest.raises(ValidationError, match="greater than or equal to 1"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_unknown_default_provider() -> None:
+    payload = _build_config().model_dump()
+    payload["default_provider"] = "missing"
+
+    with pytest.raises(ValidationError, match="Default provider missing is not configured"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_unknown_agent_provider_reference() -> None:
+    payload = _build_config().model_dump()
+    payload["agents"]["coder"]["provider_names"] = ["missing"]
+
+    with pytest.raises(ValidationError, match="Agent coder references unknown provider missing"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_unknown_agent_workflow() -> None:
+    payload = _build_config().model_dump()
+    payload["agents"]["coder"]["workflow"] = "ship_it"
+
+    with pytest.raises(ValidationError, match="workflow"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_unknown_default_agent() -> None:
+    payload = _build_config().model_dump()
+    payload["default_agent"] = "missing"
+
+    with pytest.raises(ValidationError, match="Default agent missing is not configured"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_requires_planning_agent() -> None:
+    payload = _build_config().model_dump()
+    payload["agents"].pop("planner")
+
+    with pytest.raises(ValidationError, match="A planning agent must be configured"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_requires_multi_stage_support_agents_for_generate_code() -> None:
+    payload = _build_config().model_dump()
+    payload["agents"].pop("architect")
+    payload["agents"].pop("tester")
+
+    with pytest.raises(ValidationError, match="design, testing"):
         AppConfig.model_validate(payload)

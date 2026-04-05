@@ -71,3 +71,6 @@ Relative runtime paths are resolved from `storage.workspace_root`. It defaults t
 - `runtime.max_concurrent_runs` must remain a positive integer so accepted work can always make progress.
 - `runtime.default_request_timeout_seconds` must remain a positive integer and is the shared upper bound for operator-facing local CLI work such as repository and package-management commands unless a more specific timeout is introduced.
 - Provider-level `timeout_seconds` and runtime polling intervals should also remain positive integers so the runtime does not degrade into immediate failures or invalid scheduler behavior.
+- Learning controls such as `learning.max_context_items` and `learning.max_result_chars` must remain positive integers so context recall stays bounded and excerpt truncation remains predictable.
+- `workflow_control.max_review_iterations` must remain a positive integer so multi-stage runs cannot terminate as a false success without executing any review loop iterations.
+- `default_provider` and agent-level `provider_names` must resolve to configured provider aliases. Validation should reject unknown references before startup rather than deferring them to runtime execution.

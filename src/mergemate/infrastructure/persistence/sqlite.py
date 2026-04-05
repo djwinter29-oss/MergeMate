@@ -8,7 +8,7 @@ import sqlite3
 
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.runs.repository import ApprovalDecision, StatusUpdateDecision
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.runs.value_objects import RunStage, RunStatus
 
 
 def _to_datetime(value: str) -> datetime:
@@ -86,7 +86,12 @@ class SQLiteDatabase:
                     ON tool_events(run_id, created_at DESC);
                 """
             )
-            self._ensure_column(connection, "agent_runs", "current_stage", "TEXT NOT NULL DEFAULT 'planning'")
+            self._ensure_column(
+                connection,
+                "agent_runs",
+                "current_stage",
+                f"TEXT NOT NULL DEFAULT '{RunStage.PLANNING.value}'",
+            )
             self._ensure_column(connection, "agent_runs", "plan_text", "TEXT")
             self._ensure_column(connection, "agent_runs", "design_text", "TEXT")
             self._ensure_column(connection, "agent_runs", "test_text", "TEXT")
@@ -179,7 +184,7 @@ class SQLiteRunRepository:
         status: RunStatus,
         *,
         expected_current_status: RunStatus | None = None,
-        current_stage: str | None = None,
+        current_stage: str | RunStage | None = None,
         result_text: str | None = None,
         error_text: str | None = None,
     ) -> StatusUpdateDecision:
@@ -218,7 +223,7 @@ class SQLiteRunRepository:
         status: RunStatus,
         *,
         expected_current_status: RunStatus | None = None,
-        current_stage: str | None = None,
+        current_stage: str | RunStage | None = None,
         result_text: str | None = None,
         error_text: str | None = None,
     ) -> AgentRun | None:
@@ -238,7 +243,7 @@ class SQLiteRunRepository:
         plan_text: str,
         prompt: str | None = None,
         *,
-        current_stage: str | None = None,
+        current_stage: str | RunStage | None = None,
     ) -> AgentRun | None:
         existing = self.get(run_id)
         if existing is None:
@@ -253,7 +258,7 @@ class SQLiteRunRepository:
                 (
                     plan_text,
                     prompt if prompt is not None else existing.prompt,
-                    current_stage or "awaiting_user_confirmation",
+                    current_stage or RunStage.AWAITING_USER_CONFIRMATION,
                     datetime.now(UTC).isoformat(),
                     run_id,
                 ),
@@ -271,7 +276,7 @@ class SQLiteRunRepository:
 
         next_status = RunStatus.QUEUED.value if existing.status == RunStatus.AWAITING_CONFIRMATION else existing.status.value
         next_stage = (
-            "queued_for_execution"
+            RunStage.QUEUED_FOR_EXECUTION
             if existing.status == RunStatus.AWAITING_CONFIRMATION
             else existing.current_stage
         )
@@ -292,7 +297,7 @@ class SQLiteRunRepository:
         self,
         run_id: str,
         *,
-        current_stage: str | None = None,
+        current_stage: str | RunStage | None = None,
         design_text: str | None = None,
         test_text: str | None = None,
         review_text: str | None = None,

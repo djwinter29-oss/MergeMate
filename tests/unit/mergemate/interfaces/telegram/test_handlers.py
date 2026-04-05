@@ -299,18 +299,28 @@ async def test_tools_command_accepts_limit_with_or_without_run_id() -> None:
 async def test_tools_command_rejects_invalid_limit_values() -> None:
     runtime = _runtime(latest=GetRunStatusStub())
     application = ApplicationStub(runtime)
+    expected = [
+        f"Usage: /tools [run_id] [limit]. Limit must be a positive integer up to {handlers.MAX_TOOL_HISTORY_LIMIT}."
+    ]
 
     zero_only_message = MessageStub("/tools 0")
     await handlers.tools_command(UpdateStub(zero_only_message), ContextStub(application, args=["0"]))
-    assert zero_only_message.replies == ["Usage: /tools [run_id] [limit]. Limit must be a positive integer."]
+    assert zero_only_message.replies == expected
 
     bad_text_message = MessageStub("/tools run-1 many")
     await handlers.tools_command(UpdateStub(bad_text_message), ContextStub(application, args=["run-1", "many"]))
-    assert bad_text_message.replies == ["Usage: /tools [run_id] [limit]. Limit must be a positive integer."]
+    assert bad_text_message.replies == expected
 
     zero_with_run_message = MessageStub("/tools run-1 0")
     await handlers.tools_command(UpdateStub(zero_with_run_message), ContextStub(application, args=["run-1", "0"]))
-    assert zero_with_run_message.replies == ["Usage: /tools [run_id] [limit]. Limit must be a positive integer."]
+    assert zero_with_run_message.replies == expected
+
+    too_large_message = MessageStub(f"/tools {handlers.MAX_TOOL_HISTORY_LIMIT + 1}")
+    await handlers.tools_command(
+        UpdateStub(too_large_message),
+        ContextStub(application, args=[str(handlers.MAX_TOOL_HISTORY_LIMIT + 1)]),
+    )
+    assert too_large_message.replies == expected
 
     too_many_args_message = MessageStub("/tools run-1 5 extra")
     await handlers.tools_command(UpdateStub(too_many_args_message), ContextStub(application, args=["run-1", "5", "extra"]))
@@ -364,6 +374,7 @@ async def test_approve_command_starts_watcher_when_dispatched(monkeypatch: pytes
 
     assert "approved" in message.replies[0]
     assert started == [(5, "run-4")]
+    assert runtime.approve_run.calls == [("run-4", 5, True)]
 
 
 @pytest.mark.asyncio
@@ -564,6 +575,7 @@ async def test_handle_prompt_handles_auto_execution_and_confirmation(monkeypatch
     await handlers.handle_prompt(UpdateStub(auto_message), ContextStub(ApplicationStub(auto_runtime)))
     assert "started automatically" in auto_message.replies[0]
     assert auto_submit.execute_calls[0]["workflow"] == "debug_code"
+    assert auto_submit.execute_calls[0]["on_finished"] is not None
     assert started == [(5, "run-8")]
 
     confirm_submit = SubmitPromptStub(execute_result=SimpleNamespace(run_id="run-9", status="awaiting_confirmation", plan_text="plan", estimate_seconds=18))
@@ -652,9 +664,21 @@ async def test_notify_terminal_update_formats_terminal_messages() -> None:
     runtime = _runtime()
     application = ApplicationStub(runtime)
 
-    await handlers._notify_terminal_update(application, 5, SimpleNamespace(status=RunStatus.COMPLETED, run_id="run-1", result_text="done", error_text=None))
-    await handlers._notify_terminal_update(application, 5, SimpleNamespace(status=RunStatus.CANCELLED, run_id="run-2", result_text=None, error_text=None))
-    await handlers._notify_terminal_update(application, 5, SimpleNamespace(status=RunStatus.FAILED, run_id="run-3", result_text=None, error_text="boom"))
+    await handlers._notify_terminal_update(
+        application,
+        5,
+        SimpleNamespace(status=RunStatus.COMPLETED, run_id="run-1", result_text="done", error_text=None),
+    )
+    await handlers._notify_terminal_update(
+        application,
+        5,
+        SimpleNamespace(status=RunStatus.CANCELLED, run_id="run-2", result_text=None, error_text=None),
+    )
+    await handlers._notify_terminal_update(
+        application,
+        5,
+        SimpleNamespace(status=RunStatus.FAILED, run_id="run-3", result_text=None, error_text="boom"),
+    )
 
     assert application.bot.messages == [
         (5, "Run run-1 completed.\n\ndone"),

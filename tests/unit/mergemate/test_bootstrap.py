@@ -86,6 +86,10 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
         def __init__(self, registry, wired_settings, **kwargs) -> None:
             recorded.record("tool_service", registry.tools, wired_settings, kwargs)
 
+    class PlanningServiceStub:
+        def __init__(self, gateway, wired_settings) -> None:
+            recorded.record("planning_service", gateway, wired_settings)
+
     class WorkflowServiceStub:
         def __init__(self, gateway, wired_settings) -> None:
             recorded.record("workflow_service", gateway, wired_settings)
@@ -128,6 +132,7 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
     monkeypatch.setattr(bootstrap_module, "GitLabCliTool", lambda executable, cwd, timeout_seconds: ("gitlab_cli", executable, cwd, timeout_seconds))
     monkeypatch.setattr(bootstrap_module, "ToolRegistry", ToolRegistryStub)
     monkeypatch.setattr(bootstrap_module, "ToolService", ToolServiceStub)
+    monkeypatch.setattr(bootstrap_module, "PlanningService", PlanningServiceStub)
     monkeypatch.setattr(bootstrap_module, "WorkflowService", WorkflowServiceStub)
     monkeypatch.setattr(bootstrap_module, "AgentOrchestrator", OrchestratorStub)
     monkeypatch.setattr(bootstrap_module, "BackgroundRunWorker", WorkerStub)
@@ -190,6 +195,7 @@ def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Pa
     monkeypatch.setattr(bootstrap_module, "PromptService", lambda prompts_root: "prompt_service")
     monkeypatch.setattr(bootstrap_module, "ParallelLLMGateway", lambda wired_settings, llm_clients: "gateway")
     monkeypatch.setattr(bootstrap_module, "ToolService", lambda registry, wired_settings, **kwargs: "tool_service")
+    monkeypatch.setattr(bootstrap_module, "PlanningService", lambda gateway, wired_settings: "planning_service")
     monkeypatch.setattr(bootstrap_module, "WorkflowService", lambda gateway, wired_settings: "workflow_service")
     monkeypatch.setattr(bootstrap_module, "AgentOrchestrator", lambda **kwargs: "orchestrator")
     monkeypatch.setattr(bootstrap_module, "BackgroundRunWorker", lambda **kwargs: "worker")

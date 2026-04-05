@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.runs.value_objects import RunStage, RunStatus
 
 
 @dataclass(slots=True)
@@ -14,7 +14,7 @@ class AgentRun:
     agent_name: str
     workflow: str
     status: RunStatus
-    current_stage: str
+    current_stage: str | RunStage
     prompt: str
     estimate_seconds: int
     plan_text: str | None
