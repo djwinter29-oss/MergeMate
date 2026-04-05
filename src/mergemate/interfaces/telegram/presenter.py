@@ -117,7 +117,7 @@ def format_cancellation_not_allowed(run_id: str, status: str) -> str:
 def format_welcome(default_agent: str) -> str:
     return (
         "MergeMate is running. Send a normal message to capture requirements and draft a plan. "
-        f"The current default coding agent is {default_agent}. Use /status to inspect the latest run."
+        f"The current default chat agent is {default_agent}. Use /status to inspect the latest run."
     )
 
 

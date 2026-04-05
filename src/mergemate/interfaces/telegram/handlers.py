@@ -5,6 +5,7 @@ from telegram.ext import ContextTypes
 
 from mergemate.application.use_cases.submit_prompt import PromptSubmissionError
 from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.shared import is_user_facing_workflow
 from mergemate.interfaces.telegram import message_utils
 from mergemate.interfaces.telegram.models import TelegramRequest
 from mergemate.interfaces.telegram.presenter import (
@@ -37,11 +38,18 @@ async def _notify_terminal_update(application, chat_id: int, run) -> None:
     await notify_terminal_update(application, chat_id, run)
 
 
+def _is_chat_entry_agent(runtime, agent_name: str) -> bool:
+    agent_config = runtime.settings.agents.get(agent_name)
+    return agent_config is not None and is_user_facing_workflow(agent_config.workflow)
+
+
 def _build_request(update: Update, runtime) -> TelegramRequest | None:
     message = update.effective_message
     user = update.effective_user
     chat = update.effective_chat
     if message is None or user is None or chat is None:
+        return None
+    if not _is_chat_entry_agent(runtime, runtime.settings.default_agent):
         return None
     return TelegramRequest(
         chat_id=chat.id,
@@ -179,9 +187,18 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     runtime = _runtime(context)
-    request = _build_request(update, runtime)
     message = update.effective_message
-    if message is None or request is None or not request.message_text.strip():
+    request = _build_request(update, runtime)
+    if message is None:
+        return
+    if request is None:
+        if not _is_chat_entry_agent(runtime, runtime.settings.default_agent):
+            await message.reply_text(
+                "The configured default agent is not available for Telegram chat entry. "
+                "Use generate_code, debug_code, or explain_code as the default agent workflow."
+            )
+        return
+    if not request.message_text.strip():
         return
 
     latest_run = runtime.get_run_status.execute(chat_id=request.chat_id)

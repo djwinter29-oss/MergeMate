@@ -42,7 +42,9 @@ def test_presenter_formats_all_primary_messages() -> None:
     assert "Run run-1 completed." in format_completion("run-1", "done")
     assert "Unknown error" in format_failure("run-1", None)
     assert format_cancelled("run-1") == "Run run-1 was cancelled."
-    assert "MergeMate is running" in format_welcome("coder")
+    welcome = format_welcome("debugger")
+    assert "MergeMate is running" in welcome
+    assert "default chat agent is debugger" in welcome
     assert "approved" in format_approval_started("run-1")
     assert "already in status 'completed'" in format_approval_not_needed("run-1", "completed")
     assert "started automatically" in format_auto_execution_started("run-1", "plan", 20)

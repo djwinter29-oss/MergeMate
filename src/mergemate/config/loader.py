@@ -8,6 +8,7 @@ import yaml
 from mergemate.config.models import AppConfig
 
 PACKAGE_DEFAULTS_PATH = Path(__file__).with_name("defaults.yaml")
+REPLACE_ON_EXPLICIT_OVERRIDE_KEYS = frozenset({"agents"})
 
 
 def _discover_default_local_config_path() -> Path:
@@ -35,11 +36,19 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     return raw or {}
 
 
-def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+def _deep_merge(
+    base: dict[str, Any],
+    override: dict[str, Any],
+    *,
+    replace_keys: frozenset[str] = frozenset(),
+) -> dict[str, Any]:
     merged = dict(base)
     for key, value in override.items():
+        if key in replace_keys:
+            merged[key] = value
+            continue
         if isinstance(value, dict) and isinstance(merged.get(key), dict):
-            merged[key] = _deep_merge(merged[key], value)
+            merged[key] = _deep_merge(merged[key], value, replace_keys=replace_keys)
             continue
         merged[key] = value
     return merged
@@ -58,5 +67,9 @@ def load_runtime_settings(explicit_path: Path | None = None) -> AppConfig:
     if explicit_path is not None:
         resolved_explicit_path = _resolve_explicit_config_path(explicit_path)
         if resolved_explicit_path != local_config_path:
-            effective = _deep_merge(effective, _read_yaml(resolved_explicit_path))
+            effective = _deep_merge(
+                effective,
+                _read_yaml(resolved_explicit_path),
+                replace_keys=REPLACE_ON_EXPLICIT_OVERRIDE_KEYS,
+            )
     return AppConfig.model_validate(effective)

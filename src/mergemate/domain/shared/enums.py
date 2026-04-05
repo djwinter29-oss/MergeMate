@@ -44,6 +44,11 @@ def uses_multi_stage_delivery(workflow: str | WorkflowName) -> bool:
     return workflow_name in MULTI_STAGE_WORKFLOWS
 
 
+def is_user_facing_workflow(workflow: str | WorkflowName) -> bool:
+    workflow_name = resolve_workflow_name(workflow)
+    return workflow_name in USER_FACING_WORKFLOWS
+
+
 def workflow_prompt_file(workflow: str | WorkflowName) -> str:
     workflow_name = resolve_workflow_name(workflow)
     return PROMPT_FILE_BY_WORKFLOW.get(workflow_name, "base.md")

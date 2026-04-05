@@ -42,6 +42,8 @@ mergemate run-bot --config ~/.config/mergemate/config.yaml
 
 This allows a per-user service definition without forcing the repo-local config layout.
 
+When an explicit override file includes an `agents` section, that section replaces the inherited agent map as a whole instead of merging individual agent entries. This keeps workflow-to-agent assignment deterministic for per-user overrides.
+
 ## Current Schema Areas
 
 - `default_agent` and `default_provider`
@@ -52,13 +54,13 @@ This allows a per-user service definition without forcing the repo-local config 
 - `tools`: package-install permissions and pip executable
 - `source_control`: git, GitHub CLI, and GitLab CLI integration settings
 - `runtime`: concurrency, request timeout, and progress-update interval
-- `workflow_control`: approval requirement, review iteration cap, and role-to-agent mapping
+- `workflow_control`: approval requirement and review iteration cap
 - `agents`: workflow, tool allow-list, provider aliases, parallel mode, and combine strategy
 - `logging`: application log level
 
 ## Provider Configuration Pattern
 
-Providers are configured by URL so the same schema can target multiple OpenAI-compatible endpoints. Roles such as planner, architect, coder, tester, and reviewer are then mapped to one or more provider aliases through the `agents` section.
+Providers are configured by URL so the same schema can target multiple OpenAI-compatible endpoints. Each workflow role such as planner, architect, coder, tester, and reviewer is represented by exactly one configured agent in the `agents` section, and that agent can map to one or more provider aliases.
 
 This lets one deployment use different models for planning, design, implementation, testing, and review without changing the runtime code.
 
@@ -74,3 +76,6 @@ Relative runtime paths are resolved from `storage.workspace_root`. It defaults t
 - Learning controls such as `learning.max_context_items` and `learning.max_result_chars` must remain positive integers so context recall stays bounded and excerpt truncation remains predictable.
 - `workflow_control.max_review_iterations` must remain a positive integer so multi-stage runs cannot terminate as a false success without executing any review loop iterations.
 - `default_provider` and agent-level `provider_names` must resolve to configured provider aliases. Validation should reject unknown references before startup rather than deferring them to runtime execution.
+- `default_agent` must resolve to a configured user-facing workflow agent: `generate_code`, `debug_code`, or `explain_code`.
+- Workflow assignment must remain one agent per workflow so runtime resolution is deterministic and independent of YAML ordering.
+- Explicit override files that define `agents` replace the inherited `agents` map instead of merging individual entries.

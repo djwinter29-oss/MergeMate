@@ -105,6 +105,7 @@ def test_config_model_resolves_agent_name_for_workflow() -> None:
     config = _build_config()
 
     assert config.resolve_agent_name_for_workflow("generate_code") == "coder"
+    assert config.resolve_agent_name_for_workflow(WorkflowName.GENERATE_CODE) == "coder"
     assert config.resolve_agent_name_for_workflow("generate_code", preferred_agent_name="coder") == "coder"
     assert config.resolve_agent_name_for_workflow("generate_code", preferred_agent_name="reviewer") == "coder"
 
@@ -191,6 +192,14 @@ def test_config_model_rejects_unknown_default_agent() -> None:
         AppConfig.model_validate(payload)
 
 
+def test_config_model_rejects_internal_default_agent() -> None:
+    payload = _build_config().model_dump()
+    payload["default_agent"] = "planner"
+
+    with pytest.raises(ValidationError, match="Default agent must use a user-facing workflow"):
+        AppConfig.model_validate(payload)
+
+
 def test_config_model_requires_planning_agent() -> None:
     payload = _build_config().model_dump()
     payload["agents"].pop("planner")
@@ -205,4 +214,12 @@ def test_config_model_requires_multi_stage_support_agents_for_generate_code() ->
     payload["agents"].pop("tester")
 
     with pytest.raises(ValidationError, match="design, testing"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_duplicate_workflow_assignments() -> None:
+    payload = _build_config().model_dump()
+    payload["agents"]["backup_coder"] = {"workflow": "generate_code"}
+
+    with pytest.raises(ValidationError, match="Duplicate workflows: generate_code"):
         AppConfig.model_validate(payload)

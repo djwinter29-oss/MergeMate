@@ -423,14 +423,27 @@ async def test_handle_prompt_ignores_blank_message() -> None:
 
 
 def test_build_request_uses_runtime_default_agent() -> None:
-    runtime = _runtime(default_agent="reviewer")
+    runtime = _runtime(default_agent="reviewer", workflow="review")
+    request = handlers._build_request(UpdateStub(MessageStub("hello")), runtime)
+
+    assert request is None
+
+
+def test_build_request_rejects_internal_default_agent() -> None:
+    runtime = _runtime(default_agent="planner", workflow="planning")
+
+    assert handlers._build_request(UpdateStub(MessageStub("hello")), runtime) is None
+
+
+def test_build_request_accepts_user_facing_default_agent() -> None:
+    runtime = _runtime(default_agent="debugger", workflow="debug_code")
     request = handlers._build_request(UpdateStub(MessageStub("hello")), runtime)
 
     assert request is not None
     assert request.chat_id == 5
     assert request.user_id == 3
     assert request.message_text == "hello"
-    assert request.agent_name == "reviewer"
+    assert request.agent_name == "debugger"
 
 
 def test_build_request_returns_none_for_incomplete_update() -> None:
@@ -476,6 +489,18 @@ async def test_handle_prompt_returns_when_user_or_chat_missing() -> None:
     await handlers.handle_prompt(UpdateStub(MessageStub("hello"), effective_chat=None), ContextStub(application))
 
     assert application.bot.messages == []
+
+
+@pytest.mark.asyncio
+async def test_handle_prompt_rejects_internal_default_agent() -> None:
+    runtime = _runtime(default_agent="planner", workflow="planning")
+    message = MessageStub("hello")
+
+    await handlers.handle_prompt(UpdateStub(message), ContextStub(ApplicationStub(runtime)))
+
+    assert message.replies == [
+        "The configured default agent is not available for Telegram chat entry. Use generate_code, debug_code, or explain_code as the default agent workflow."
+    ]
 
 
 @pytest.mark.asyncio

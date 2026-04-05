@@ -8,15 +8,15 @@ The MVP is a modular monolith. It runs as one Python application process or as a
 
 ### Interactive Path
 
-Responsible for keeping Telegram responsive:
+Responsible for keeping Telegram responsive enough for chat intake while keeping long-running execution out of the update handler:
 
 1. Receive Telegram update.
 2. Normalize request.
 3. Resolve effective configuration.
 4. Determine workflow and initial estimate.
 5. Persist a run in `awaiting_confirmation` or `queued` state based on config.
-6. Draft a plan with the planner agent.
-7. Return the drafted plan immediately, or auto-dispatch when confirmation is disabled.
+6. Draft a plan with the planner agent. In the current MVP this is still a synchronous LLM call on the intake path, so first-response latency is bounded by planner availability and timeout settings.
+7. Return the drafted plan, or auto-dispatch when confirmation is disabled.
 
 ### Background Path
 

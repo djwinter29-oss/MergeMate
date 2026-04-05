@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field, model_validator
 
-from mergemate.domain.shared import WorkflowName
+from mergemate.domain.shared import WorkflowName, is_user_facing_workflow
 
 
 class LoggingConfig(BaseModel):
@@ -93,6 +93,13 @@ class AppConfig(BaseModel):
         if self.default_agent not in self.agents:
             raise ValueError(f"Default agent {self.default_agent} is not configured")
 
+        default_agent_workflow = self.agents[self.default_agent].workflow
+        if not is_user_facing_workflow(default_agent_workflow):
+            raise ValueError(
+                "Default agent must use a user-facing workflow: "
+                "generate_code, debug_code, or explain_code"
+            )
+
         if self.default_provider not in self.providers:
             raise ValueError(f"Default provider {self.default_provider} is not configured")
 
@@ -103,7 +110,21 @@ class AppConfig(BaseModel):
                         f"Agent {agent_name} references unknown provider {provider_name}"
                     )
 
-        available_workflows = {agent.workflow for agent in self.agents.values()}
+        workflow_counts: dict[WorkflowName, int] = {}
+        for agent in self.agents.values():
+            workflow_counts[agent.workflow] = workflow_counts.get(agent.workflow, 0) + 1
+
+        duplicated_workflows = sorted(
+            workflow.value for workflow, count in workflow_counts.items() if count > 1
+        )
+        if duplicated_workflows:
+            duplicate_text = ", ".join(duplicated_workflows)
+            raise ValueError(
+                "Each workflow must be assigned to exactly one agent. "
+                f"Duplicate workflows: {duplicate_text}"
+            )
+
+        available_workflows = set(workflow_counts)
         if WorkflowName.PLANNING not in available_workflows:
             raise ValueError("A planning agent must be configured")
 
@@ -142,16 +163,18 @@ class AppConfig(BaseModel):
         *,
         preferred_agent_name: str | None = None,
     ) -> str:
+        resolved_workflow = WorkflowName(workflow)
+
         if preferred_agent_name is not None:
             preferred_agent = self.agents.get(preferred_agent_name)
-            if preferred_agent is not None and preferred_agent.workflow == workflow:
+            if preferred_agent is not None and preferred_agent.workflow == resolved_workflow:
                 return preferred_agent_name
 
         for agent_name, agent in self.agents.items():
-            if agent.workflow == workflow:
+            if agent.workflow == resolved_workflow:
                 return agent_name
 
-        raise ValueError(f"No configured agent found for workflow {workflow}")
+        raise ValueError(f"No configured agent found for workflow {resolved_workflow.value}")
 
     def resolve_telegram_token(self) -> str:
         token = os.getenv(self.telegram.bot_token_env)

@@ -137,6 +137,8 @@ The current `generate_code` execution sequence is:
 
 For direct workflows such as `debug_code` and `explain_code`, MergeMate still drafts and confirms a plan first, but the background execution path runs a direct single-agent call instead of the full design, testing, and review chain.
 
+The current MVP keeps long-running execution work off the Telegram intake path, but the initial planning step is still a synchronous planner-model call. That means the first reply is limited by planner latency even though design, coding, testing, review, and final delivery happen in the background.
+
 Package installation is supported, but intentionally gated by configuration:
 
 - set `tools.allow_package_install: true`

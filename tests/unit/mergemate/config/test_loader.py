@@ -24,7 +24,7 @@ def test_load_runtime_settings_explicit_config_overrides_local_config(tmp_path) 
     config_path = tmp_path / "override.yaml"
     config_path.write_text(
         """
-default_agent: reviewer
+default_agent: debugger
 telegram:
   mode: polling
 workflow_control:
@@ -36,7 +36,7 @@ workflow_control:
 
     settings = load_runtime_settings(config_path)
 
-    assert settings.default_agent == "reviewer"
+    assert settings.default_agent == "debugger"
     assert settings.workflow_control.max_review_iterations == 2
     assert settings.default_provider == "openai_coder"
 
@@ -71,7 +71,7 @@ def test_resolve_config_path_prefers_project_root_over_current_directory(tmp_pat
     config_path.parent.mkdir(parents=True)
     (project_root / "pyproject.toml").write_text("[project]\nname='mergemate'\n", encoding="utf-8")
     defaults_path.write_text("default_agent: coder\n", encoding="utf-8")
-    config_path.write_text("default_agent: reviewer\n", encoding="utf-8")
+    config_path.write_text("default_agent: debugger\n", encoding="utf-8")
     other_root = tmp_path / "elsewhere"
     other_root.mkdir()
     monkeypatch.chdir(other_root)
@@ -125,6 +125,93 @@ def test_read_yaml_and_deep_merge_cover_empty_and_nested_cases(tmp_path) -> None
         "a": {"b": 1, "d": 2},
         "c": 3,
     }
+
+
+def test_deep_merge_replaces_selected_top_level_sections() -> None:
+        merged = _deep_merge(
+                {
+                        "agents": {
+                                "coder": {"workflow": "generate_code"},
+                                "reviewer": {"workflow": "review"},
+                        },
+                        "runtime": {"max_concurrent_runs": 2},
+                },
+                {
+                        "agents": {
+                                "debugger": {"workflow": "debug_code"},
+                        },
+                        "runtime": {"status_update_interval_seconds": 10},
+                },
+                replace_keys=frozenset({"agents"}),
+        )
+
+        assert merged == {
+                "agents": {
+                        "debugger": {"workflow": "debug_code"},
+                },
+                "runtime": {
+                        "max_concurrent_runs": 2,
+                        "status_update_interval_seconds": 10,
+                },
+        }
+
+
+def test_load_runtime_settings_explicit_agents_replace_inherited_agent_map(tmp_path, monkeypatch) -> None:
+        project_root = tmp_path / "project"
+        defaults_path = project_root / "src" / "mergemate" / "config" / "defaults.yaml"
+        local_config_path = project_root / "config" / "config.yaml"
+        explicit_config_path = tmp_path / "override.yaml"
+        defaults_path.parent.mkdir(parents=True)
+        local_config_path.parent.mkdir(parents=True)
+        (project_root / "pyproject.toml").write_text("[project]\nname='mergemate'\n", encoding="utf-8")
+        defaults_path.write_text(
+                """
+default_agent: coder
+default_provider: primary
+providers:
+    primary:
+        api_key_env: PRIMARY_KEY
+        model: gpt-5.4
+telegram:
+    bot_token_env: TELEGRAM_TOKEN
+runtime:
+    max_concurrent_runs: 2
+agents:
+    planner:
+        workflow: planning
+    coder:
+        workflow: generate_code
+    reviewer:
+        workflow: review
+    tester:
+        workflow: testing
+    architect:
+        workflow: design
+""".strip()
+                + "\n",
+                encoding="utf-8",
+        )
+        local_config_path.write_text("default_agent: coder\n", encoding="utf-8")
+        explicit_config_path.write_text(
+                """
+default_agent: debugger
+agents:
+    planner:
+        workflow: planning
+    debugger:
+        workflow: debug_code
+""".strip()
+                + "\n",
+                encoding="utf-8",
+        )
+        monkeypatch.setattr(loader_module, "PACKAGE_DEFAULTS_PATH", defaults_path)
+        monkeypatch.setattr(loader_module, "_discover_default_local_config_path", lambda: local_config_path)
+
+        settings = load_runtime_settings(explicit_config_path)
+
+        assert settings.default_agent == "debugger"
+        assert set(settings.agents) == {"planner", "debugger"}
+        assert settings.resolve_agent_name_for_workflow("debug_code") == "debugger"
 
 
 def test_load_runtime_settings_ignores_explicit_path_when_it_matches_default(monkeypatch) -> None:

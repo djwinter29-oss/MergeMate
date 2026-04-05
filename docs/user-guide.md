@@ -2,7 +2,7 @@
 
 ## What MergeMate Does
 
-MergeMate is a Telegram-driven coding assistant that keeps chat responsive while longer planning, design, coding, testing, and review work runs in the background.
+MergeMate is a Telegram-driven coding assistant that keeps long-running design, coding, testing, and review work in the background. The initial planning step still happens synchronously on the chat intake path in the current MVP.
 
 If you want the architectural reasoning behind these behaviors, start with `docs/architecture/adr/index.md`.
 
@@ -14,7 +14,7 @@ Implemented now:
 
 - approval-gated planning before execution
 - background execution with Telegram progress updates
-- role-based planner, architect, coder, tester, and reviewer stages
+- role-based planner, architect, coder, tester, and reviewer stages, with one configured agent per workflow role
 - endpoint-based provider configuration for OpenAI-compatible APIs
 - SQLite persistence for runs, chat history, and learning excerpts
 - local CLI integration for repository and platform context
@@ -192,11 +192,8 @@ providers:
     api_key_prefix: ""
 
 workflow_control:
-  planner_agent_name: planner
-  architect_agent_name: architect
-  coder_agent_name: coder
-  tester_agent_name: tester
-  reviewer_agent_name: reviewer
+  require_confirmation: true
+  max_review_iterations: 5
 
 agents:
   planner:
@@ -256,7 +253,9 @@ The `workflow_control` section governs the approval and review loop.
 
 - `require_confirmation: true` keeps the plan approval gate enabled
 - `max_review_iterations: 5` limits planner-reviewer replanning cycles
-- role-name fields choose which configured agent performs each workflow stage
+- workflow stages are selected from the `agents` section by workflow, with one configured agent per workflow role
+
+If you supply an explicit override config file and it contains an `agents` section, MergeMate replaces the inherited `agents` map with that section instead of merging individual agent entries.
 
 ## Package Installation Safety
 
