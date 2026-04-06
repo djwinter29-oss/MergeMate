@@ -1,7 +1,9 @@
 # ADR-010: Durable Run Jobs For Runtime Split
 
-- Status: Accepted
+- Status: Superseded in part by ADR-011
 - Date: 2026-04-06
+
+This ADR still records the decision to introduce durable run jobs as the first split-runtime seam. Its earlier assumption that the runtime would later move toward Postgres-backed persistence is superseded by ADR-011, which narrows the intended deployment target to single-host SQLite plus Redis.
 
 ## Context
 

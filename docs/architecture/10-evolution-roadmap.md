@@ -13,11 +13,12 @@
 1. Harden webhook deployment guidance, ingress security, and release validation beyond the initial runtime foundation.
 2. Add entry-point based tool plugins once runtime tool invocation is part of the execution loop.
 3. Add richer source-control workflows beyond repository inspection.
-4. Split bot and worker processes if deployment pressure justifies it.
+4. Split bot and worker processes on the same host once the Redis queue transport and worker entrypoint are ready.
 
 ## Longer-Term
 
 1. Add Redis-backed queue.
-2. Add Postgres persistence.
-3. Add sandboxed code execution.
-4. Publish to PyPI.
+2. Add a dedicated worker process entrypoint.
+3. Harden SQLite for split-process operation with WAL, busy-timeout, and startup reconciliation.
+4. Add sandboxed code execution.
+5. Publish to PyPI.

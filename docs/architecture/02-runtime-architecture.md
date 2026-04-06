@@ -65,6 +65,6 @@ Provider definitions are endpoint-based, not type-based. This allows one workflo
 - Local interactive run: `mergemate run-bot --config ./config/config.yaml`
 - User-space service: launch the same command under systemd user service or equivalent with an explicit config path.
 - Current webhook mode: same internal architecture with a different Telegram ingress adapter.
-- Future split mode: one ingress process plus one or more worker processes sharing durable jobs, external queue transport, and external database state.
+- Future split mode: one ingress process plus one or more worker processes on the same host, sharing SQLite-backed durable jobs over local persistent storage and using Redis for queue transport and worker wake-up.
 
 See `docs/diagrams/index.md` for the corresponding container and sequence views.

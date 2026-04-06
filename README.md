@@ -76,7 +76,7 @@ Implemented now:
 Current limitations:
 
 - webhook deployment hardening is still in progress beyond the initial self-hosted webhook and readiness setup
-- honest ingress and worker splitting is still in progress; the current codebase now has durable planning and execution jobs, but Postgres-backed coordination and Redis transport are not implemented yet
+- honest ingress and worker splitting is still in progress; the current codebase now has durable planning and execution jobs, but Redis-backed transport and a dedicated worker process are not implemented yet
 - the provider adapter currently assumes an OpenAI-compatible chat-completions request shape
 - progress estimates are still static and workflow-based rather than telemetry-driven
 - sandboxed code execution is not part of the MVP
@@ -121,7 +121,7 @@ For webhook mode, also set `telegram.mode: webhook`, provide `telegram.webhook_p
 
 For step-by-step setup and operation, see `docs/user-guide.md`. For production-oriented persistence layout and deployment boundaries, see `docs/operations/production-deployment.md`.
 
-The current split-runtime implementation work starts with durable planning and execution job records in the shared persistence layer. That means dispatch is no longer modeled only as an in-memory worker handoff, but MergeMate still runs as one process until the later Postgres and Redis slices land.
+The current split-runtime implementation work starts with durable planning and execution job records in the shared persistence layer. That means dispatch is no longer modeled only as an in-memory worker handoff. The intended production direction is single-host deployment with SQLite as the system of record and Redis as the queue transport once ingress and worker become separate local processes.
 
 ## Learning And Package Installation
 

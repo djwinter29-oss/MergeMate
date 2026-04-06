@@ -2,7 +2,9 @@
 
 ## Purpose
 
-This runbook covers a minimal self-hosted deployment for MergeMate in Telegram webhook mode. It assumes one application instance, local SQLite state, and TLS terminated by a reverse proxy in front of the Python process.
+This runbook covers a minimal self-hosted deployment for MergeMate in Telegram webhook mode. It assumes one application instance today, local SQLite state, and TLS terminated by a reverse proxy in front of the Python process.
+
+The intended next production shape for this project is still single-host: a local ingress process, a local worker process, one local Redis queue service, and one SQLite database on persistent local storage.
 
 ## Recommended Topology
 

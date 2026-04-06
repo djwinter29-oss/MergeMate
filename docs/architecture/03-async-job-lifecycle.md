@@ -33,7 +33,7 @@ Approval and revision are only valid after the plan has been persisted. If the u
 - A run is intended to execute once per approved dispatch.
 - Duplicate enqueue attempts for the same active run are treated as a correctness bug, not as an accepted retry mechanism.
 - The worker and orchestrator should therefore refuse to restart runs that are already active or terminal.
-- Because run state is persisted in SQLite, duplicate-dispatch protection must hold across runtime instances that share the same database, not only inside one in-memory worker.
+- Because run state is persisted in SQLite, duplicate-dispatch protection must hold across local runtime processes that share the same database file, not only inside one in-memory worker.
 - The current durable-job implementation therefore persists planning and execution jobs separately from `agent_runs` and enforces one active job per run and job type at the database layer.
 - If resumable or at-least-once execution is introduced later, that behavior should be designed explicitly rather than emerging from duplicate background dispatch.
 
@@ -44,7 +44,7 @@ Approval and revision are only valid after the plan has been persisted. If the u
 - Worker startup claims the job with lease metadata and transitions it into `running` before orchestration begins.
 - Worker heartbeats refresh lease metadata while the job is active.
 - Worker completion or failure transitions the job into a terminal status and keeps the run as the user-facing source of truth.
-- The current slice still uses SQLite and an in-process queue backend, so retries and cross-process delivery remain later steps for the Postgres and Redis rollout.
+- The current slice still uses SQLite and an in-process queue backend, so retries, Redis-backed delivery, and crash-recovery reconciliation remain later steps in the single-host split-runtime rollout.
 
 ## Estimation Strategy
 

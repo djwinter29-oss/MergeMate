@@ -15,12 +15,13 @@ This directory records the architectural decisions that shape MergeMate.
 | [ADR-007](./ADR-007-review-driven-replanning-loop.md) | bounded review-driven replanning | allows serious review findings to trigger replanning without unbounded loops |
 | [ADR-008](./ADR-008-scm-integration-through-local-clis.md) | SCM integration through local authenticated CLIs | reuses existing `git`, `gh`, and `glab` login state instead of embedding OAuth |
 | [ADR-009](./ADR-009-config-driven-workflow-dispatch.md) | config-driven workflow dispatch | keeps workflow selection and execution shape aligned with the real runtime |
-| [ADR-010](./ADR-010-durable-run-jobs-for-runtime-split.md) | durable run jobs for ingress and worker split | introduces persistent job records as the first step toward external queue and database-backed split runtime |
+| [ADR-010](./ADR-010-durable-run-jobs-for-runtime-split.md) | durable run jobs for ingress and worker split | introduces persistent job records as the first split-runtime seam; deployment target later narrowed by ADR-011 |
+| [ADR-011](./ADR-011-single-host-sqlite-redis-runtime.md) | single-host SQLite and Redis runtime target | records that split ingress and worker remain single-host, with SQLite as the source of truth and Redis as transport |
 
 ## How To Read These
 
 - start with `ADR-001` through `ADR-004` for the original MVP foundation
-- read `ADR-005` through `ADR-009` for the later workflow and integration decisions
+- read `ADR-005` through `ADR-011` for the later workflow, integration, and deployment decisions
 - when a new requirement changes structure, deployment, provider strategy, or workflow control, it should usually become a new ADR rather than being buried only in code changes
 
 ## When To Create A New ADR
