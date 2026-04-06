@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 
@@ -48,8 +49,10 @@ class ApplicationStub:
         self.bot = BotStub()
         self.created_tasks = []
 
-    def create_task(self, task) -> None:
-        self.created_tasks.append(task)
+    def create_task(self, task):
+        created_task = asyncio.create_task(task)
+        self.created_tasks.append(created_task)
+        return created_task
 
 
 @dataclass(slots=True)
@@ -86,18 +89,27 @@ class GetRunStatusStub:
 
 
 class SubmitPromptStub:
-    def __init__(self, execute_result=None, revise_result=None, execute_error: Exception | None = None) -> None:
+    def __init__(self, execute_result=None, revise_result=None, execute_error: Exception | None = None, complete_result=None, complete_error: Exception | None = None) -> None:
         self.execute_result = execute_result
         self.revise_result = revise_result
         self.execute_error = execute_error
+        self.complete_result = complete_result or execute_result
+        self.complete_error = complete_error
         self.execute_calls = []
         self.revise_calls = []
+        self.complete_calls = []
 
     async def execute(self, **kwargs):
         self.execute_calls.append(kwargs)
         if self.execute_error is not None:
             raise self.execute_error
         return self.execute_result
+
+    async def complete_planning(self, run_id: str, *, on_finished=None):
+        self.complete_calls.append((run_id, on_finished is not None))
+        if self.complete_error is not None:
+            raise self.complete_error
+        return self.complete_result
 
     async def revise_plan_for_chat(self, run_id: str, feedback: str, *, chat_id: int | None = None):
         self.revise_calls.append((run_id, feedback, chat_id))
@@ -137,6 +149,12 @@ def _runtime(*, latest=None, submit=None, approve=None, cancel=None, default_age
         approve_run=approve or ApproveRunStub(None),
         cancel_run=cancel or CancelRunStub(None),
     )
+
+
+async def _drain_background_tasks(application: ApplicationStub) -> None:
+    if not application.created_tasks:
+        return
+    await asyncio.gather(*application.created_tasks)
 
 
 @pytest.mark.asyncio
@@ -378,6 +396,28 @@ async def test_approve_command_starts_watcher_when_dispatched(monkeypatch: pytes
 
 
 @pytest.mark.asyncio
+async def test_approve_command_reports_planning_in_progress_error() -> None:
+    runtime = _runtime(
+        approve=ApproveRunStub(
+            SimpleNamespace(
+                run_id="run-planning",
+                dispatched=False,
+                status="awaiting_confirmation",
+                error_text="Run planning is still in progress and cannot be approved yet.",
+            )
+        )
+    )
+    message = MessageStub("/approve run-planning")
+
+    await handlers.approve_command(
+        UpdateStub(message),
+        ContextStub(ApplicationStub(runtime), args=["run-planning"]),
+    )
+
+    assert message.replies == ["Run planning is still in progress and cannot be approved yet."]
+
+
+@pytest.mark.asyncio
 async def test_approve_command_uses_latest_run_when_no_argument(monkeypatch: pytest.MonkeyPatch) -> None:
     started = []
     monkeypatch.setattr(handlers, "_start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
@@ -594,20 +634,36 @@ async def test_handle_prompt_handles_auto_execution_and_confirmation(monkeypatch
     started = []
     monkeypatch.setattr(handlers, "_start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
 
-    auto_submit = SubmitPromptStub(execute_result=SimpleNamespace(run_id="run-8", status="queued", plan_text="plan", estimate_seconds=12))
+    auto_submit = SubmitPromptStub(
+        execute_result=SimpleNamespace(run_id="run-8", status="queued", plan_text=None, estimate_seconds=12),
+        complete_result=SimpleNamespace(run_id="run-8", status="queued", plan_text="plan", estimate_seconds=12),
+    )
     auto_runtime = _runtime(latest=GetRunStatusStub([None]), submit=auto_submit, workflow="debug_code")
     auto_message = MessageStub("debug it")
-    await handlers.handle_prompt(UpdateStub(auto_message), ContextStub(ApplicationStub(auto_runtime)))
-    assert "started automatically" in auto_message.replies[0]
+    auto_application = ApplicationStub(auto_runtime)
+    await handlers.handle_prompt(UpdateStub(auto_message), ContextStub(auto_application))
+    await _drain_background_tasks(auto_application)
+    assert "Request accepted. Run ID: run-8." in auto_message.replies[0]
+    assert len(auto_application.bot.messages) == 1
+    assert auto_application.bot.messages[0][0] == 5
+    assert "started automatically" in auto_application.bot.messages[0][1]
     assert auto_submit.execute_calls[0]["workflow"] == "debug_code"
-    assert auto_submit.execute_calls[0]["on_finished"] is not None
+    assert auto_submit.complete_calls == [("run-8", True)]
     assert started == [(5, "run-8")]
 
-    confirm_submit = SubmitPromptStub(execute_result=SimpleNamespace(run_id="run-9", status="awaiting_confirmation", plan_text="plan", estimate_seconds=18))
+    confirm_submit = SubmitPromptStub(
+        execute_result=SimpleNamespace(run_id="run-9", status="awaiting_confirmation", plan_text=None, estimate_seconds=18),
+        complete_result=SimpleNamespace(run_id="run-9", status="awaiting_confirmation", plan_text="plan", estimate_seconds=18),
+    )
     confirm_runtime = _runtime(latest=GetRunStatusStub([None]), submit=confirm_submit)
     confirm_message = MessageStub("build it")
-    await handlers.handle_prompt(UpdateStub(confirm_message), ContextStub(ApplicationStub(confirm_runtime)))
-    assert "Requirements captured for run run-9." in confirm_message.replies[0]
+    confirm_application = ApplicationStub(confirm_runtime)
+    await handlers.handle_prompt(UpdateStub(confirm_message), ContextStub(confirm_application))
+    await _drain_background_tasks(confirm_application)
+    assert "Request accepted. Run ID: run-9." in confirm_message.replies[0]
+    assert len(confirm_application.bot.messages) == 1
+    assert confirm_application.bot.messages[0][0] == 5
+    assert "Requirements captured for run run-9." in confirm_application.bot.messages[0][1]
 
 
 @pytest.mark.asyncio
@@ -616,19 +672,31 @@ async def test_handle_prompt_splits_oversized_auto_execution_and_confirmation_me
     monkeypatch.setattr(handlers, "_start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
     long_plan = "x" * (handlers.TELEGRAM_MESSAGE_LIMIT + 250)
 
-    auto_submit = SubmitPromptStub(execute_result=SimpleNamespace(run_id="run-8", status="queued", plan_text=long_plan, estimate_seconds=12))
+    auto_submit = SubmitPromptStub(
+        execute_result=SimpleNamespace(run_id="run-8", status="queued", plan_text=None, estimate_seconds=12),
+        complete_result=SimpleNamespace(run_id="run-8", status="queued", plan_text=long_plan, estimate_seconds=12),
+    )
     auto_runtime = _runtime(latest=GetRunStatusStub([None]), submit=auto_submit, workflow="debug_code")
     auto_message = MessageStub("debug it")
-    await handlers.handle_prompt(UpdateStub(auto_message), ContextStub(ApplicationStub(auto_runtime)))
-    assert len(auto_message.replies) == 2
-    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for reply in auto_message.replies)
+    auto_application = ApplicationStub(auto_runtime)
+    await handlers.handle_prompt(UpdateStub(auto_message), ContextStub(auto_application))
+    await _drain_background_tasks(auto_application)
+    assert len(auto_message.replies) == 1
+    assert len(auto_application.bot.messages) == 2
+    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for _, reply in auto_application.bot.messages)
 
-    confirm_submit = SubmitPromptStub(execute_result=SimpleNamespace(run_id="run-9", status="awaiting_confirmation", plan_text=long_plan, estimate_seconds=18))
+    confirm_submit = SubmitPromptStub(
+        execute_result=SimpleNamespace(run_id="run-9", status="awaiting_confirmation", plan_text=None, estimate_seconds=18),
+        complete_result=SimpleNamespace(run_id="run-9", status="awaiting_confirmation", plan_text=long_plan, estimate_seconds=18),
+    )
     confirm_runtime = _runtime(latest=GetRunStatusStub([None]), submit=confirm_submit)
     confirm_message = MessageStub("build it")
-    await handlers.handle_prompt(UpdateStub(confirm_message), ContextStub(ApplicationStub(confirm_runtime)))
-    assert len(confirm_message.replies) == 2
-    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for reply in confirm_message.replies)
+    confirm_application = ApplicationStub(confirm_runtime)
+    await handlers.handle_prompt(UpdateStub(confirm_message), ContextStub(confirm_application))
+    await _drain_background_tasks(confirm_application)
+    assert len(confirm_message.replies) == 1
+    assert len(confirm_application.bot.messages) == 2
+    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for _, reply in confirm_application.bot.messages)
 
 
 @pytest.mark.asyncio
@@ -636,13 +704,21 @@ async def test_handle_prompt_replies_with_stored_error_text_when_submission_fail
     failed_run = RunStub(run_id="run-10", status=RunStatus.FAILED, error_text="planner unavailable")
     runtime = _runtime(
         latest=GetRunStatusStub([None, failed_run]),
-        submit=SubmitPromptStub(execute_error=PromptSubmissionError("run-10", "planner unavailable")),
+        submit=SubmitPromptStub(
+            execute_result=SimpleNamespace(run_id="run-10", status="awaiting_confirmation", plan_text=None, estimate_seconds=12),
+            complete_error=PromptSubmissionError("run-10", "planner unavailable"),
+        ),
     )
     message = MessageStub("build it")
+    application = ApplicationStub(runtime)
 
-    await handlers.handle_prompt(UpdateStub(message), ContextStub(ApplicationStub(runtime)))
+    await handlers.handle_prompt(UpdateStub(message), ContextStub(application))
+    await _drain_background_tasks(application)
 
-    assert message.replies == ["planner unavailable"]
+    assert message.replies == [
+        "Request accepted. Run ID: run-10. Agent: coder. Status: planning. Estimated execution time after planning: 12s. You will receive the drafted plan shortly.",
+    ]
+    assert application.bot.messages == [(5, "planner unavailable")]
 
 
 @pytest.mark.asyncio
@@ -651,14 +727,32 @@ async def test_handle_prompt_splits_oversized_submission_error() -> None:
     failed_run = RunStub(run_id="run-10", status=RunStatus.FAILED, error_text=long_error)
     runtime = _runtime(
         latest=GetRunStatusStub([None, failed_run]),
-        submit=SubmitPromptStub(execute_error=PromptSubmissionError("run-10", long_error)),
+        submit=SubmitPromptStub(
+            execute_result=SimpleNamespace(run_id="run-10", status="awaiting_confirmation", plan_text=None, estimate_seconds=12),
+            complete_error=PromptSubmissionError("run-10", long_error),
+        ),
     )
     message = MessageStub("build it")
+    application = ApplicationStub(runtime)
+
+    await handlers.handle_prompt(UpdateStub(message), ContextStub(application))
+    await _drain_background_tasks(application)
+
+    assert len(message.replies) == 1
+    assert len(application.bot.messages) == 2
+    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for _, reply in application.bot.messages)
+
+
+@pytest.mark.asyncio
+async def test_handle_prompt_reports_planning_in_progress_before_plan_is_ready() -> None:
+    runtime = _runtime(latest=GetRunStatusStub([RunStub(run_id="run-12", status=RunStatus.AWAITING_CONFIRMATION, plan_text=None)]))
+    message = MessageStub("more details")
 
     await handlers.handle_prompt(UpdateStub(message), ContextStub(ApplicationStub(runtime)))
 
-    assert len(message.replies) == 2
-    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for reply in message.replies)
+    assert message.replies == [
+        "Run run-12 is still planning. Wait for the drafted plan before revising or approving it."
+    ]
 
 
 @pytest.mark.asyncio

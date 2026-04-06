@@ -53,9 +53,14 @@ def _format_tool_event_timestamp(event: dict[str, str]) -> str:
 
 def format_acknowledgement(run_id: str, agent: str, estimate_seconds: int) -> str:
     return (
-        f"Request accepted. Run ID: {run_id}. Agent: {agent}. Status: queued. "
-        f"Estimated time: {estimate_seconds}s."
+        f"Request accepted. Run ID: {run_id}. Agent: {agent}. Status: planning. "
+        f"Estimated execution time after planning: {estimate_seconds}s. "
+        "You will receive the drafted plan shortly."
     )
+
+
+def format_planning_in_progress(run_id: str) -> str:
+    return f"Run {run_id} is still planning. Wait for the drafted plan before revising or approving it."
 
 
 def format_plan_for_confirmation(run_id: str, agent: str, plan_text: str, estimate_seconds: int) -> str:

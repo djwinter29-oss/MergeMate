@@ -48,7 +48,7 @@ When an explicit override file includes an `agents` section, that section replac
 
 - `default_agent` and `default_provider`
 - `providers`: endpoint URL, model, timeout, auth header, auth prefix, and extra headers
-- `telegram`: bot token environment variable and runtime mode
+- `telegram`: bot token environment variable, runtime mode, and webhook settings such as listen host/port, public base URL, path, secret-token environment variable, and optional local healthcheck listener settings
 - `storage`: workspace root and SQLite database path
 - `learning`: recent successful-run memory behavior
 - `tools`: package-install permissions and pip executable
@@ -79,3 +79,6 @@ Relative runtime paths are resolved from `storage.workspace_root`. It defaults t
 - `default_agent` must resolve to a configured user-facing workflow agent: `generate_code`, `debug_code`, or `explain_code`.
 - Workflow assignment must remain one agent per workflow so runtime resolution is deterministic and independent of YAML ordering.
 - Explicit override files that define `agents` replace the inherited `agents` map instead of merging individual entries.
+- Webhook mode must reject startup when the public base URL is missing, not absolute, insecure for a non-loopback host, or includes query or fragment components.
+- Webhook mode must reject startup when the webhook secret-token environment variable is not configured.
+- Webhook mode healthcheck configuration must keep a valid local path and must not reuse a conflicting webhook bind address and port.

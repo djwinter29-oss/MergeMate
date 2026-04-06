@@ -41,7 +41,7 @@ Relative runtime paths are scoped under `storage.workspace_root`, which now defa
 
 The current implementation includes:
 
-- Telegram polling mode
+- Telegram polling and webhook runtime modes
 - requirement capture and plan confirmation before execution
 - plan revision by sending more requirements before approval
 - background run execution with local concurrency control
@@ -75,7 +75,7 @@ Implemented now:
 
 Current limitations:
 
-- Telegram webhook mode is not implemented yet
+- webhook deployment hardening is still in progress beyond the initial self-hosted webhook and readiness setup
 - the provider adapter currently assumes an OpenAI-compatible chat-completions request shape
 - progress estimates are still static and workflow-based rather than telemetry-driven
 - sandboxed code execution is not part of the MVP
@@ -115,6 +115,8 @@ By default, runtime state is stored in a SQLite database at `.state/mergemate.db
 
 Use `mergemate validate-config` to verify which config file and database path will be used before startup.
 
+For webhook mode, also set `telegram.mode: webhook`, provide `telegram.webhook_public_base_url`, and expose `TELEGRAM_WEBHOOK_SECRET`. MergeMate now rejects insecure webhook config at startup: non-loopback public URLs must use `https`, the webhook path cannot include query or fragment components, and webhook mode requires a secret-token environment variable. Webhook mode also supports a local readiness endpoint by default. For an initial self-hosted deployment, see `docs/operations/webhook-deployment.md`.
+
 For step-by-step setup and operation, see `docs/user-guide.md`.
 
 ## Learning And Package Installation
@@ -137,7 +139,7 @@ The current `generate_code` execution sequence is:
 
 For direct workflows such as `debug_code` and `explain_code`, MergeMate still drafts and confirms a plan first, but the background execution path runs a direct single-agent call instead of the full design, testing, and review chain.
 
-The current MVP keeps long-running execution work off the Telegram intake path, but the initial planning step is still a synchronous planner-model call. That means the first reply is limited by planner latency even though design, coding, testing, review, and final delivery happen in the background.
+The current MVP keeps both planning and long-running execution work off the Telegram intake path. MergeMate now acknowledges the request immediately, completes planning in the background, and then sends the drafted plan or auto-start notice as a follow-up message.
 
 Package installation is supported, but intentionally gated by configuration:
 

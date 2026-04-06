@@ -19,10 +19,14 @@ Telegram chat must remain responsive even when agent execution takes longer than
 When a prompt is submitted:
 
 1. User receives a quick acknowledgement.
-2. If confirmation is enabled, the acknowledgement includes the drafted plan, run ID, and rough estimate for post-approval execution.
-3. If confirmation is disabled, the run is queued immediately and the acknowledgement states that execution already started.
-4. Status can later be retrieved with a command.
-5. Important transitions trigger proactive progress updates while the run is non-terminal.
+2. The acknowledgement includes the run ID and a rough estimate for later execution.
+3. Planning completes asynchronously after acknowledgement.
+4. If confirmation is enabled, MergeMate sends the drafted plan as a follow-up message and then waits for approval or revision.
+5. If confirmation is disabled, MergeMate auto-dispatches after planning completes and sends a follow-up message that execution has started.
+6. Status can later be retrieved with a command.
+7. Important transitions trigger proactive progress updates while the run is non-terminal.
+
+Approval and revision are only valid after the plan has been persisted. If the user tries either action while planning is still running, the bot responds with a planning-in-progress message.
 
 ## Dispatch Semantics
 

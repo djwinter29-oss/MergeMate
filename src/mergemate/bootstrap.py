@@ -27,7 +27,7 @@ from mergemate.infrastructure.persistence.sqlite import (
     SQLiteRunRepository,
     SQLiteToolEventRepository,
 )
-from mergemate.infrastructure.telemetry.logger import configure_logging
+from mergemate.infrastructure.telemetry.logger import configure_logging, log_startup_configuration
 from mergemate.infrastructure.tools.builtin.code_formatter import CodeFormatterTool
 from mergemate.infrastructure.tools.builtin.package_installer import PackageInstallerTool
 from mergemate.infrastructure.tools.builtin.source_control import (
@@ -64,8 +64,14 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
     settings = load_runtime_settings(config_path)
     configure_logging(settings.logging.level)
 
-    database = SQLiteDatabase(settings.resolve_database_path(resolved_config_path))
+    resolved_database_path = settings.resolve_database_path(resolved_config_path)
+    database = SQLiteDatabase(resolved_database_path)
     database.initialize()
+    log_startup_configuration(
+        settings,
+        config_path=resolved_config_path,
+        database_path=resolved_database_path,
+    )
 
     run_repository = SQLiteRunRepository(database)
     conversation_repository = SQLiteConversationRepository(database)

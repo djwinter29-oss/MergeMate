@@ -146,9 +146,12 @@ async def test_execute_waits_for_approval_when_confirmation_required() -> None:
         workflow="generate_code",
         prompt="build feature",
     )
+    planned = await use_case.complete_planning(result.run_id)
 
     assert result.status == RunStatus.AWAITING_CONFIRMATION.value
-    assert result.plan_text == "plan for build feature"
+    assert result.plan_text is None
+    assert planned is not None
+    assert planned.plan_text == "plan for build feature"
     assert dispatcher.dispatched_run_ids == []
 
 
@@ -171,8 +174,11 @@ async def test_execute_auto_dispatches_when_confirmation_disabled() -> None:
         workflow="generate_code",
         prompt="build feature",
     )
+    planned = await use_case.complete_planning(result.run_id)
 
     assert result.status == RunStatus.QUEUED.value
+    assert planned is not None
+    assert planned.plan_text == "plan for build feature"
     assert len(dispatcher.dispatched_run_ids) == 1
     saved_run = repository.get(dispatcher.dispatched_run_ids[0])
     assert saved_run is not None
@@ -193,14 +199,16 @@ async def test_execute_marks_run_failed_when_plan_drafting_raises() -> None:
         SettingsStub(WorkflowControlConfigStub(require_confirmation=False)),
     )
 
+    result = await use_case.execute(
+        chat_id=1,
+        user_id=2,
+        agent_name="coder",
+        workflow="generate_code",
+        prompt="build feature",
+    )
+
     with pytest.raises(PromptSubmissionError, match="planner unavailable"):
-        await use_case.execute(
-            chat_id=1,
-            user_id=2,
-            agent_name="coder",
-            workflow="generate_code",
-            prompt="build feature",
-        )
+        await use_case.complete_planning(result.run_id)
 
     assert dispatcher.dispatched_run_ids == []
     assert context_service.messages == [(1, "user", "build feature")]
@@ -223,14 +231,16 @@ async def test_execute_marks_run_failed_when_dispatch_rejects_during_shutdown() 
         SettingsStub(WorkflowControlConfigStub(require_confirmation=False)),
     )
 
+    result = await use_case.execute(
+        chat_id=1,
+        user_id=2,
+        agent_name="coder",
+        workflow="generate_code",
+        prompt="build feature",
+    )
+
     with pytest.raises(PromptSubmissionError, match="Background worker is stopping"):
-        await use_case.execute(
-            chat_id=1,
-            user_id=2,
-            agent_name="coder",
-            workflow="generate_code",
-            prompt="build feature",
-        )
+        await use_case.complete_planning(result.run_id)
 
     saved_run = next(iter(repository.runs.values()))
     assert saved_run.status == RunStatus.FAILED
@@ -283,6 +293,33 @@ def test_approve_is_idempotent_for_completed_run() -> None:
     assert result.dispatched is False
     assert result.status == RunStatus.COMPLETED.value
     assert dispatcher.dispatched_run_ids == []
+
+
+@pytest.mark.asyncio
+async def test_approve_rejects_run_while_planning_is_in_progress() -> None:
+    repository = InMemoryRunRepository()
+    dispatcher = DispatcherStub()
+    use_case = SubmitPromptUseCase(
+        repository,
+        ContextServiceStub(),
+        dispatcher,
+        PlanningServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
+    )
+
+    result = await use_case.execute(
+        chat_id=1,
+        user_id=2,
+        agent_name="coder",
+        workflow="generate_code",
+        prompt="build feature",
+    )
+
+    approval = use_case.approve(result.run_id)
+
+    assert approval is not None
+    assert approval.dispatched is False
+    assert approval.error_text == "Run planning is still in progress and cannot be approved yet."
 
 
 @pytest.mark.asyncio

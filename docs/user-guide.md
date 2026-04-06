@@ -2,7 +2,7 @@
 
 ## What MergeMate Does
 
-MergeMate is a Telegram-driven coding assistant that keeps long-running design, coding, testing, and review work in the background. The initial planning step still happens synchronously on the chat intake path in the current MVP.
+MergeMate is a Telegram-driven coding assistant that keeps planning, design, coding, testing, and review work in the background. The chat intake path returns an immediate acknowledgement, and the drafted plan arrives as a follow-up message.
 
 If you want the architectural reasoning behind these behaviors, start with `docs/architecture/adr/index.md`.
 
@@ -22,7 +22,7 @@ Implemented now:
 
 Current limitations:
 
-- Telegram webhook mode is not implemented yet
+- webhook deployment hardening is still in progress beyond the initial self-hosted runbook
 - the provider adapter currently assumes an OpenAI-compatible chat-completions request shape
 - progress estimates are still static and workflow-based rather than telemetry-driven
 - sandboxed code execution is not part of the MVP
@@ -76,6 +76,8 @@ Secrets are not stored directly in the YAML by default. Instead, each provider p
 
 Relative runtime paths are resolved from `storage.workspace_root`. It defaults to `./workspace` relative to the active config file, and MergeMate creates that directory automatically if it does not exist. This lets you keep process data, context memory, final workflow documents, and relative repository paths under one configurable workspace folder.
 
+The Telegram config section now supports both polling and webhook runtime modes. Webhook mode requires an externally reachable `webhook_public_base_url` and a `webhook_secret_token_env`. Public webhook URLs must use `https` unless you are intentionally targeting local loopback development such as `http://127.0.0.1:8081`. Webhook mode can also expose a separate local readiness endpoint through `webhook_healthcheck_enabled`, `webhook_healthcheck_listen_host`, `webhook_healthcheck_listen_port`, and `webhook_healthcheck_path`.
+
 ## Basic Commands
 
 Validate configuration:
@@ -98,11 +100,15 @@ Run the Telegram bot:
 mergemate run-bot
 ```
 
+For webhook mode, configure `telegram.mode: webhook`, set `telegram.webhook_public_base_url` to the externally reachable base URL for the bot, and expose the secret named by `telegram.webhook_secret_token_env`.
+
 Run with an explicit user-space config file:
 
 ```bash
 mergemate run-bot --config ~/.config/mergemate/config.yaml
 ```
+
+Webhook mode currently supports runtime configuration, startup validation, Telegram secret-token enforcement, Telegram application wiring, a built-in local readiness endpoint, and an initial self-hosted deployment runbook. See `docs/operations/webhook-deployment.md` for reverse-proxy, TLS termination, readiness probing, and user-service examples.
 
 Install a Python package when allowed by config:
 
@@ -129,12 +135,15 @@ mergemate platform-auth gitlab
 The default workflow is:
 
 1. send a normal message describing the task
-2. MergeMate stores the request and drafts a plan
-3. if confirmation is enabled, MergeMate returns the plan and waits for approval
-4. you can reply with more requirements to revise the plan
-5. approve the run with `/approve <run_id>` or `/approve` to approve the latest one
-6. For `generate_code`, MergeMate retrieves context, writes an architecture document under `docs/architecture/`, generates implementation output, writes a test plan under `docs/testing/`, and writes a review report under `docs/reviews/`
-7. MergeMate sends stage updates while the run is active and a final completion or failure message at the end
+2. MergeMate stores the request and sends an immediate acknowledgement with the run ID and estimated execution time
+3. MergeMate drafts the plan in the background and sends it as a follow-up message
+4. if confirmation is enabled, MergeMate waits for approval after that follow-up plan arrives
+5. you can reply with more requirements to revise the plan after planning completes
+6. approve the run with `/approve <run_id>` or `/approve` to approve the latest one
+7. For `generate_code`, MergeMate retrieves context, writes an architecture document under `docs/architecture/`, generates implementation output, writes a test plan under `docs/testing/`, and writes a review report under `docs/reviews/`
+8. MergeMate sends stage updates while the run is active and a final completion or failure message at the end
+
+If you try to revise or approve a run before planning finishes, MergeMate returns a planning-in-progress message instead of accepting the change.
 
 If a status, tool-history, progress, or terminal message is too large for Telegram, MergeMate splits it into multiple messages automatically.
 

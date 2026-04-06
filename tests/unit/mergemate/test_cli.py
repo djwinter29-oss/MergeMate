@@ -41,7 +41,7 @@ def test_run_bot_prints_config_and_runs(monkeypatch: pytest.MonkeyPatch) -> None
         def __init__(self, runtime) -> None:
             self.runtime = runtime
 
-        def run_polling(self) -> None:
+        def run(self) -> None:
             observed["ran"] = True
 
     monkeypatch.setattr(cli, "bootstrap", lambda config: _runtime())
@@ -57,6 +57,7 @@ def test_run_bot_prints_config_and_runs(monkeypatch: pytest.MonkeyPatch) -> None
 def test_validate_config_prints_resolved_paths(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli, "resolve_config_path", lambda config: Path("/tmp/config.yaml"))
     settings = SimpleNamespace(
+        telegram=SimpleNamespace(mode="polling"),
         resolve_telegram_token=lambda: "token",
         resolve_provider_api_key=lambda provider_name=None: "provider-token",
         resolve_agent_provider_names=lambda agent_name: ["primary"],
@@ -73,6 +74,25 @@ def test_validate_config_prints_resolved_paths(monkeypatch: pytest.MonkeyPatch) 
     assert "Resolved database path: /tmp/runtime.db" in result.stdout
 
 
+def test_validate_config_resolves_webhook_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "resolve_config_path", lambda config: Path("/tmp/config.yaml"))
+    settings = SimpleNamespace(
+        telegram=SimpleNamespace(mode="webhook"),
+        resolve_telegram_token=lambda: "token",
+        resolve_telegram_webhook_url=lambda: "https://bot.example.com/telegram/webhook",
+        resolve_telegram_webhook_secret_token=lambda: "secret",
+        resolve_provider_api_key=lambda provider_name=None: "provider-token",
+        resolve_agent_provider_names=lambda agent_name: ["primary"],
+        agents={"coder": SimpleNamespace()},
+        preview_database_path=lambda resolved: Path("/tmp/runtime.db"),
+    )
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+
+    result = runner.invoke(cli.app, ["validate-config"])
+
+    assert result.exit_code == 0
+
+
 def test_validate_config_fails_for_missing_explicit_path(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli, "resolve_config_path", lambda config: (_ for _ in ()).throw(FileNotFoundError("Configuration file not found: /tmp/missing.yaml")))
 
@@ -85,6 +105,7 @@ def test_validate_config_fails_for_missing_explicit_path(monkeypatch: pytest.Mon
 def test_validate_config_fails_when_telegram_token_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli, "resolve_config_path", lambda config: Path("/tmp/config.yaml"))
     settings = SimpleNamespace(
+        telegram=SimpleNamespace(mode="polling"),
         resolve_telegram_token=lambda: (_ for _ in ()).throw(ValueError("Telegram bot token not found in environment variable TELEGRAM_TOKEN")),
         resolve_provider_api_key=lambda provider_name=None: "provider-token",
         resolve_agent_provider_names=lambda agent_name: ["primary"],
@@ -102,6 +123,7 @@ def test_validate_config_fails_when_telegram_token_is_missing(monkeypatch: pytes
 def test_validate_config_fails_when_provider_reference_is_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli, "resolve_config_path", lambda config: Path("/tmp/config.yaml"))
     settings = SimpleNamespace(
+        telegram=SimpleNamespace(mode="polling"),
         resolve_telegram_token=lambda: "token",
         resolve_provider_api_key=lambda provider_name=None: "provider-token",
         resolve_agent_provider_names=lambda agent_name: (_ for _ in ()).throw(

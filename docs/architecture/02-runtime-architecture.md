@@ -15,8 +15,17 @@ Responsible for keeping Telegram responsive enough for chat intake while keeping
 3. Resolve effective configuration.
 4. Determine workflow and initial estimate.
 5. Persist a run in `awaiting_confirmation` or `queued` state based on config.
-6. Draft a plan with the planner agent. In the current MVP this is still a synchronous LLM call on the intake path, so first-response latency is bounded by planner availability and timeout settings.
-7. Return the drafted plan, or auto-dispatch when confirmation is disabled.
+6. Return an immediate acknowledgement with run ID and estimate.
+
+### Background Planning Path
+
+Responsible for completing planning after intake acknowledgement:
+
+1. Load the persisted run.
+2. Draft a plan with the planner agent.
+3. Persist the drafted plan.
+4. Send the drafted plan back to Telegram as a follow-up message when confirmation is required.
+5. Auto-dispatch the run and send an execution-started follow-up message when confirmation is disabled.
 
 ### Background Path
 

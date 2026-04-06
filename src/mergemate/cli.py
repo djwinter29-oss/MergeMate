@@ -19,7 +19,7 @@ def run_bot(config: Path | None = typer.Option(None, help="Path to a YAML config
         f"MergeMate configured for provider={runtime.settings.default_provider} "
         f"agent={runtime.settings.default_agent}"
     )
-    TelegramBotRuntime(runtime).run_polling()
+    TelegramBotRuntime(runtime).run()
 
 
 @app.command("validate-config")
@@ -30,6 +30,9 @@ def validate_config(
     resolved_path = resolve_config_path(config)
     settings = load_runtime_settings(config)
     settings.resolve_telegram_token()
+    if settings.telegram.mode == "webhook":
+        settings.resolve_telegram_webhook_url()
+        settings.resolve_telegram_webhook_secret_token()
     settings.resolve_provider_api_key()
     for agent_name in settings.agents:
         settings.resolve_agent_provider_names(agent_name)

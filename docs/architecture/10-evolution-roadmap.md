@@ -10,7 +10,7 @@
 
 ## Mid-Term
 
-1. Add webhook mode.
+1. Harden webhook deployment guidance, ingress security, and release validation beyond the initial runtime foundation.
 2. Add entry-point based tool plugins once runtime tool invocation is part of the execution loop.
 3. Add richer source-control workflows beyond repository inspection.
 4. Split bot and worker processes if deployment pressure justifies it.

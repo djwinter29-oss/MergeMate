@@ -2,6 +2,8 @@
 
 import os
 from pathlib import Path
+from typing import Literal
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -24,7 +26,76 @@ class ProviderConfig(BaseModel):
 
 class TelegramConfig(BaseModel):
     bot_token_env: str
-    mode: str = "polling"
+    mode: Literal["polling", "webhook"] = "polling"
+    webhook_listen_host: str = "0.0.0.0"
+    webhook_listen_port: int = Field(default=8080, ge=1, le=65535)
+    webhook_public_base_url: str | None = None
+    webhook_path: str = "/telegram/webhook"
+    webhook_secret_token_env: str | None = None
+    webhook_healthcheck_enabled: bool = True
+    webhook_healthcheck_listen_host: str = "127.0.0.1"
+    webhook_healthcheck_listen_port: int = Field(default=8081, ge=1, le=65535)
+    webhook_healthcheck_path: str = "/healthz"
+
+    @model_validator(mode="after")
+    def validate_webhook_settings(self):
+        self._validate_path(self.webhook_path, label="Telegram webhook path")
+        self._validate_path(
+            self.webhook_healthcheck_path,
+            label="Telegram webhook healthcheck path",
+        )
+        if self.mode == "webhook" and not self.webhook_public_base_url:
+            raise ValueError(
+                "Telegram webhook public base URL must be configured when mode is webhook"
+            )
+        if self.mode == "webhook":
+            parsed_base_url = urlparse(self.webhook_public_base_url)
+            if not parsed_base_url.scheme or not parsed_base_url.netloc:
+                raise ValueError(
+                    "Telegram webhook public base URL must be an absolute URL when mode is webhook"
+                )
+            if parsed_base_url.query or parsed_base_url.fragment:
+                raise ValueError(
+                    "Telegram webhook public base URL must not include query or fragment components"
+                )
+
+            is_loopback_host = parsed_base_url.hostname in {"localhost", "127.0.0.1", "::1"}
+            if parsed_base_url.scheme != "https" and not (
+                parsed_base_url.scheme == "http" and is_loopback_host
+            ):
+                raise ValueError(
+                    "Telegram webhook public base URL must use https unless it points to localhost or a loopback address"
+                )
+
+            if not self.webhook_secret_token_env:
+                raise ValueError(
+                    "Telegram webhook secret token env must be configured when mode is webhook"
+                )
+
+            if (
+                self.webhook_healthcheck_enabled
+                and self.webhook_listen_port == self.webhook_healthcheck_listen_port
+                and self._hosts_may_conflict(
+                    self.webhook_listen_host,
+                    self.webhook_healthcheck_listen_host,
+                )
+            ):
+                raise ValueError(
+                    "Telegram webhook and healthcheck listeners must not use conflicting host/port bindings"
+                )
+        return self
+
+    @staticmethod
+    def _validate_path(path: str, *, label: str) -> None:
+        if not path.startswith("/"):
+            raise ValueError(f"{label} must start with '/'")
+        if "?" in path or "#" in path:
+            raise ValueError(f"{label} must not include query or fragment components")
+
+    @staticmethod
+    def _hosts_may_conflict(first: str, second: str) -> bool:
+        wildcard_hosts = {"0.0.0.0", "::"}
+        return first == second or first in wildcard_hosts or second in wildcard_hosts
 
 
 class StorageConfig(BaseModel):
@@ -181,6 +252,26 @@ class AppConfig(BaseModel):
         if not token:
             raise ValueError(
                 f"Telegram bot token not found in environment variable {self.telegram.bot_token_env}"
+            )
+        return token
+
+    def resolve_telegram_webhook_url(self) -> str:
+        base_url = self.telegram.webhook_public_base_url
+        if not base_url:
+            raise ValueError(
+                "Telegram webhook public base URL must be configured when mode is webhook"
+            )
+        return f"{base_url.rstrip('/')}{self.telegram.webhook_path}"
+
+    def resolve_telegram_webhook_secret_token(self) -> str | None:
+        env_name = self.telegram.webhook_secret_token_env
+        if env_name is None:
+            return None
+        token = os.getenv(env_name)
+        if not token:
+            raise ValueError(
+                "Telegram webhook secret token not found in environment variable "
+                f"{env_name}"
             )
         return token
 

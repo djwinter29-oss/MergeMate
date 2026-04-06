@@ -81,12 +81,15 @@ async def test_submit_prompt_persists_run_plan_and_conversation(sqlite_runtime) 
         workflow="generate_code",
         prompt="build login flow",
     )
+    planned_result = await sqlite_runtime["submit_prompt"].complete_planning(submit_result.run_id)
 
     saved_run = sqlite_runtime["run_repository"].get(submit_result.run_id)
     latest_run = sqlite_runtime["get_run_status"].execute(chat_id=321)
     messages = sqlite_runtime["conversation_repository"].list_messages(321)
 
     assert submit_result.status == RunStatus.AWAITING_CONFIRMATION.value
+    assert submit_result.plan_text is None
+    assert planned_result is not None
     assert saved_run is not None
     assert saved_run.status == RunStatus.AWAITING_CONFIRMATION
     assert saved_run.current_stage == "awaiting_user_confirmation"
@@ -106,6 +109,7 @@ async def test_approve_run_dispatches_and_updates_persisted_status(sqlite_runtim
         workflow="generate_code",
         prompt="implement audit logs",
     )
+    await sqlite_runtime["submit_prompt"].complete_planning(submit_result.run_id)
 
     approval_result = sqlite_runtime["approve_run"].execute(submit_result.run_id, chat_id=777)
     saved_run = sqlite_runtime["run_repository"].get(submit_result.run_id)

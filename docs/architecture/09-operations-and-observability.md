@@ -7,6 +7,7 @@ Observability should support debugging startup, run lifecycle, and operator-visi
 ## Minimum Signals
 
 - startup configuration source
+- startup Telegram mode, webhook public URL when enabled, and whether secret-token validation is active
 - accepted run count
 - active run count
 - run state transitions
@@ -22,6 +23,10 @@ Observability should support debugging startup, run lifecycle, and operator-visi
 - run locally with a repository config
 - run as a user-space service with an explicit config path
 - inspect run progress from Telegram with `/status` or via proactive stage updates
+- verify webhook mode has a reachable `https` public base URL and a configured secret-token environment variable before exposing ingress
+- probe a local readiness endpoint for webhook deployments during startup, rollout, and shutdown
+
+For the initial self-hosted webhook deployment flow, see `docs/operations/webhook-deployment.md`.
 
 ## Runtime Expectations
 

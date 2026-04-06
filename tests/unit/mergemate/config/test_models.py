@@ -61,6 +61,35 @@ def test_config_model_resolves_telegram_token_and_raises_when_missing(monkeypatc
     assert config.resolve_telegram_token() == "telegram-secret"
 
 
+def test_config_model_resolves_telegram_webhook_url_and_secret_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "webhook",
+        "webhook_public_base_url": "https://bot.example.com/root/",
+        "webhook_path": "/telegram/hook",
+        "webhook_secret_token_env": "TELEGRAM_WEBHOOK_SECRET",
+    }
+    config = AppConfig.model_validate(payload)
+    monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "hook-secret")
+
+    assert config.resolve_telegram_webhook_url() == "https://bot.example.com/root/telegram/hook"
+    assert config.resolve_telegram_webhook_secret_token() == "hook-secret"
+
+
+def test_config_model_allows_http_webhook_url_for_loopback_development() -> None:
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "webhook",
+        "webhook_public_base_url": "http://127.0.0.1:8081",
+        "webhook_secret_token_env": "TELEGRAM_WEBHOOK_SECRET",
+    }
+    config = AppConfig.model_validate(payload)
+
+    assert config.resolve_telegram_webhook_url() == "http://127.0.0.1:8081/telegram/webhook"
+
+
 def test_config_model_resolves_workspace_database_docs_and_absolute_paths(tmp_path: Path) -> None:
     config = _build_config()
     config_path = tmp_path / "config.yaml"
@@ -157,6 +186,115 @@ def test_config_model_rejects_non_positive_timeout_values(section: str, key: str
         payload[section][key] = 0
 
     with pytest.raises(ValidationError, match="greater than or equal to 1"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_webhook_mode_without_public_base_url() -> None:
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "webhook",
+    }
+
+    with pytest.raises(ValidationError, match="public base URL"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_webhook_mode_without_secret_token_env() -> None:
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "webhook",
+        "webhook_public_base_url": "https://bot.example.com",
+    }
+
+    with pytest.raises(ValidationError, match="secret token env"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_webhook_path_without_leading_slash() -> None:
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "webhook",
+        "webhook_public_base_url": "https://bot.example.com",
+        "webhook_path": "telegram-hook",
+        "webhook_secret_token_env": "TELEGRAM_WEBHOOK_SECRET",
+    }
+
+    with pytest.raises(ValidationError, match="must start with '/'"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_webhook_path_with_query_or_fragment() -> None:
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "webhook",
+        "webhook_public_base_url": "https://bot.example.com",
+        "webhook_path": "/telegram-hook?foo=bar",
+        "webhook_secret_token_env": "TELEGRAM_WEBHOOK_SECRET",
+    }
+
+    with pytest.raises(ValidationError, match="must not include query or fragment"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_non_https_webhook_url_for_non_loopback_hosts() -> None:
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "webhook",
+        "webhook_public_base_url": "http://bot.example.com",
+        "webhook_secret_token_env": "TELEGRAM_WEBHOOK_SECRET",
+    }
+
+    with pytest.raises(ValidationError, match="must use https"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_webhook_url_with_query_or_fragment() -> None:
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "webhook",
+        "webhook_public_base_url": "https://bot.example.com/base?foo=bar",
+        "webhook_secret_token_env": "TELEGRAM_WEBHOOK_SECRET",
+    }
+
+    with pytest.raises(ValidationError, match="must not include query or fragment"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_webhook_healthcheck_path_with_query_or_fragment() -> None:
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "webhook",
+        "webhook_public_base_url": "https://bot.example.com",
+        "webhook_secret_token_env": "TELEGRAM_WEBHOOK_SECRET",
+        "webhook_healthcheck_path": "/healthz?full=true",
+    }
+
+    with pytest.raises(ValidationError, match="healthcheck path"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_conflicting_webhook_and_healthcheck_bindings() -> None:
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "webhook",
+        "webhook_listen_host": "0.0.0.0",
+        "webhook_listen_port": 8080,
+        "webhook_public_base_url": "https://bot.example.com",
+        "webhook_secret_token_env": "TELEGRAM_WEBHOOK_SECRET",
+        "webhook_healthcheck_enabled": True,
+        "webhook_healthcheck_listen_host": "127.0.0.1",
+        "webhook_healthcheck_listen_port": 8080,
+    }
+
+    with pytest.raises(ValidationError, match="conflicting host/port bindings"):
         AppConfig.model_validate(payload)
 
 

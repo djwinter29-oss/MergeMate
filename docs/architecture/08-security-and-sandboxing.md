@@ -17,3 +17,5 @@ The MVP should avoid promising arbitrary code execution. Code generation, explan
 - separate Telegram interface from provider and tool implementations
 - record explicit run states
 - make execution sandbox an abstraction, not a default capability
+- require webhook ingress secret-token validation in webhook mode
+- require `https` for non-loopback webhook public URLs

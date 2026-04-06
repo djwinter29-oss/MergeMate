@@ -113,6 +113,13 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
     monkeypatch.setattr(bootstrap_module, "resolve_config_path", lambda explicit=None: config_path)
     monkeypatch.setattr(bootstrap_module, "load_runtime_settings", lambda explicit=None: settings)
     monkeypatch.setattr(bootstrap_module, "configure_logging", lambda level: recorded.record("configure_logging", level))
+    monkeypatch.setattr(
+        bootstrap_module,
+        "log_startup_configuration",
+        lambda wired_settings, *, config_path, database_path: recorded.record(
+            "log_startup_configuration", wired_settings, config_path, database_path
+        ),
+    )
     monkeypatch.setattr(bootstrap_module, "SQLiteDatabase", DatabaseStub)
     monkeypatch.setattr(bootstrap_module, "SQLiteRunRepository", type("SQLiteRunRepositoryStub", (RepositoryStub,), {}))
     monkeypatch.setattr(bootstrap_module, "SQLiteConversationRepository", type("SQLiteConversationRepositoryStub", (RepositoryStub,), {}))
@@ -147,6 +154,9 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
     assert runtime.config_path == config_path
     assert runtime.database.path == tmp_path / "workspace" / ".state" / "runtime.db"
     assert runtime.approve_run[0] == "approve"
+    startup_log_call = next(args for args, _ in recorded.calls if args and args[0] == "log_startup_configuration")
+    assert startup_log_call[2] == config_path
+    assert startup_log_call[3] == tmp_path / "workspace" / ".state" / "runtime.db"
     tool_registry_tools = next(args[1] for args, _ in recorded.calls if args and args[0] == "tool_registry")
     assert set(tool_registry_tools) == {
         "code_formatter",
@@ -184,6 +194,11 @@ def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Pa
     monkeypatch.setattr(bootstrap_module, "resolve_config_path", lambda explicit=None: tmp_path / "config.yaml")
     monkeypatch.setattr(bootstrap_module, "load_runtime_settings", lambda explicit=None: settings)
     monkeypatch.setattr(bootstrap_module, "configure_logging", lambda level: None)
+    monkeypatch.setattr(
+        bootstrap_module,
+        "log_startup_configuration",
+        lambda wired_settings, *, config_path, database_path: None,
+    )
     monkeypatch.setattr(bootstrap_module, "SQLiteDatabase", lambda path: SimpleNamespace(path=path, initialize=lambda: None))
     monkeypatch.setattr(bootstrap_module, "SQLiteRunRepository", lambda database: "run_repo")
     monkeypatch.setattr(bootstrap_module, "SQLiteConversationRepository", lambda database: "conversation_repo")

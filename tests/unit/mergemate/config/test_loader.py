@@ -12,6 +12,9 @@ def test_load_runtime_settings_uses_project_config() -> None:
     assert settings.default_agent == "coder"
     assert settings.default_provider == "openai_coder"
     assert settings.telegram.mode == "polling"
+    assert settings.telegram.webhook_listen_host == "0.0.0.0"
+    assert settings.telegram.webhook_listen_port == 8080
+    assert settings.telegram.webhook_path == "/telegram/webhook"
     assert settings.storage.workspace_root == "./workspace"
     assert settings.storage.database_path == ".state/mergemate.db"
     assert settings.workflow_control.max_review_iterations == 5

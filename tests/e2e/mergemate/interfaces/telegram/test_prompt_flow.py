@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -47,7 +48,7 @@ class FakeApplication:
         self.bot_data = {"runtime": self.runtime}
 
     def create_task(self, coroutine):
-        return coroutine
+        return asyncio.create_task(coroutine)
 
 
 @dataclass(slots=True)
@@ -80,15 +81,21 @@ class GetRunStatusStub:
 
 
 class SubmitPromptStub:
-    def __init__(self, result: SubmitPromptResult, revised_result: SubmitPromptResult | None = None) -> None:
+    def __init__(self, result: SubmitPromptResult, revised_result: SubmitPromptResult | None = None, complete_result: SubmitPromptResult | None = None) -> None:
         self.result = result
         self.revised_result = revised_result
+        self.complete_result = complete_result or result
         self.execute_calls: list[dict[str, object]] = []
         self.revise_calls: list[tuple[str, str, int | None]] = []
+        self.complete_calls: list[tuple[str, bool]] = []
 
     async def execute(self, **kwargs) -> SubmitPromptResult:
         self.execute_calls.append(kwargs)
         return self.result
+
+    async def complete_planning(self, run_id: str, *, on_finished=None) -> SubmitPromptResult | None:
+        self.complete_calls.append((run_id, on_finished is not None))
+        return self.complete_result
 
     async def revise_plan_for_chat(
         self,
@@ -163,6 +170,12 @@ async def test_handle_prompt_returns_confirmation_plan_for_new_request(monkeypat
             run_id="run-123",
             status=RunStatus.AWAITING_CONFIRMATION.value,
             estimate_seconds=30,
+            plan_text=None,
+        ),
+        complete_result=SubmitPromptResult(
+            run_id="run-123",
+            status=RunStatus.AWAITING_CONFIRMATION.value,
+            estimate_seconds=30,
             plan_text="# Approved Plan\n1. build login flow",
         )
     )
@@ -178,12 +191,16 @@ async def test_handle_prompt_returns_confirmation_plan_for_new_request(monkeypat
     )
 
     await handlers.handle_prompt(update, context)
+    await asyncio.sleep(0)
 
     assert submit_prompt.execute_calls
+    assert submit_prompt.complete_calls == [("run-123", True)]
     assert started_watchers == []
     assert len(message.replies) == 1
-    assert "Requirements captured for run run-123." in message.replies[0]
-    assert "build login flow" in message.replies[0]
+    assert "Request accepted. Run ID: run-123." in message.replies[0]
+    assert len(application.bot.sent_messages) == 1
+    assert application.bot.sent_messages[0][0] == 11
+    assert "Requirements captured for run run-123." in application.bot.sent_messages[0][1]
 
 
 @pytest.mark.asyncio

@@ -87,35 +87,52 @@ class SubmitPromptUseCase:
         )
         self._run_repository.create(run)
         self._context_service.append_message(chat_id, "user", prompt)
+        return SubmitPromptResult(
+            run_id=run.run_id,
+            status=initial_status.value,
+            estimate_seconds=estimate_seconds,
+            plan_text=None,
+        )
+
+    async def complete_planning(
+        self,
+        run_id: str,
+        *,
+        on_finished=None,
+    ) -> SubmitPromptResult | None:
+        run = self._run_repository.get(run_id)
+        if run is None:
+            return None
         try:
-            plan_text = await self._planning_service.draft_plan(prompt)
+            plan_text = await self._planning_service.draft_plan(run.prompt)
         except Exception as exc:
             error_text = str(exc)
             self._run_repository.update_status(
-                run.run_id,
+                run_id,
                 RunStatus.FAILED,
                 current_stage=RunStage.PLANNING,
                 error_text=error_text,
             )
-            raise PromptSubmissionError(run.run_id, error_text) from exc
-        if require_confirmation:
-            self._run_repository.update_plan(run.run_id, plan_text)
+            raise PromptSubmissionError(run_id, error_text) from exc
+
+        if run.status == RunStatus.AWAITING_CONFIRMATION:
+            self._run_repository.update_plan(run_id, plan_text)
             final_status = RunStatus.AWAITING_CONFIRMATION.value
         else:
             self._run_repository.update_plan(
-                run.run_id,
+                run_id,
                 plan_text,
                 current_stage=RunStage.QUEUED_FOR_EXECUTION,
             )
-            approval = self._run_repository.approve(run.run_id)
+            approval = self._run_repository.approve(run_id)
             if approval.run is None:
-                raise PromptSubmissionError(run.run_id, "Run approval failed before dispatch.")
-            self._dispatch_or_fail(run.run_id, on_finished=on_finished, raise_on_error=True)
+                raise PromptSubmissionError(run_id, "Run approval failed before dispatch.")
+            self._dispatch_or_fail(run_id, on_finished=on_finished, raise_on_error=True)
             final_status = RunStatus.QUEUED.value
         return SubmitPromptResult(
-            run_id=run.run_id,
+            run_id=run_id,
             status=final_status,
-            estimate_seconds=estimate_seconds,
+            estimate_seconds=run.estimate_seconds,
             plan_text=plan_text,
         )
 
@@ -173,6 +190,13 @@ class SubmitPromptUseCase:
             return None
         if existing.status in {RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED}:
             return ApproveRunResult(run_id=existing.run_id, dispatched=False, status=existing.status.value)
+        if existing.plan_text is None:
+            return ApproveRunResult(
+                run_id=existing.run_id,
+                dispatched=False,
+                status=existing.status.value,
+                error_text="Run planning is still in progress and cannot be approved yet.",
+            )
         if existing.approved or existing.status != RunStatus.AWAITING_CONFIRMATION:
             return ApproveRunResult(run_id=existing.run_id, dispatched=False, status=existing.status.value)
 
