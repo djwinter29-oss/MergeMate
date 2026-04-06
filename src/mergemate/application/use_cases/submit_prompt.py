@@ -7,7 +7,7 @@ from uuid import uuid4
 from mergemate.application.jobs.dispatcher import RunDispatcher
 from mergemate.application.jobs.estimator import estimate_duration
 from mergemate.domain.runs.entities import AgentRun
-from mergemate.domain.runs.value_objects import RunStage, RunStatus
+from mergemate.domain.runs.value_objects import RunJobType, RunStage, RunStatus
 
 
 @dataclass(slots=True)
@@ -56,7 +56,6 @@ class SubmitPromptUseCase:
         agent_name: str,
         workflow: str,
         prompt: str,
-        on_finished=None,
     ) -> SubmitPromptResult:
         now = datetime.now(UTC)
         estimate_seconds = estimate_duration(workflow)
@@ -87,6 +86,11 @@ class SubmitPromptUseCase:
         )
         self._run_repository.create(run)
         self._context_service.append_message(chat_id, "user", prompt)
+        self._dispatch_or_fail(
+            run.run_id,
+            job_type=RunJobType.PLAN_RUN,
+            raise_on_error=True,
+        )
         return SubmitPromptResult(
             run_id=run.run_id,
             status=initial_status.value,
@@ -97,8 +101,6 @@ class SubmitPromptUseCase:
     async def complete_planning(
         self,
         run_id: str,
-        *,
-        on_finished=None,
     ) -> SubmitPromptResult | None:
         run = self._run_repository.get(run_id)
         if run is None:
@@ -127,7 +129,7 @@ class SubmitPromptUseCase:
             approval = self._run_repository.approve(run_id)
             if approval.run is None:
                 raise PromptSubmissionError(run_id, "Run approval failed before dispatch.")
-            self._dispatch_or_fail(run_id, on_finished=on_finished, raise_on_error=True)
+            self._dispatch_or_fail(run_id, job_type=RunJobType.EXECUTE_RUN, raise_on_error=True)
             final_status = RunStatus.QUEUED.value
         return SubmitPromptResult(
             run_id=run_id,
@@ -206,7 +208,7 @@ class SubmitPromptUseCase:
             return None
         if not approval.transitioned:
             return ApproveRunResult(run_id=approved_run.run_id, dispatched=False, status=approved_run.status.value)
-        error_text = self._dispatch_or_fail(run_id, on_finished=on_finished, raise_on_error=False)
+        error_text = self._dispatch_or_fail(run_id, job_type=RunJobType.EXECUTE_RUN, raise_on_error=False)
         if error_text is not None:
             return ApproveRunResult(
                 run_id=run_id,
@@ -220,17 +222,20 @@ class SubmitPromptUseCase:
         self,
         run_id: str,
         *,
-        on_finished=None,
+        job_type: RunJobType,
         raise_on_error: bool,
     ) -> str | None:
         try:
-            self._dispatcher.dispatch_run(run_id, on_finished=on_finished)
+            self._dispatcher.dispatch_run(run_id, job_type=job_type)
         except RuntimeError as exc:
             error_text = str(exc)
+            current_stage = (
+                RunStage.PLANNING if job_type == RunJobType.PLAN_RUN else RunStage.QUEUED_FOR_EXECUTION
+            )
             self._run_repository.update_status(
                 run_id,
                 RunStatus.FAILED,
-                current_stage=RunStage.QUEUED_FOR_EXECUTION,
+                current_stage=current_stage,
                 error_text=error_text,
             )
             if raise_on_error:

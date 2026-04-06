@@ -76,6 +76,7 @@ Implemented now:
 Current limitations:
 
 - webhook deployment hardening is still in progress beyond the initial self-hosted webhook and readiness setup
+- honest ingress and worker splitting is still in progress; the current codebase now has durable planning and execution jobs, but Postgres-backed coordination and Redis transport are not implemented yet
 - the provider adapter currently assumes an OpenAI-compatible chat-completions request shape
 - progress estimates are still static and workflow-based rather than telemetry-driven
 - sandboxed code execution is not part of the MVP
@@ -86,6 +87,7 @@ Current limitations:
 - `mergemate run-bot`
 - `mergemate validate-config`
 - `mergemate print-config-path`
+- `mergemate probe-readiness`
 - `mergemate install-package <package-name>`
 - `mergemate repo-context [--platform github|gitlab]`
 - `mergemate platform-auth github|gitlab`
@@ -117,7 +119,9 @@ Use `mergemate validate-config` to verify which config file and database path wi
 
 For webhook mode, also set `telegram.mode: webhook`, provide `telegram.webhook_public_base_url`, and expose `TELEGRAM_WEBHOOK_SECRET`. MergeMate now rejects insecure webhook config at startup: non-loopback public URLs must use `https`, the webhook path cannot include query or fragment components, and webhook mode requires a secret-token environment variable. Webhook mode also supports a local readiness endpoint by default. For an initial self-hosted deployment, see `docs/operations/webhook-deployment.md`.
 
-For step-by-step setup and operation, see `docs/user-guide.md`.
+For step-by-step setup and operation, see `docs/user-guide.md`. For production-oriented persistence layout and deployment boundaries, see `docs/operations/production-deployment.md`.
+
+The current split-runtime implementation work starts with durable planning and execution job records in the shared persistence layer. That means dispatch is no longer modeled only as an in-memory worker handoff, but MergeMate still runs as one process until the later Postgres and Redis slices land.
 
 ## Learning And Package Installation
 

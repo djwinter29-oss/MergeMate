@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from mergemate.domain.runs.value_objects import RunStage, RunStatus
+from mergemate.domain.runs.value_objects import RunJobStatus, RunJobType, RunStage, RunStatus
 
 
 @dataclass(slots=True)
@@ -26,4 +26,21 @@ class AgentRun:
     result_text: str | None
     error_text: str | None
     created_at: datetime
+    updated_at: datetime
+
+
+@dataclass(slots=True)
+class RunJob:
+    job_id: str
+    run_id: str
+    job_type: RunJobType
+    status: RunJobStatus
+    attempt_count: int
+    lease_owner: str | None
+    lease_expires_at: datetime | None
+    last_heartbeat_at: datetime | None
+    error_text: str | None
+    queued_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
     updated_at: datetime

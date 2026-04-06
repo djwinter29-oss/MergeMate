@@ -69,6 +69,8 @@ runtime:
   max_concurrent_runs: 2
   status_update_interval_seconds: 5
   default_request_timeout_seconds: 300
+  job_lease_seconds: 30
+  job_heartbeat_interval_seconds: 10
 
 workflow_control:
   require_confirmation: true

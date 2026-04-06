@@ -12,16 +12,18 @@ from mergemate.domain.runs.value_objects import RunStatus
 from mergemate.infrastructure.persistence.sqlite import (
     SQLiteConversationRepository,
     SQLiteDatabase,
+    SQLiteRunJobRepository,
     SQLiteRunRepository,
 )
 
 
-class WorkerStub:
+class QueueBackendStub:
     def __init__(self) -> None:
         self.calls: list[str] = []
 
-    def enqueue(self, run_id: str, on_finished=None) -> None:
-        self.calls.append(run_id)
+    def enqueue(self, job_id: str) -> bool:
+        self.calls.append(job_id)
+        return True
 
 
 class PlanningServiceStub:
@@ -49,10 +51,11 @@ def sqlite_runtime(tmp_path):
     database = SQLiteDatabase(tmp_path / "integration.db")
     database.initialize()
     run_repository = SQLiteRunRepository(database)
+    run_job_repository = SQLiteRunJobRepository(database)
     conversation_repository = SQLiteConversationRepository(database)
     context_service = ContextService(conversation_repository)
-    worker = WorkerStub()
-    dispatcher = RunDispatcher(worker)
+    queue_backend = QueueBackendStub()
+    dispatcher = RunDispatcher(run_job_repository, queue_backend)
     submit_prompt = SubmitPromptUseCase(
         run_repository,
         context_service,
@@ -63,12 +66,13 @@ def sqlite_runtime(tmp_path):
     return {
         "database": database,
         "run_repository": run_repository,
+        "run_job_repository": run_job_repository,
         "conversation_repository": conversation_repository,
         "submit_prompt": submit_prompt,
         "approve_run": ApproveRunUseCase(submit_prompt),
         "cancel_run": CancelRunUseCase(run_repository),
         "get_run_status": GetRunStatusUseCase(run_repository),
-        "worker": worker,
+        "worker": queue_backend,
     }
 
 
@@ -97,7 +101,9 @@ async def test_submit_prompt_persists_run_plan_and_conversation(sqlite_runtime) 
     assert latest_run is not None
     assert latest_run.run_id == submit_result.run_id
     assert messages == [{"role": "user", "content": "build login flow"}]
-    assert sqlite_runtime["worker"].calls == []
+    queued_job = sqlite_runtime["run_job_repository"].get_active_for_run(submit_result.run_id, job_type=None)
+    assert queued_job is not None
+    assert sqlite_runtime["worker"].calls == [queued_job.job_id]
 
 
 @pytest.mark.asyncio
@@ -121,7 +127,10 @@ async def test_approve_run_dispatches_and_updates_persisted_status(sqlite_runtim
     assert saved_run.approved is True
     assert saved_run.status == RunStatus.QUEUED
     assert saved_run.current_stage == "queued_for_execution"
-    assert sqlite_runtime["worker"].calls == [submit_result.run_id]
+    assert len(sqlite_runtime["worker"].calls) == 2
+    queued_job = sqlite_runtime["run_job_repository"].get_active_for_run(submit_result.run_id)
+    assert queued_job is not None
+    assert sqlite_runtime["worker"].calls[-1] == queued_job.job_id
 
 
 @pytest.mark.asyncio
@@ -142,4 +151,4 @@ async def test_run_access_is_scoped_to_chat(sqlite_runtime) -> None:
         chat_id=999,
     ) is None
     assert sqlite_runtime["cancel_run"].execute(submit_result.run_id, chat_id=999) is None
-    assert sqlite_runtime["worker"].calls == []
+    assert len(sqlite_runtime["worker"].calls) == 1

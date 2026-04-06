@@ -4,7 +4,6 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from mergemate.application.use_cases.submit_prompt import PromptSubmissionError
-from mergemate.domain.runs.value_objects import RunStatus
 from mergemate.domain.shared import is_user_facing_workflow
 from mergemate.interfaces.telegram import message_utils
 from mergemate.interfaces.telegram.models import TelegramRequest
@@ -12,7 +11,6 @@ from mergemate.interfaces.telegram.presenter import (
     format_acknowledgement,
     format_approval_started,
     format_approval_not_needed,
-    format_auto_execution_started,
     format_cancellation_not_allowed,
     format_cancelled,
     format_detailed_status,
@@ -38,48 +36,6 @@ def _start_progress_watcher(application, runtime, chat_id: int, run_id: str) -> 
 
 async def _notify_terminal_update(application, chat_id: int, run) -> None:
     await notify_terminal_update(application, chat_id, run)
-
-
-async def _send_application_message(application, chat_id: int, text: str) -> None:
-    await application.bot.send_message(chat_id=chat_id, text=text)
-
-
-async def _complete_prompt_submission(application, runtime, chat_id: int, run_id: str, on_finished) -> None:
-    try:
-        submit_result = await runtime.submit_prompt.complete_planning(
-            run_id,
-            on_finished=on_finished,
-        )
-    except PromptSubmissionError as exc:
-        failed_run = runtime.get_run_status.execute(exc.run_id, chat_id=chat_id)
-        error_text = failed_run.error_text if failed_run is not None and failed_run.error_text else exc.error_text
-        await message_utils.send_text_chunks(
-            lambda text: _send_application_message(application, chat_id, text),
-            error_text,
-        )
-        return
-    if submit_result is None:
-        return
-    if submit_result.status != RunStatus.AWAITING_CONFIRMATION.value:
-        await message_utils.send_text_chunks(
-            lambda text: _send_application_message(application, chat_id, text),
-            format_auto_execution_started(
-                submit_result.run_id,
-                submit_result.plan_text or "",
-                submit_result.estimate_seconds,
-            ),
-        )
-        _start_progress_watcher(application, runtime, chat_id, submit_result.run_id)
-        return
-    await message_utils.send_text_chunks(
-        lambda text: _send_application_message(application, chat_id, text),
-        format_plan_for_confirmation(
-            submit_result.run_id,
-            runtime.settings.resolve_agent_name_for_workflow("planning"),
-            submit_result.plan_text or "",
-            submit_result.estimate_seconds,
-        ),
-    )
 
 
 def _is_chat_entry_agent(runtime, agent_name: str) -> bool:
@@ -192,11 +148,6 @@ async def approve_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     run = runtime.approve_run.execute(
         run_id,
         chat_id=chat.id,
-        on_finished=lambda completed_run: _notify_terminal_update(
-            context.application,
-            chat.id,
-            completed_run,
-        ),
     )
     if run is None:
         await message.reply_text("Run approval failed.")
@@ -277,13 +228,19 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     agent_config = runtime.settings.agents.get(request.agent_name)
     workflow = agent_config.workflow if agent_config is not None else "generate_code"
-    submit_result = await runtime.submit_prompt.execute(
-        chat_id=request.chat_id,
-        user_id=request.user_id,
-        agent_name=request.agent_name,
-        workflow=workflow,
-        prompt=request.message_text,
-    )
+    try:
+        submit_result = await runtime.submit_prompt.execute(
+            chat_id=request.chat_id,
+            user_id=request.user_id,
+            agent_name=request.agent_name,
+            workflow=workflow,
+            prompt=request.message_text,
+        )
+    except PromptSubmissionError as exc:
+        failed_run = runtime.get_run_status.execute(exc.run_id, chat_id=request.chat_id)
+        error_text = failed_run.error_text if failed_run is not None and failed_run.error_text else exc.error_text
+        await message_utils.send_text_chunks(message.reply_text, error_text)
+        return
     await message_utils.send_text_chunks(
         message.reply_text,
         format_acknowledgement(
@@ -291,13 +248,4 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             request.agent_name,
             submit_result.estimate_seconds,
         ),
-    )
-    context.application.create_task(
-        _complete_prompt_submission(
-            context.application,
-            runtime,
-            request.chat_id,
-            submit_result.run_id,
-            lambda run: _notify_terminal_update(context.application, request.chat_id, run),
-        )
     )

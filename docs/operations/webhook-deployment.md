@@ -64,13 +64,33 @@ Start the bot only after validation succeeds:
 mergemate run-bot --config ~/.config/mergemate/config.yaml
 ```
 
-On startup, MergeMate logs the config path, database path, Telegram mode, the resolved public webhook URL when webhook mode is enabled, and whether webhook secret-token validation is active. The secret value itself is not logged.
+On startup, MergeMate logs the config path, database path, Telegram mode, the resolved public webhook URL when webhook mode is enabled, whether webhook secret-token validation is active, and the readiness endpoint bind target when that endpoint is enabled. The secret value itself is not logged.
 
 When `telegram.webhook_healthcheck_enabled` is true, MergeMate also starts a small local readiness server. It returns:
 
 - `503` with `{"status": "starting"}` before the Telegram application finishes startup
 - `200` with `{"status": "ready"}` while the webhook runtime is ready to receive traffic
 - `503` with `{"status": "stopping"}` during shutdown
+
+Example one-shot probe:
+
+```bash
+mergemate probe-readiness --config ~/.config/mergemate/config.yaml
+
+mergemate probe-readiness --wait --config ~/.config/mergemate/config.yaml
+
+curl --fail --silent http://127.0.0.1:8081/healthz
+```
+
+Example rollout wait loop:
+
+```bash
+until curl --silent http://127.0.0.1:8081/healthz | grep -q '"status": "ready"'; do
+    sleep 1
+done
+```
+
+If you need an HTTP status check instead of inspecting the JSON body, `200` means ready and `503` means the process is still starting or stopping.
 
 ## Nginx Example
 
@@ -155,3 +175,5 @@ This runbook covers the initial self-hosted deployment path. It does not yet add
 - multi-instance webhook coordination
 - external queue or database deployment guidance
 - automated certificate rotation guidance beyond the reverse-proxy examples
+
+For production-oriented persistence layout and the current boundary around ingress/worker separation, see `docs/operations/production-deployment.md`.

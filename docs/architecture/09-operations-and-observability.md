@@ -8,6 +8,7 @@ Observability should support debugging startup, run lifecycle, and operator-visi
 
 - startup configuration source
 - startup Telegram mode, webhook public URL when enabled, and whether secret-token validation is active
+- startup readiness-endpoint bind target when enabled
 - accepted run count
 - active run count
 - run state transitions

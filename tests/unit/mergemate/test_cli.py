@@ -1,5 +1,6 @@
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.error import HTTPError, URLError
 
 import pytest
 from typer.testing import CliRunner
@@ -147,6 +148,253 @@ def test_print_config_path_outputs_default_path(monkeypatch: pytest.MonkeyPatch)
 
     assert result.exit_code == 0
     assert "/tmp/default.yaml" in result.stdout
+
+
+def test_probe_readiness_reports_ready_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = SimpleNamespace(
+        telegram=SimpleNamespace(
+            mode="webhook",
+            webhook_healthcheck_enabled=True,
+            webhook_healthcheck_listen_host="127.0.0.1",
+            webhook_healthcheck_listen_port=8081,
+            webhook_healthcheck_path="/healthz",
+        )
+    )
+
+    class ResponseStub:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self) -> bytes:
+            return b'{"status": "ready"}'
+
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "urlopen", lambda url, timeout: ResponseStub())
+
+    result = runner.invoke(cli.app, ["probe-readiness"])
+
+    assert result.exit_code == 0
+    assert '{"status": "ready"}' in result.stdout
+
+
+def test_probe_readiness_fails_for_disabled_healthcheck(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = SimpleNamespace(
+        telegram=SimpleNamespace(
+            mode="webhook",
+            webhook_healthcheck_enabled=False,
+            webhook_healthcheck_listen_host="127.0.0.1",
+            webhook_healthcheck_listen_port=8081,
+            webhook_healthcheck_path="/healthz",
+        )
+    )
+
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+
+    result = runner.invoke(cli.app, ["probe-readiness"])
+
+    assert result.exit_code != 0
+    assert isinstance(result.exception, ValueError)
+
+
+def test_probe_readiness_fails_for_non_ready_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = SimpleNamespace(
+        telegram=SimpleNamespace(
+            mode="webhook",
+            webhook_healthcheck_enabled=True,
+            webhook_healthcheck_listen_host="127.0.0.1",
+            webhook_healthcheck_listen_port=8081,
+            webhook_healthcheck_path="/healthz",
+        )
+    )
+
+    class ResponseStub:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self) -> bytes:
+            return b'{"status": "starting"}'
+
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "urlopen", lambda url, timeout: ResponseStub())
+
+    result = runner.invoke(cli.app, ["probe-readiness"])
+
+    assert result.exit_code == 1
+    assert '{"status": "starting"}' in result.stdout
+
+
+def test_probe_readiness_fails_for_http_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = SimpleNamespace(
+        telegram=SimpleNamespace(
+            mode="webhook",
+            webhook_healthcheck_enabled=True,
+            webhook_healthcheck_listen_host="127.0.0.1",
+            webhook_healthcheck_listen_port=8081,
+            webhook_healthcheck_path="/healthz",
+        )
+    )
+
+    class ErrorStub(HTTPError):
+        def __init__(self) -> None:
+            super().__init__("http://127.0.0.1:8081/healthz", 503, "Service Unavailable", hdrs=None, fp=None)
+
+        def read(self) -> bytes:
+            return b'{"status": "starting"}'
+
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "urlopen", lambda url, timeout: (_ for _ in ()).throw(ErrorStub()))
+
+    result = runner.invoke(cli.app, ["probe-readiness"])
+
+    assert result.exit_code == 1
+    assert '{"status": "starting"}' in result.stdout
+
+
+def test_probe_readiness_fails_for_connection_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = SimpleNamespace(
+        telegram=SimpleNamespace(
+            mode="webhook",
+            webhook_healthcheck_enabled=True,
+            webhook_healthcheck_listen_host="127.0.0.1",
+            webhook_healthcheck_listen_port=8081,
+            webhook_healthcheck_path="/healthz",
+        )
+    )
+
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "urlopen", lambda url, timeout: (_ for _ in ()).throw(URLError("connection refused")))
+
+    result = runner.invoke(cli.app, ["probe-readiness"])
+
+    assert result.exit_code == 1
+    assert "Readiness probe failed: connection refused" in (result.stdout + result.stderr)
+
+
+def test_probe_readiness_waits_until_ready(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = SimpleNamespace(
+        telegram=SimpleNamespace(
+            mode="webhook",
+            webhook_healthcheck_enabled=True,
+            webhook_healthcheck_listen_host="127.0.0.1",
+            webhook_healthcheck_listen_port=8081,
+            webhook_healthcheck_path="/healthz",
+        )
+    )
+    responses = [b'{"status": "starting"}', b'{"status": "ready"}']
+    sleep_calls = []
+
+    class ResponseStub:
+        def __init__(self, body: bytes) -> None:
+            self._body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self) -> bytes:
+            return self._body
+
+    def fake_urlopen(url, timeout):
+        return ResponseStub(responses.pop(0))
+
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "urlopen", fake_urlopen)
+    monkeypatch.setattr(cli.time, "sleep", lambda seconds: sleep_calls.append(seconds))
+
+    result = runner.invoke(cli.app, ["probe-readiness", "--wait", "--interval-seconds", "0.5"])
+
+    assert result.exit_code == 0
+    assert '{"status": "ready"}' in result.stdout
+    assert sleep_calls == [0.5]
+
+
+def test_probe_readiness_wait_times_out(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = SimpleNamespace(
+        telegram=SimpleNamespace(
+            mode="webhook",
+            webhook_healthcheck_enabled=True,
+            webhook_healthcheck_listen_host="127.0.0.1",
+            webhook_healthcheck_listen_port=8081,
+            webhook_healthcheck_path="/healthz",
+        )
+    )
+    monotonic_values = iter([0.0, 0.0, 0.6])
+    sleep_calls = []
+
+    class ResponseStub:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self) -> bytes:
+            return b'{"status": "starting"}'
+
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "urlopen", lambda url, timeout: ResponseStub())
+    monkeypatch.setattr(cli.time, "sleep", lambda seconds: sleep_calls.append(seconds))
+    monkeypatch.setattr(cli.time, "monotonic", lambda: next(monotonic_values))
+
+    result = runner.invoke(
+        cli.app,
+        ["probe-readiness", "--wait", "--interval-seconds", "0.5", "--max-wait-seconds", "0.5"],
+    )
+
+    assert result.exit_code == 1
+    assert '{"status": "starting"}' in result.stdout
+    assert sleep_calls == [0.5]
+
+
+def test_probe_readiness_wait_retries_connection_failures(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = SimpleNamespace(
+        telegram=SimpleNamespace(
+            mode="webhook",
+            webhook_healthcheck_enabled=True,
+            webhook_healthcheck_listen_host="127.0.0.1",
+            webhook_healthcheck_listen_port=8081,
+            webhook_healthcheck_path="/healthz",
+        )
+    )
+    attempts = iter([URLError("connection refused"), b'{"status": "ready"}'])
+    sleep_calls = []
+
+    class ResponseStub:
+        def __init__(self, body: bytes) -> None:
+            self._body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self) -> bytes:
+            return self._body
+
+    def fake_urlopen(url, timeout):
+        next_attempt = next(attempts)
+        if isinstance(next_attempt, Exception):
+            raise next_attempt
+        return ResponseStub(next_attempt)
+
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "urlopen", fake_urlopen)
+    monkeypatch.setattr(cli.time, "sleep", lambda seconds: sleep_calls.append(seconds))
+
+    result = runner.invoke(cli.app, ["probe-readiness", "--wait", "--interval-seconds", "0.2"])
+
+    assert result.exit_code == 0
+    assert '{"status": "ready"}' in result.stdout
+    assert sleep_calls == [0.2]
 
 
 def test_install_package_exits_nonzero_for_error(monkeypatch: pytest.MonkeyPatch) -> None:

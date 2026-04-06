@@ -1,6 +1,10 @@
 """CLI entrypoints for running MergeMate."""
 
+import json
 from pathlib import Path
+import time
+from urllib.error import HTTPError, URLError
+from urllib.request import urlopen
 
 import typer
 
@@ -9,6 +13,38 @@ from mergemate.config.loader import load_runtime_settings, resolve_config_path
 from mergemate.interfaces.telegram.bot import TelegramBotRuntime
 
 app = typer.Typer(help="MergeMate command line interface")
+
+
+def _resolve_readiness_url(settings) -> str:
+    telegram_settings = settings.telegram
+    if telegram_settings.mode != "webhook":
+        raise ValueError("Readiness probing is only available when telegram.mode is webhook")
+    if not telegram_settings.webhook_healthcheck_enabled:
+        raise ValueError("Readiness probing is disabled because telegram.webhook_healthcheck_enabled is false")
+    return (
+        f"http://{telegram_settings.webhook_healthcheck_listen_host}:"
+        f"{telegram_settings.webhook_healthcheck_listen_port}"
+        f"{telegram_settings.webhook_healthcheck_path}"
+    )
+
+
+def _probe_readiness_once(readiness_url: str, *, timeout_seconds: float) -> tuple[str, dict[str, object], bool]:
+    try:
+        with urlopen(readiness_url, timeout=timeout_seconds) as response:
+            response_body = response.read().decode("utf-8")
+            payload = json.loads(response_body)
+    except HTTPError as error:
+        response_body = error.read().decode("utf-8")
+        try:
+            payload = json.loads(response_body)
+        except json.JSONDecodeError:
+            payload = {"status": "http_error", "detail": response_body}
+        return response_body, payload, False
+    except URLError as error:
+        return f"Readiness probe failed: {error.reason}", {"status": "connection_error"}, False
+
+    is_ready = payload.get("status") == "ready"
+    return response_body, payload, is_ready
 
 
 @app.command("run-bot")
@@ -45,6 +81,54 @@ def validate_config(
 def print_config_path() -> None:
     """Print the default local configuration path."""
     typer.echo(str(resolve_config_path()))
+
+
+@app.command("probe-readiness")
+def probe_readiness(
+    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
+    timeout_seconds: float = typer.Option(2.0, min=0.1, help="HTTP timeout in seconds"),
+    wait: bool = typer.Option(False, help="Wait until the readiness endpoint reports ready"),
+    interval_seconds: float = typer.Option(
+        1.0,
+        min=0.1,
+        help="Polling interval in seconds when --wait is enabled",
+    ),
+    max_wait_seconds: float | None = typer.Option(
+        None,
+        min=0.1,
+        help="Optional maximum total wait time in seconds when --wait is enabled",
+    ),
+) -> None:
+    """Probe the local webhook readiness endpoint and exit nonzero until it is ready."""
+    settings = load_runtime_settings(config)
+    readiness_url = _resolve_readiness_url(settings)
+    start_time = time.monotonic()
+
+    while True:
+        response_body, payload, is_ready = _probe_readiness_once(
+            readiness_url,
+            timeout_seconds=timeout_seconds,
+        )
+
+        if is_ready:
+            typer.echo(response_body)
+            return
+
+        if not wait:
+            if payload.get("status") == "connection_error":
+                typer.echo(response_body, err=True)
+            else:
+                typer.echo(response_body)
+            raise typer.Exit(code=1)
+
+        if max_wait_seconds is not None and time.monotonic() - start_time >= max_wait_seconds:
+            if payload.get("status") == "connection_error":
+                typer.echo(response_body, err=True)
+            else:
+                typer.echo(response_body)
+            raise typer.Exit(code=1)
+
+        time.sleep(interval_seconds)
 
 
 @app.command("install-package")

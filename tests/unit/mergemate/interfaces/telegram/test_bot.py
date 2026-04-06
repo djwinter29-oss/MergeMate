@@ -66,11 +66,16 @@ class FilterStub:
 class RuntimeStub:
     settings: object
     worker: object | None = None
+    lifecycle_notifier: object | None = None
 
 
 def test_build_application_registers_handlers(monkeypatch: pytest.MonkeyPatch) -> None:
     builder = BuilderStub()
-    runtime = RuntimeStub(settings=SimpleNamespace(telegram=SimpleNamespace(mode="polling"), resolve_telegram_token=lambda: "token"), worker=SimpleNamespace())
+    runtime = RuntimeStub(
+        settings=SimpleNamespace(telegram=SimpleNamespace(mode="polling"), resolve_telegram_token=lambda: "token"),
+        worker=SimpleNamespace(),
+        lifecycle_notifier=SimpleNamespace(bind_application=lambda application: None),
+    )
 
     monkeypatch.setattr(telegram_bot, "ApplicationBuilder", lambda: builder)
     monkeypatch.setattr(telegram_bot, "CommandHandler", lambda name, fn: ("command", name, fn.__name__))
@@ -86,6 +91,7 @@ def test_build_application_registers_handlers(monkeypatch: pytest.MonkeyPatch) -
 
     assert application is builder.application
     assert builder.token_value == "token"
+    assert builder.post_init_callback is telegram_bot.start_runtime_tasks
     assert builder.post_shutdown_callback is telegram_bot.stop_runtime_tasks
     assert builder.post_stop_callback is telegram_bot.stop_runtime_tasks
     assert application.bot_data["runtime"] is runtime
@@ -235,6 +241,36 @@ def test_run_dispatches_to_polling_mode(monkeypatch: pytest.MonkeyPatch) -> None
     bot_runtime.run()
 
     assert observed == ["polling"]
+
+
+@pytest.mark.asyncio
+async def test_start_runtime_tasks_binds_application_starts_worker_and_marks_ready() -> None:
+    calls = []
+
+    class WorkerStub:
+        async def start(self) -> None:
+            calls.append("worker")
+
+    class NotifierStub:
+        def bind_application(self, application) -> None:
+            calls.append(("notifier", application))
+
+    class ReadinessStub:
+        def mark_ready(self) -> None:
+            calls.append("ready")
+
+    application = ApplicationStub()
+    application.bot_data["runtime"] = RuntimeStub(
+        settings=SimpleNamespace(),
+        worker=WorkerStub(),
+        lifecycle_notifier=NotifierStub(),
+    )
+    application.bot_data["webhook_readiness_state"] = ReadinessStub()
+
+    await telegram_bot.start_runtime_tasks(application)
+
+    assert calls[0] == ("notifier", application)
+    assert calls[1:] == ["worker", "ready"]
 
 
 @pytest.mark.asyncio

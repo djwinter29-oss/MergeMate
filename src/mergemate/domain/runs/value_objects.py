@@ -27,5 +27,17 @@ class RunStage(StrEnum):
     COMPLETED = "completed"
 
 
+class RunJobStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class RunJobType(StrEnum):
+    PLAN_RUN = "plan_run"
+    EXECUTE_RUN = "execute_run"
+
+
 def tool_stage(tool_name: str) -> str:
     return f"tool:{tool_name}"

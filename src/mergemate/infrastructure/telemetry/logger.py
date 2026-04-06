@@ -15,12 +15,23 @@ def log_startup_configuration(settings, *, config_path: Path, database_path: Pat
     secret_validation_enabled = bool(
         webhook_enabled and telegram_settings.webhook_secret_token_env
     )
+    readiness_enabled = bool(
+        webhook_enabled and telegram_settings.webhook_healthcheck_enabled
+    )
+    readiness_bind = (
+        f"{telegram_settings.webhook_healthcheck_listen_host}:"
+        f"{telegram_settings.webhook_healthcheck_listen_port}"
+        f"{telegram_settings.webhook_healthcheck_path}"
+        if readiness_enabled
+        else "disabled"
+    )
 
     logging.getLogger(__name__).info(
-        "MergeMate startup config_path=%s database_path=%s telegram_mode=%s webhook_url=%s webhook_secret_token_validation=%s",
+        "MergeMate startup config_path=%s database_path=%s telegram_mode=%s webhook_url=%s webhook_secret_token_validation=%s readiness_endpoint=%s",
         config_path,
         database_path,
         telegram_settings.mode,
         webhook_url,
         secret_validation_enabled,
+        readiness_bind,
     )

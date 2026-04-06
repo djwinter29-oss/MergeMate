@@ -130,6 +130,8 @@ class RuntimeConfig(BaseModel):
     max_concurrent_runs: int = Field(default=2, ge=1)
     status_update_interval_seconds: int = Field(default=5, ge=1)
     default_request_timeout_seconds: int = Field(default=300, ge=1)
+    job_lease_seconds: int = Field(default=30, ge=1)
+    job_heartbeat_interval_seconds: int = Field(default=10, ge=1)
 
 
 class WorkflowControlConfig(BaseModel):

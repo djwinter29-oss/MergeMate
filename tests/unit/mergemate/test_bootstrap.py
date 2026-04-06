@@ -37,7 +37,12 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
                 extra_headers={"X-Test": "1"},
             )
         },
-        runtime=SimpleNamespace(max_concurrent_runs=4, default_request_timeout_seconds=90),
+        runtime=SimpleNamespace(
+            max_concurrent_runs=4,
+            default_request_timeout_seconds=90,
+            job_lease_seconds=30,
+            job_heartbeat_interval_seconds=10,
+        ),
         workflow_control=SimpleNamespace(),
         resolve_database_path=lambda resolved: tmp_path / "workspace" / ".state" / "runtime.db",
         resolve_docs_root=lambda resolved: tmp_path / "workspace" / "docs",
@@ -103,8 +108,15 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
             recorded.record("worker", **kwargs)
 
     class DispatcherStub:
-        def __init__(self, worker) -> None:
-            recorded.record("dispatcher", worker)
+        def __init__(self, run_job_repository, queue_backend) -> None:
+            recorded.record("dispatcher", run_job_repository, queue_backend)
+
+    class LifecycleNotifierStub:
+        def __init__(self, wired_settings) -> None:
+            recorded.record("lifecycle_notifier", wired_settings)
+
+        def bind_runtime(self, runtime) -> None:
+            recorded.record("lifecycle_notifier.bind_runtime", runtime)
 
     class SubmitPromptStub:
         def __init__(self, *args) -> None:
@@ -122,6 +134,7 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
     )
     monkeypatch.setattr(bootstrap_module, "SQLiteDatabase", DatabaseStub)
     monkeypatch.setattr(bootstrap_module, "SQLiteRunRepository", type("SQLiteRunRepositoryStub", (RepositoryStub,), {}))
+    monkeypatch.setattr(bootstrap_module, "SQLiteRunJobRepository", type("SQLiteRunJobRepositoryStub", (RepositoryStub,), {}))
     monkeypatch.setattr(bootstrap_module, "SQLiteConversationRepository", type("SQLiteConversationRepositoryStub", (RepositoryStub,), {}))
     monkeypatch.setattr(bootstrap_module, "SQLiteLearningRepository", type("SQLiteLearningRepositoryStub", (RepositoryStub,), {}))
     monkeypatch.setattr(bootstrap_module, "SQLiteToolEventRepository", type("SQLiteToolEventRepositoryStub", (RepositoryStub,), {}))
@@ -141,6 +154,8 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
     monkeypatch.setattr(bootstrap_module, "ToolService", ToolServiceStub)
     monkeypatch.setattr(bootstrap_module, "PlanningService", PlanningServiceStub)
     monkeypatch.setattr(bootstrap_module, "WorkflowService", WorkflowServiceStub)
+    monkeypatch.setattr(bootstrap_module, "LocalQueue", lambda: "queue_backend")
+    monkeypatch.setattr(bootstrap_module, "TelegramRunLifecycleNotifier", LifecycleNotifierStub)
     monkeypatch.setattr(bootstrap_module, "AgentOrchestrator", OrchestratorStub)
     monkeypatch.setattr(bootstrap_module, "BackgroundRunWorker", WorkerStub)
     monkeypatch.setattr(bootstrap_module, "RunDispatcher", DispatcherStub)
@@ -182,7 +197,12 @@ def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Pa
             gitlab_executable="glab",
         ),
         providers={},
-        runtime=SimpleNamespace(max_concurrent_runs=1, default_request_timeout_seconds=90),
+        runtime=SimpleNamespace(
+            max_concurrent_runs=1,
+            default_request_timeout_seconds=90,
+            job_lease_seconds=30,
+            job_heartbeat_interval_seconds=10,
+        ),
         workflow_control=SimpleNamespace(),
         resolve_database_path=lambda resolved: tmp_path / "db.sqlite",
         resolve_docs_root=lambda resolved: tmp_path / "docs",
@@ -201,6 +221,7 @@ def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Pa
     )
     monkeypatch.setattr(bootstrap_module, "SQLiteDatabase", lambda path: SimpleNamespace(path=path, initialize=lambda: None))
     monkeypatch.setattr(bootstrap_module, "SQLiteRunRepository", lambda database: "run_repo")
+    monkeypatch.setattr(bootstrap_module, "SQLiteRunJobRepository", lambda database: "run_job_repo")
     monkeypatch.setattr(bootstrap_module, "SQLiteConversationRepository", lambda database: "conversation_repo")
     monkeypatch.setattr(bootstrap_module, "SQLiteLearningRepository", lambda database: "learning_repo")
     monkeypatch.setattr(bootstrap_module, "SQLiteToolEventRepository", lambda database: "tool_event_repo")
@@ -212,9 +233,15 @@ def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Pa
     monkeypatch.setattr(bootstrap_module, "ToolService", lambda registry, wired_settings, **kwargs: "tool_service")
     monkeypatch.setattr(bootstrap_module, "PlanningService", lambda gateway, wired_settings: "planning_service")
     monkeypatch.setattr(bootstrap_module, "WorkflowService", lambda gateway, wired_settings: "workflow_service")
+    monkeypatch.setattr(bootstrap_module, "LocalQueue", lambda: "queue_backend")
+    monkeypatch.setattr(
+        bootstrap_module,
+        "TelegramRunLifecycleNotifier",
+        lambda settings: SimpleNamespace(bind_runtime=lambda runtime: None),
+    )
     monkeypatch.setattr(bootstrap_module, "AgentOrchestrator", lambda **kwargs: "orchestrator")
     monkeypatch.setattr(bootstrap_module, "BackgroundRunWorker", lambda **kwargs: "worker")
-    monkeypatch.setattr(bootstrap_module, "RunDispatcher", lambda worker: "dispatcher")
+    monkeypatch.setattr(bootstrap_module, "RunDispatcher", lambda run_job_repository, queue_backend: "dispatcher")
     monkeypatch.setattr(bootstrap_module, "SubmitPromptUseCase", lambda *args: "submit_prompt")
     monkeypatch.setattr(bootstrap_module, "ApproveRunUseCase", lambda submit: "approve_run")
     monkeypatch.setattr(bootstrap_module, "GetRunStatusUseCase", lambda repo, tool_event_repo: "get_run_status")

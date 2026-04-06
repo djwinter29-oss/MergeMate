@@ -105,8 +105,8 @@ class SubmitPromptStub:
             raise self.execute_error
         return self.execute_result
 
-    async def complete_planning(self, run_id: str, *, on_finished=None):
-        self.complete_calls.append((run_id, on_finished is not None))
+    async def complete_planning(self, run_id: str):
+        self.complete_calls.append((run_id, False))
         if self.complete_error is not None:
             raise self.complete_error
         return self.complete_result
@@ -392,7 +392,7 @@ async def test_approve_command_starts_watcher_when_dispatched(monkeypatch: pytes
 
     assert "approved" in message.replies[0]
     assert started == [(5, "run-4")]
-    assert runtime.approve_run.calls == [("run-4", 5, True)]
+    assert runtime.approve_run.calls == [("run-4", 5, False)]
 
 
 @pytest.mark.asyncio
@@ -636,67 +636,54 @@ async def test_handle_prompt_handles_auto_execution_and_confirmation(monkeypatch
 
     auto_submit = SubmitPromptStub(
         execute_result=SimpleNamespace(run_id="run-8", status="queued", plan_text=None, estimate_seconds=12),
-        complete_result=SimpleNamespace(run_id="run-8", status="queued", plan_text="plan", estimate_seconds=12),
     )
     auto_runtime = _runtime(latest=GetRunStatusStub([None]), submit=auto_submit, workflow="debug_code")
     auto_message = MessageStub("debug it")
     auto_application = ApplicationStub(auto_runtime)
     await handlers.handle_prompt(UpdateStub(auto_message), ContextStub(auto_application))
-    await _drain_background_tasks(auto_application)
     assert "Request accepted. Run ID: run-8." in auto_message.replies[0]
-    assert len(auto_application.bot.messages) == 1
-    assert auto_application.bot.messages[0][0] == 5
-    assert "started automatically" in auto_application.bot.messages[0][1]
     assert auto_submit.execute_calls[0]["workflow"] == "debug_code"
-    assert auto_submit.complete_calls == [("run-8", True)]
-    assert started == [(5, "run-8")]
+    assert auto_submit.complete_calls == []
+    assert auto_application.bot.messages == []
+    assert started == []
 
     confirm_submit = SubmitPromptStub(
         execute_result=SimpleNamespace(run_id="run-9", status="awaiting_confirmation", plan_text=None, estimate_seconds=18),
-        complete_result=SimpleNamespace(run_id="run-9", status="awaiting_confirmation", plan_text="plan", estimate_seconds=18),
     )
     confirm_runtime = _runtime(latest=GetRunStatusStub([None]), submit=confirm_submit)
     confirm_message = MessageStub("build it")
     confirm_application = ApplicationStub(confirm_runtime)
     await handlers.handle_prompt(UpdateStub(confirm_message), ContextStub(confirm_application))
-    await _drain_background_tasks(confirm_application)
     assert "Request accepted. Run ID: run-9." in confirm_message.replies[0]
-    assert len(confirm_application.bot.messages) == 1
-    assert confirm_application.bot.messages[0][0] == 5
-    assert "Requirements captured for run run-9." in confirm_application.bot.messages[0][1]
+    assert confirm_submit.complete_calls == []
+    assert confirm_application.bot.messages == []
 
 
 @pytest.mark.asyncio
 async def test_handle_prompt_splits_oversized_auto_execution_and_confirmation_messages(monkeypatch: pytest.MonkeyPatch) -> None:
     started = []
     monkeypatch.setattr(handlers, "_start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
-    long_plan = "x" * (handlers.TELEGRAM_MESSAGE_LIMIT + 250)
 
     auto_submit = SubmitPromptStub(
         execute_result=SimpleNamespace(run_id="run-8", status="queued", plan_text=None, estimate_seconds=12),
-        complete_result=SimpleNamespace(run_id="run-8", status="queued", plan_text=long_plan, estimate_seconds=12),
     )
     auto_runtime = _runtime(latest=GetRunStatusStub([None]), submit=auto_submit, workflow="debug_code")
     auto_message = MessageStub("debug it")
     auto_application = ApplicationStub(auto_runtime)
     await handlers.handle_prompt(UpdateStub(auto_message), ContextStub(auto_application))
-    await _drain_background_tasks(auto_application)
     assert len(auto_message.replies) == 1
-    assert len(auto_application.bot.messages) == 2
-    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for _, reply in auto_application.bot.messages)
+    assert auto_application.bot.messages == []
 
     confirm_submit = SubmitPromptStub(
         execute_result=SimpleNamespace(run_id="run-9", status="awaiting_confirmation", plan_text=None, estimate_seconds=18),
-        complete_result=SimpleNamespace(run_id="run-9", status="awaiting_confirmation", plan_text=long_plan, estimate_seconds=18),
     )
     confirm_runtime = _runtime(latest=GetRunStatusStub([None]), submit=confirm_submit)
     confirm_message = MessageStub("build it")
     confirm_application = ApplicationStub(confirm_runtime)
     await handlers.handle_prompt(UpdateStub(confirm_message), ContextStub(confirm_application))
-    await _drain_background_tasks(confirm_application)
     assert len(confirm_message.replies) == 1
-    assert len(confirm_application.bot.messages) == 2
-    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for _, reply in confirm_application.bot.messages)
+    assert confirm_application.bot.messages == []
+    assert started == []
 
 
 @pytest.mark.asyncio
@@ -705,20 +692,16 @@ async def test_handle_prompt_replies_with_stored_error_text_when_submission_fail
     runtime = _runtime(
         latest=GetRunStatusStub([None, failed_run]),
         submit=SubmitPromptStub(
-            execute_result=SimpleNamespace(run_id="run-10", status="awaiting_confirmation", plan_text=None, estimate_seconds=12),
-            complete_error=PromptSubmissionError("run-10", "planner unavailable"),
+            execute_error=PromptSubmissionError("run-10", "planner unavailable"),
         ),
     )
     message = MessageStub("build it")
     application = ApplicationStub(runtime)
 
     await handlers.handle_prompt(UpdateStub(message), ContextStub(application))
-    await _drain_background_tasks(application)
 
-    assert message.replies == [
-        "Request accepted. Run ID: run-10. Agent: coder. Status: planning. Estimated execution time after planning: 12s. You will receive the drafted plan shortly.",
-    ]
-    assert application.bot.messages == [(5, "planner unavailable")]
+    assert message.replies == ["planner unavailable"]
+    assert application.bot.messages == []
 
 
 @pytest.mark.asyncio
@@ -728,19 +711,17 @@ async def test_handle_prompt_splits_oversized_submission_error() -> None:
     runtime = _runtime(
         latest=GetRunStatusStub([None, failed_run]),
         submit=SubmitPromptStub(
-            execute_result=SimpleNamespace(run_id="run-10", status="awaiting_confirmation", plan_text=None, estimate_seconds=12),
-            complete_error=PromptSubmissionError("run-10", long_error),
+            execute_error=PromptSubmissionError("run-10", long_error),
         ),
     )
     message = MessageStub("build it")
     application = ApplicationStub(runtime)
 
     await handlers.handle_prompt(UpdateStub(message), ContextStub(application))
-    await _drain_background_tasks(application)
 
-    assert len(message.replies) == 1
-    assert len(application.bot.messages) == 2
-    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for _, reply in application.bot.messages)
+    assert len(message.replies) == 2
+    assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for reply in message.replies)
+    assert application.bot.messages == []
 
 
 @pytest.mark.asyncio

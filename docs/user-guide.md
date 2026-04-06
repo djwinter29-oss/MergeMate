@@ -94,6 +94,14 @@ Print the default project-local config path:
 mergemate print-config-path
 ```
 
+Probe the local readiness endpoint configured for webhook mode:
+
+```bash
+mergemate probe-readiness
+
+mergemate probe-readiness --wait
+```
+
 Run the Telegram bot:
 
 ```bash
@@ -109,6 +117,10 @@ mergemate run-bot --config ~/.config/mergemate/config.yaml
 ```
 
 Webhook mode currently supports runtime configuration, startup validation, Telegram secret-token enforcement, Telegram application wiring, a built-in local readiness endpoint, and an initial self-hosted deployment runbook. See `docs/operations/webhook-deployment.md` for reverse-proxy, TLS termination, readiness probing, and user-service examples.
+
+For local rollout checks, the default readiness probe is `mergemate probe-readiness --wait` or `curl --fail --silent http://127.0.0.1:8081/healthz` when the healthcheck listener remains on the default bind target.
+
+For production-oriented persistence layout and the current runtime boundary around ingress/worker separation, see `docs/operations/production-deployment.md`.
 
 Install a Python package when allowed by config:
 

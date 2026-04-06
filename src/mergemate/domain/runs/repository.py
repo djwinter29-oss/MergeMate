@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from mergemate.domain.runs.entities import AgentRun
-from mergemate.domain.runs.value_objects import RunStage, RunStatus
+from mergemate.domain.runs.entities import AgentRun, RunJob
+from mergemate.domain.runs.value_objects import RunJobType, RunStage, RunStatus
 
 
 @dataclass(slots=True)
@@ -17,6 +17,12 @@ class ApprovalDecision:
 class StatusUpdateDecision:
     run: AgentRun | None
     transitioned: bool
+
+
+@dataclass(slots=True)
+class QueuedRunJobDecision:
+    job: RunJob | None
+    created: bool
 
 
 class AgentRunRepository(Protocol):
@@ -70,3 +76,29 @@ class AgentRunRepository(Protocol):
         result_text: str | None = None,
         review_iterations: int | None = None,
     ) -> AgentRun | None: ...
+
+
+class RunJobRepository(Protocol):
+    def ensure_queued_job(
+        self,
+        run_id: str,
+        *,
+        job_type: RunJobType = RunJobType.EXECUTE_RUN,
+    ) -> QueuedRunJobDecision: ...
+
+    def get(self, job_id: str) -> RunJob | None: ...
+
+    def get_active_for_run(
+        self,
+        run_id: str,
+        *,
+        job_type: RunJobType | None = None,
+    ) -> RunJob | None: ...
+
+    def claim_job(self, job_id: str, *, worker_id: str, lease_seconds: int) -> RunJob | None: ...
+
+    def heartbeat_job(self, job_id: str, *, worker_id: str, lease_seconds: int) -> RunJob | None: ...
+
+    def complete_job(self, job_id: str) -> RunJob | None: ...
+
+    def fail_job(self, job_id: str, error_text: str) -> RunJob | None: ...

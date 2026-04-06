@@ -4,7 +4,7 @@ import pytest
 
 from mergemate.application.use_cases.submit_prompt import PromptSubmissionError, SubmitPromptUseCase
 from mergemate.domain.runs.repository import ApprovalDecision
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.runs.value_objects import RunJobType, RunStatus
 
 
 class InMemoryRunRepository:
@@ -83,18 +83,20 @@ class ContextServiceStub:
 
 class DispatcherStub:
     def __init__(self, *, error: Exception | None = None) -> None:
-        self.dispatched_run_ids = []
+        self.dispatched_jobs: list[tuple[str, RunJobType]] = []
         self.error = error
 
-    def dispatch_run(self, run_id: str, on_finished=None):
+    def dispatch_run(self, run_id: str, *, job_type=RunJobType.EXECUTE_RUN):
         if self.error is not None:
             raise self.error
-        self.dispatched_run_ids.append(run_id)
+        self.dispatched_jobs.append((run_id, job_type))
 
         @dataclass(slots=True)
         class Result:
             run_id: str
+            job_id: str = "job-1"
             status: str = "queued"
+            created: bool = True
 
         return Result(run_id=run_id)
 
@@ -152,7 +154,7 @@ async def test_execute_waits_for_approval_when_confirmation_required() -> None:
     assert result.plan_text is None
     assert planned is not None
     assert planned.plan_text == "plan for build feature"
-    assert dispatcher.dispatched_run_ids == []
+    assert dispatcher.dispatched_jobs == [(result.run_id, RunJobType.PLAN_RUN)]
 
 
 @pytest.mark.asyncio
@@ -179,8 +181,11 @@ async def test_execute_auto_dispatches_when_confirmation_disabled() -> None:
     assert result.status == RunStatus.QUEUED.value
     assert planned is not None
     assert planned.plan_text == "plan for build feature"
-    assert len(dispatcher.dispatched_run_ids) == 1
-    saved_run = repository.get(dispatcher.dispatched_run_ids[0])
+    assert dispatcher.dispatched_jobs == [
+        (result.run_id, RunJobType.PLAN_RUN),
+        (result.run_id, RunJobType.EXECUTE_RUN),
+    ]
+    saved_run = repository.get(result.run_id)
     assert saved_run is not None
     assert saved_run.approved is True
     assert saved_run.current_stage == "queued_for_execution"
@@ -210,7 +215,7 @@ async def test_execute_marks_run_failed_when_plan_drafting_raises() -> None:
     with pytest.raises(PromptSubmissionError, match="planner unavailable"):
         await use_case.complete_planning(result.run_id)
 
-    assert dispatcher.dispatched_run_ids == []
+    assert dispatcher.dispatched_jobs == [(result.run_id, RunJobType.PLAN_RUN)]
     assert context_service.messages == [(1, "user", "build feature")]
     assert len(repository.runs) == 1
     saved_run = next(iter(repository.runs.values()))
@@ -231,20 +236,18 @@ async def test_execute_marks_run_failed_when_dispatch_rejects_during_shutdown() 
         SettingsStub(WorkflowControlConfigStub(require_confirmation=False)),
     )
 
-    result = await use_case.execute(
-        chat_id=1,
-        user_id=2,
-        agent_name="coder",
-        workflow="generate_code",
-        prompt="build feature",
-    )
-
     with pytest.raises(PromptSubmissionError, match="Background worker is stopping"):
-        await use_case.complete_planning(result.run_id)
+        await use_case.execute(
+            chat_id=1,
+            user_id=2,
+            agent_name="coder",
+            workflow="generate_code",
+            prompt="build feature",
+        )
 
     saved_run = next(iter(repository.runs.values()))
     assert saved_run.status == RunStatus.FAILED
-    assert saved_run.current_stage == "queued_for_execution"
+    assert saved_run.current_stage == "planning"
     assert saved_run.error_text == "Background worker is stopping and cannot accept new runs."
 
 
@@ -292,7 +295,7 @@ def test_approve_is_idempotent_for_completed_run() -> None:
     assert result is not None
     assert result.dispatched is False
     assert result.status == RunStatus.COMPLETED.value
-    assert dispatcher.dispatched_run_ids == []
+    assert dispatcher.dispatched_jobs == []
 
 
 @pytest.mark.asyncio
@@ -388,7 +391,7 @@ def test_approve_rejects_run_from_other_chat() -> None:
     result = use_case.approve("run-2", chat_id=999)
 
     assert result is None
-    assert dispatcher.dispatched_run_ids == []
+    assert dispatcher.dispatched_jobs == []
 
 
 def test_approve_marks_run_failed_when_dispatch_rejects_during_shutdown() -> None:
@@ -482,7 +485,7 @@ def test_approve_does_not_dispatch_when_transition_was_already_claimed() -> None
     assert result is not None
     assert result.dispatched is False
     assert result.status == RunStatus.QUEUED.value
-    assert dispatcher.dispatched_run_ids == []
+    assert dispatcher.dispatched_jobs == []
 
 
 @pytest.mark.asyncio
@@ -607,7 +610,7 @@ def test_approve_returns_none_when_repository_approve_fails() -> None:
     )
 
     assert use_case.approve("run-3") is None
-    assert dispatcher.dispatched_run_ids == []
+    assert dispatcher.dispatched_jobs == []
 
 
 def test_approve_returns_not_dispatched_for_already_approved_run() -> None:

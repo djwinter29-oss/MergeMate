@@ -15,6 +15,17 @@ from mergemate.interfaces.telegram.handlers import (
 from mergemate.interfaces.telegram.progress_notifier import stop_progress_watchers
 
 
+async def start_runtime_tasks(application: Application) -> None:
+    runtime = application.bot_data.get("runtime")
+    lifecycle_notifier = getattr(runtime, "lifecycle_notifier", None)
+    if lifecycle_notifier is not None:
+        lifecycle_notifier.bind_application(application)
+    worker = getattr(runtime, "worker", None)
+    if worker is not None:
+        await worker.start()
+    await mark_runtime_ready(application)
+
+
 async def stop_runtime_tasks(application: Application) -> None:
     readiness_state = application.bot_data.get("webhook_readiness_state")
     if readiness_state is not None:
@@ -38,8 +49,7 @@ class TelegramBotRuntime:
 
     def build_application(self, *, readiness_state: WebhookReadinessState | None = None) -> Application:
         builder = ApplicationBuilder().token(self._runtime.settings.resolve_telegram_token())
-        if readiness_state is not None:
-            builder = builder.post_init(mark_runtime_ready)
+        builder = builder.post_init(start_runtime_tasks)
         builder = builder.post_stop(stop_runtime_tasks)
         builder = builder.post_shutdown(stop_runtime_tasks)
         application = builder.build()

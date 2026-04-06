@@ -2,11 +2,12 @@ from datetime import UTC, datetime
 import sqlite3
 
 from mergemate.domain.runs.entities import AgentRun
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.runs.value_objects import RunJobStatus, RunJobType, RunStatus
 from mergemate.infrastructure.persistence.sqlite import (
     SQLiteConversationRepository,
     SQLiteDatabase,
     SQLiteLearningRepository,
+    SQLiteRunJobRepository,
     SQLiteRunRepository,
     SQLiteToolEventRepository,
 )
@@ -280,3 +281,60 @@ def test_tool_event_repository_records_and_lists_events(tmp_path) -> None:
         },
     ]
     assert repository.list_for_run("missing") == []
+
+
+def test_run_job_repository_reuses_existing_active_job(tmp_path) -> None:
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    run_repository = SQLiteRunRepository(database)
+    run_repository.create(_build_run())
+    repository = SQLiteRunJobRepository(database)
+
+    first = repository.ensure_queued_job("run-1")
+    second = repository.ensure_queued_job("run-1")
+
+    assert first.job is not None
+    assert first.created is True
+    assert second.job is not None
+    assert second.created is False
+    assert second.job.job_id == first.job.job_id
+    assert second.job.status == RunJobStatus.QUEUED
+
+
+def test_run_job_repository_tracks_job_state_transitions(tmp_path) -> None:
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    run_repository = SQLiteRunRepository(database)
+    run_repository.create(_build_run())
+    repository = SQLiteRunJobRepository(database)
+
+    queued = repository.ensure_queued_job("run-1", job_type=RunJobType.EXECUTE_RUN)
+    assert queued.job is not None
+
+    started = repository.claim_job(queued.job.job_id, worker_id="worker-1", lease_seconds=30)
+    completed = repository.complete_job(queued.job.job_id)
+
+    assert started is not None
+    assert started.status == RunJobStatus.RUNNING
+    assert started.started_at is not None
+    assert completed is not None
+    assert completed.status == RunJobStatus.COMPLETED
+    assert completed.finished_at is not None
+
+
+def test_run_job_repository_records_failures(tmp_path) -> None:
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    run_repository = SQLiteRunRepository(database)
+    run_repository.create(_build_run())
+    repository = SQLiteRunJobRepository(database)
+
+    queued = repository.ensure_queued_job("run-1")
+    assert queued.job is not None
+
+    failed = repository.fail_job(queued.job.job_id, "worker crashed")
+
+    assert failed is not None
+    assert failed.status == RunJobStatus.FAILED
+    assert failed.error_text == "worker crashed"
+    assert failed.finished_at is not None

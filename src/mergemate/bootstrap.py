@@ -24,10 +24,13 @@ from mergemate.infrastructure.persistence.sqlite import (
     SQLiteConversationRepository,
     SQLiteDatabase,
     SQLiteLearningRepository,
+    SQLiteRunJobRepository,
     SQLiteRunRepository,
     SQLiteToolEventRepository,
 )
+from mergemate.infrastructure.queue.local_queue import LocalQueue
 from mergemate.infrastructure.telemetry.logger import configure_logging, log_startup_configuration
+from mergemate.interfaces.telegram.lifecycle_notifier import TelegramRunLifecycleNotifier
 from mergemate.infrastructure.tools.builtin.code_formatter import CodeFormatterTool
 from mergemate.infrastructure.tools.builtin.package_installer import PackageInstallerTool
 from mergemate.infrastructure.tools.builtin.source_control import (
@@ -45,9 +48,11 @@ class MergeMateRuntime:
     config_path: Path
     database: SQLiteDatabase
     run_repository: SQLiteRunRepository
+    run_job_repository: SQLiteRunJobRepository
     conversation_repository: SQLiteConversationRepository
     learning_repository: SQLiteLearningRepository
     tool_event_repository: SQLiteToolEventRepository
+    queue_backend: object
     learning_service: LearningService
     tool_service: ToolService
     planning_service: PlanningService
@@ -57,6 +62,7 @@ class MergeMateRuntime:
     get_run_status: GetRunStatusUseCase
     cancel_run: CancelRunUseCase
     worker: BackgroundRunWorker
+    lifecycle_notifier: TelegramRunLifecycleNotifier
 
 
 def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
@@ -74,6 +80,8 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
     )
 
     run_repository = SQLiteRunRepository(database)
+    run_job_repository = SQLiteRunJobRepository(database)
+    queue_backend = LocalQueue()
     conversation_repository = SQLiteConversationRepository(database)
     learning_repository = SQLiteLearningRepository(database)
     tool_event_repository = SQLiteToolEventRepository(database)
@@ -154,6 +162,17 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
     )
     planning_service = PlanningService(llm_gateway, settings)
     workflow_service = WorkflowService(llm_gateway, settings)
+    lifecycle_notifier = TelegramRunLifecycleNotifier(settings)
+
+    dispatcher = RunDispatcher(run_job_repository, queue_backend)
+
+    submit_prompt_use_case = SubmitPromptUseCase(
+        run_repository,
+        context_service,
+        dispatcher,
+        planning_service,
+        settings,
+    )
 
     orchestrator = AgentOrchestrator(
         run_repository=run_repository,
@@ -170,26 +189,25 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
     worker = BackgroundRunWorker(
         orchestrator=orchestrator,
         run_repository=run_repository,
+        run_job_repository=run_job_repository,
+        queue_backend=queue_backend,
+        submit_prompt=submit_prompt_use_case,
+        lifecycle_notifier=lifecycle_notifier,
         max_concurrent_runs=settings.runtime.max_concurrent_runs,
-    )
-    dispatcher = RunDispatcher(worker)
-
-    submit_prompt_use_case = SubmitPromptUseCase(
-        run_repository,
-        context_service,
-        dispatcher,
-        planning_service,
-        settings,
+        lease_seconds=settings.runtime.job_lease_seconds,
+        heartbeat_interval_seconds=settings.runtime.job_heartbeat_interval_seconds,
     )
 
-    return MergeMateRuntime(
+    runtime = MergeMateRuntime(
         settings=settings,
         config_path=resolved_config_path,
         database=database,
         run_repository=run_repository,
+        run_job_repository=run_job_repository,
         conversation_repository=conversation_repository,
         learning_repository=learning_repository,
         tool_event_repository=tool_event_repository,
+        queue_backend=queue_backend,
         learning_service=learning_service,
         tool_service=tool_service,
         planning_service=planning_service,
@@ -199,4 +217,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
         get_run_status=GetRunStatusUseCase(run_repository, tool_event_repository),
         cancel_run=CancelRunUseCase(run_repository),
         worker=worker,
+        lifecycle_notifier=lifecycle_notifier,
     )
+    lifecycle_notifier.bind_runtime(runtime)
+    return runtime
