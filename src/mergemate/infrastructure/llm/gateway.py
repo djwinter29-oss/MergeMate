@@ -35,7 +35,12 @@ class ParallelLLMGateway:
             for name in available_names
         ]
         raw_results = await asyncio.gather(*tasks, return_exceptions=True)
-        results: list[str | Exception] = list(raw_results)  # type: ignore[assignment]
+        results: list[str | Exception] = []
+        for result in raw_results:
+            if isinstance(result, Exception):
+                results.append(result)
+            else:
+                results.append(str(result))
 
         successful_results: list[tuple[str, str]] = []
         failures: list[tuple[str, str]] = []
@@ -69,14 +74,14 @@ class ParallelLLMGateway:
         failures: list[tuple[str, str]] = []
 
         try:
-            for task in asyncio.as_completed(tasks):
-                provider_name, result, error_detail = await task
+            for completed_task in asyncio.as_completed(tasks):
+                provider_name, result, error_detail = await completed_task
                 if error_detail is not None:
                     failures.append((provider_name, error_detail))
                     continue
 
                 for pending_task in tasks:
-                    if pending_task is not task and not pending_task.done():
+                    if pending_task is not completed_task and not pending_task.done():
                         pending_task.cancel()
                 await asyncio.gather(*tasks, return_exceptions=True)
                 assert result is not None
