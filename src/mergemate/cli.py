@@ -28,6 +28,12 @@ def _resolve_readiness_url(settings) -> str:
     )
 
 
+def _resolve_runtime_summary(settings) -> tuple[str, str]:
+    default_provider = settings.default_provider
+    default_agent = settings.default_agent
+    return default_provider, default_agent
+
+
 def _probe_readiness_once(readiness_url: str, *, timeout_seconds: float) -> tuple[str, dict[str, object], bool]:
     try:
         with urlopen(readiness_url, timeout=timeout_seconds) as response:
@@ -51,9 +57,10 @@ def _probe_readiness_once(readiness_url: str, *, timeout_seconds: float) -> tupl
 def run_bot(config: Path | None = typer.Option(None, help="Path to a YAML configuration file")) -> None:
     """Start the Telegram bot runtime."""
     runtime = bootstrap(config)
+    default_provider, default_agent = _resolve_runtime_summary(runtime.settings)
     typer.echo(
-        f"MergeMate configured for provider={runtime.settings.default_provider} "
-        f"agent={runtime.settings.default_agent}"
+        f"MergeMate configured for provider={default_provider} "
+        f"agent={default_agent}"
     )
     TelegramBotRuntime(runtime).run()
 

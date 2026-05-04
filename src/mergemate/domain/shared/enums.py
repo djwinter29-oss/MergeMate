@@ -53,4 +53,4 @@ def workflow_prompt_file(workflow: str | WorkflowName) -> str:
     workflow_name = resolve_workflow_name(workflow)
     if workflow_name is None:
         return "base.md"
-    return PROMPT_FILE_BY_WORKFLOW.get(workflow_name) or "base.md"
+    return PROMPT_FILE_BY_WORKFLOW.get(workflow_name, "base.md")
