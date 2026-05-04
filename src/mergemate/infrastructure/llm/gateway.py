@@ -1,10 +1,16 @@
 """Gateway for single-model and parallel multi-model execution."""
 
 import asyncio
+from collections.abc import Mapping
+from typing import Protocol
+
+
+class _LLMClient(Protocol):
+    async def generate(self, system_prompt: str, user_prompt: str) -> str: ...
 
 
 class ParallelLLMGateway:
-    def __init__(self, settings, clients: dict[str, object]) -> None:
+    def __init__(self, settings, clients: Mapping[str, _LLMClient]) -> None:
         self._settings = settings
         self._clients = clients
 
@@ -28,7 +34,13 @@ class ParallelLLMGateway:
             self._generate_from_provider(name, system_prompt, user_prompt)
             for name in available_names
         ]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        raw_results = await asyncio.gather(*tasks, return_exceptions=True)
+        results: list[str | Exception] = []
+        for result in raw_results:
+            if isinstance(result, Exception):
+                results.append(result)
+            else:
+                results.append(str(result))
 
         successful_results: list[tuple[str, str]] = []
         failures: list[tuple[str, str]] = []
@@ -62,16 +74,17 @@ class ParallelLLMGateway:
         failures: list[tuple[str, str]] = []
 
         try:
-            for task in asyncio.as_completed(tasks):
-                provider_name, result, error_detail = await task
+            for completed_task in asyncio.as_completed(tasks):
+                provider_name, result, error_detail = await completed_task
                 if error_detail is not None:
                     failures.append((provider_name, error_detail))
                     continue
 
                 for pending_task in tasks:
-                    if pending_task is not task and not pending_task.done():
+                    if pending_task is not completed_task and not pending_task.done():
                         pending_task.cancel()
                 await asyncio.gather(*tasks, return_exceptions=True)
+                assert result is not None
                 return result
         finally:
             for pending_task in tasks:
