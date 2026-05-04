@@ -42,6 +42,17 @@ def test_health_server_reports_starting_then_ready() -> None:
         server.stop()
 
 
+def test_mark_failed_changes_status_and_sets_detail() -> None:
+    state = WebhookReadinessState()
+    assert state.snapshot() == {"status": "starting"}
+
+    state.mark_failed("Connection refused")
+    assert state.snapshot() == {"status": "failed", "detail": "Connection refused"}
+
+    state.mark_failed("")
+    assert state.snapshot() == {"status": "failed", "detail": ""}
+
+
 def test_health_server_returns_not_found_for_other_paths() -> None:
     state = WebhookReadinessState()
     server = WebhookHealthServer(
