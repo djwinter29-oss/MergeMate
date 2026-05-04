@@ -1,10 +1,16 @@
 """Gateway for single-model and parallel multi-model execution."""
 
 import asyncio
+from collections.abc import Mapping
+from typing import Protocol
+
+
+class _LLMClient(Protocol):
+    async def generate(self, system_prompt: str, user_prompt: str) -> str: ...
 
 
 class ParallelLLMGateway:
-    def __init__(self, settings, clients: dict[str, object]) -> None:
+    def __init__(self, settings, clients: Mapping[str, _LLMClient]) -> None:
         self._settings = settings
         self._clients = clients
 
@@ -28,7 +34,8 @@ class ParallelLLMGateway:
             self._generate_from_provider(name, system_prompt, user_prompt)
             for name in available_names
         ]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        raw_results = await asyncio.gather(*tasks, return_exceptions=True)
+        results: list[str | Exception] = list(raw_results)  # type: ignore[assignment]
 
         successful_results: list[tuple[str, str]] = []
         failures: list[tuple[str, str]] = []
@@ -72,6 +79,7 @@ class ParallelLLMGateway:
                     if pending_task is not task and not pending_task.done():
                         pending_task.cancel()
                 await asyncio.gather(*tasks, return_exceptions=True)
+                assert result is not None
                 return result
         finally:
             for pending_task in tasks:

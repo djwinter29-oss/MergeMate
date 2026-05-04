@@ -119,7 +119,7 @@ async def tools_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if chat is None or message is None:
         return
 
-    run_id, limit, error_message = _parse_tools_command_args(context.args)
+    run_id, limit, error_message = _parse_tools_command_args(context.args or [])
     if error_message is not None:
         await message.reply_text(error_message)
         return
