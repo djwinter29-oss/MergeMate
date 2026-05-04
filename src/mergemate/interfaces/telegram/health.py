@@ -10,6 +10,7 @@ class WebhookReadinessState:
     def __init__(self) -> None:
         self._lock = Lock()
         self._status = "starting"
+        self._detail = ""
 
     def mark_ready(self) -> None:
         with self._lock:
@@ -19,9 +20,17 @@ class WebhookReadinessState:
         with self._lock:
             self._status = "stopping"
 
+    def mark_failed(self, detail: str) -> None:
+        with self._lock:
+            self._status = "failed"
+            self._detail = detail
+
     def snapshot(self) -> dict[str, str]:
         with self._lock:
-            return {"status": self._status}
+            payload = {"status": self._status}
+            if self._status == "failed":
+                payload["detail"] = self._detail
+            return payload
 
 
 class _ReusableThreadingHTTPServer(ThreadingHTTPServer):
