@@ -346,6 +346,33 @@ async def test_tools_command_rejects_invalid_limit_values() -> None:
 
 
 @pytest.mark.asyncio
+async def test_tools_command_accepts_missing_context_args() -> None:
+    now = __import__("datetime").datetime.now(__import__("datetime").UTC)
+    run_with_tools = SimpleNamespace(
+        run_id="run-1",
+        tool_events=[
+            {
+                "tool_name": "syntax_checker",
+                "action": "check",
+                "status": "ok",
+                "detail": "done",
+                "created_at": now.isoformat(),
+            }
+        ],
+    )
+    runtime = _runtime(latest=GetRunStatusStub([run_with_tools]))
+    application = ApplicationStub(runtime)
+    context = ContextStub(application)
+    context.args = None
+
+    message = MessageStub("/tools")
+    await handlers.tools_command(UpdateStub(message), context)
+
+    assert "Tool activity for run run-1:" in message.replies[0]
+    assert runtime.get_run_status.calls == [(None, 5, 10)]
+
+
+@pytest.mark.asyncio
 async def test_approve_command_handles_missing_failed_and_not_needed_runs(monkeypatch: pytest.MonkeyPatch) -> None:
     started = []
     monkeypatch.setattr(handlers, "_start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))

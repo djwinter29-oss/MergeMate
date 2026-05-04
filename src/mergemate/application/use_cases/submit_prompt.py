@@ -101,6 +101,8 @@ class SubmitPromptUseCase:
     async def complete_planning(
         self,
         run_id: str,
+        *,
+        on_finished: object | None = None,
     ) -> SubmitPromptResult | None:
         run = self._run_repository.get(run_id)
         if run is None:

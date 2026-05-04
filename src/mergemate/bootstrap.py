@@ -18,6 +18,7 @@ from mergemate.application.use_cases.cancel_run import CancelRunUseCase
 from mergemate.application.use_cases.get_run_status import GetRunStatusUseCase
 from mergemate.application.use_cases.submit_prompt import SubmitPromptUseCase
 from mergemate.config.loader import load_runtime_settings, resolve_config_path
+from mergemate.config.models import AppConfig
 from mergemate.infrastructure.llm.gateway import ParallelLLMGateway
 from mergemate.infrastructure.llm.openai_adapter import OpenAIAdapter
 from mergemate.infrastructure.persistence.sqlite import (
@@ -44,7 +45,7 @@ from mergemate.infrastructure.tools.registry import ToolRegistry
 
 @dataclass(slots=True)
 class MergeMateRuntime:
-    settings: object
+    settings: AppConfig
     config_path: Path
     database: SQLiteDatabase
     run_repository: SQLiteRunRepository
@@ -107,7 +108,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
             api_key_prefix=provider_settings.api_key_prefix,
             extra_headers=provider_settings.extra_headers,
         )
-    llm_gateway = ParallelLLMGateway(settings, llm_clients)
+    llm_gateway = ParallelLLMGateway(settings, llm_clients)  # type: ignore[arg-type]
 
     tool_registry = ToolRegistry(
         {
