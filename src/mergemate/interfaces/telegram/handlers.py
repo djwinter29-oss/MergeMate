@@ -249,3 +249,25 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             submit_result.estimate_seconds,
         ),
     )
+
+    # Continue planning in background and notify when plan is ready.
+    async def _continue_planning() -> None:
+        try:
+            completed = await runtime.submit_prompt.complete_planning(
+                submit_result.run_id,
+                on_finished=lambda result: None,
+            )
+        except PromptSubmissionError:
+            return
+        if completed is not None and completed.plan_text:
+            await context.application.bot.send_message(
+                chat_id=request.chat_id,
+                text=format_plan_for_confirmation(
+                    completed.run_id,
+                    runtime.settings.resolve_agent_name_for_workflow("planning"),
+                    completed.plan_text,
+                    completed.estimate_seconds,
+                ),
+            )
+
+    context.application.create_task(_continue_planning())
