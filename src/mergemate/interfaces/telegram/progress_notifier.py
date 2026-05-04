@@ -25,10 +25,10 @@ def _tool_event_signature(run) -> tuple[str, str, str, str] | None:
     if latest_tool_event is None:
         return None
     return (
-        latest_tool_event["tool_name"],
-        latest_tool_event["action"],
-        latest_tool_event["status"],
-        latest_tool_event["detail"],
+        latest_tool_event.get("tool_name", ""),
+        latest_tool_event.get("action", ""),
+        latest_tool_event.get("status", ""),
+        latest_tool_event.get("detail", ""),
     )
 
 
