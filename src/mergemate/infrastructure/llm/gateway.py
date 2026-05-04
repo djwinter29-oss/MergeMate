@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Mapping
-from typing import Protocol
+from typing import Any, Protocol
 
 
 class _LLMClient(Protocol):
@@ -10,7 +10,10 @@ class _LLMClient(Protocol):
 
 
 class ParallelLLMGateway:
-    def __init__(self, settings, clients: Mapping[str, _LLMClient]) -> None:
+    _settings: Any
+    _clients: Mapping[str, _LLMClient]
+
+    def __init__(self, settings: Any, clients: Mapping[str, _LLMClient]) -> None:
         self._settings = settings
         self._clients = clients
 
@@ -35,9 +38,9 @@ class ParallelLLMGateway:
             for name in available_names
         ]
         raw_results = await asyncio.gather(*tasks, return_exceptions=True)
-        results: list[str | Exception] = []
+        results: list[BaseException | str] = []
         for result in raw_results:
-            if isinstance(result, Exception):
+            if isinstance(result, BaseException):
                 results.append(result)
             else:
                 results.append(str(result))
@@ -45,7 +48,7 @@ class ParallelLLMGateway:
         successful_results: list[tuple[str, str]] = []
         failures: list[tuple[str, str]] = []
         for provider_name, result in zip(available_names, results, strict=True):
-            if isinstance(result, Exception):
+            if isinstance(result, BaseException):
                 failures.append((provider_name, str(result)))
                 continue
             successful_results.append((provider_name, result))
@@ -85,7 +88,7 @@ class ParallelLLMGateway:
                         pending_task.cancel()
                 await asyncio.gather(*tasks, return_exceptions=True)
                 assert result is not None
-                return result
+                return result  # type: ignore[return-value]
         finally:
             for pending_task in tasks:
                 if not pending_task.done():
