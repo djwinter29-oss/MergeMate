@@ -87,8 +87,10 @@ class ParallelLLMGateway:
                     if pending_task is not completed_task and not pending_task.done():
                         pending_task.cancel()
                 await asyncio.gather(*tasks, return_exceptions=True)
-                assert result is not None
-                return result  # type: ignore[return-value]
+                if result is None:
+                    failures.append((provider_name, "provider returned no result"))
+                    continue
+                return result
         finally:
             for pending_task in tasks:
                 if not pending_task.done():
