@@ -154,8 +154,9 @@ async def test_notify_auto_execution_started_returns_false_on_send_failure(
 
 
 @pytest.mark.asyncio
-async def test_notify_auto_execution_started_returns_false_when_progress_watcher_start_fails(
+async def test_notify_auto_execution_started_logs_when_progress_watcher_start_fails(
     monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     notifier = TelegramRunLifecycleNotifier(SettingsStub())
     application = ApplicationStub()
@@ -171,10 +172,12 @@ async def test_notify_auto_execution_started_returns_false_when_progress_watcher
         failing_start_progress_watcher,
     )
 
-    result = await notifier.notify_auto_execution_started(run)
+    with caplog.at_level("ERROR"):
+        result = await notifier.notify_auto_execution_started(run)
 
-    assert result is False
+    assert result is True
     assert len(application.bot.messages) == 1
+    assert "progress watcher start failed" in caplog.text
 
 
 @pytest.mark.asyncio
