@@ -1,5 +1,6 @@
 """Unit tests for TelegramRunLifecycleNotifier."""
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 import pytest
@@ -49,6 +50,75 @@ async def test_notify_plan_ready_returns_true_and_sends_message() -> None:
     chat_id, text = notifier._application.bot.messages[0]  # type: ignore[union-attr]
     assert chat_id == 99
     assert "run-1" in text
+
+
+
+
+@pytest.mark.asyncio
+async def test_notify_plan_ready_passes_awaitable_sender_to_send_text_chunks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    notifier = TelegramRunLifecycleNotifier(SettingsStub())
+    application = ApplicationStub()
+    notifier.bind_application(application)
+    run = RunStub(run_id="run-typed-plan")
+    captured: list[Callable[[str], Awaitable[object]]] = []
+
+    async def fake_send_text_chunks(
+        sender: Callable[[str], Awaitable[object]],
+        text: str,
+    ) -> None:
+        captured.append(sender)
+
+    monkeypatch.setattr(
+        "mergemate.interfaces.telegram.lifecycle_notifier.message_utils.send_text_chunks",
+        fake_send_text_chunks,
+    )
+
+    result = await notifier.notify_plan_ready(run)
+
+    assert result is True
+    assert len(captured) == 1
+    await captured[0]("hello")
+    assert application.bot.messages == [(99, "hello")]
+
+
+@pytest.mark.asyncio
+async def test_notify_auto_execution_started_passes_awaitable_sender_to_send_text_chunks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    started_watchers: list[tuple[object, object, int, str]] = []
+    monkeypatch.setattr(
+        "mergemate.interfaces.telegram.lifecycle_notifier.start_progress_watcher",
+        lambda application, runtime, chat_id, run_id: started_watchers.append((application, runtime, chat_id, run_id)),
+    )
+
+    notifier = TelegramRunLifecycleNotifier(SettingsStub())
+    application = ApplicationStub()
+    runtime = object()
+    notifier.bind_application(application)
+    notifier.bind_runtime(runtime)
+    run = RunStub(run_id="run-typed-auto")
+    captured: list[Callable[[str], Awaitable[object]]] = []
+
+    async def fake_send_text_chunks(
+        sender: Callable[[str], Awaitable[object]],
+        text: str,
+    ) -> None:
+        captured.append(sender)
+
+    monkeypatch.setattr(
+        "mergemate.interfaces.telegram.lifecycle_notifier.message_utils.send_text_chunks",
+        fake_send_text_chunks,
+    )
+
+    result = await notifier.notify_auto_execution_started(run)
+
+    assert result is True
+    assert len(captured) == 1
+    await captured[0]("hello")
+    assert application.bot.messages == [(99, "hello")]
+    assert started_watchers == [(application, runtime, 99, "run-typed-auto")]
 
 
 @pytest.mark.asyncio
