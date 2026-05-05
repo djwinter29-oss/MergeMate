@@ -666,6 +666,45 @@ def test_get_platform_auth_status_skips_other_platform_metadata() -> None:
     assert result == {"status": "error", "detail": "Unsupported platform: github"}
 
 
+def test_execute_enabled_tool_fallback_to_class_name_when_error_strips_to_empty() -> None:
+    tool = RaisingToolStub(
+        RuntimeError("   "),
+        ToolMetadata(
+            name="syntax_checker",
+            runtime_mode="manual",
+            read_only=True,
+            blocks_run_state="waiting_tool",
+        ),
+    )
+    run_repository = RunRepositoryStub()
+    tool_event_repository = ToolEventRepositoryStub(events=[])
+    service = ToolService(
+        RegistryStub({"syntax_checker": tool}),
+        SettingsStub(
+            source_control=SourceControlConfigStub(),
+            agents={"coder": AgentConfigStub(tools=["syntax_checker"])},
+        ),
+        run_repository=run_repository,
+        tool_event_repository=tool_event_repository,
+    )
+    run_repository.runs["run-1"] = SimpleNamespace(
+        run_id="run-1",
+        status=tool_service_module.RunStatus.RUNNING,
+        current_stage="implementation",
+        error_text=None,
+    )
+
+    result = service.execute_enabled_tool(
+        "coder",
+        "syntax_checker",
+        {"action": "check", "source": "x = 1"},
+        run_id="run-1",
+        resume_stage="implementation",
+    )
+
+    assert result == {"status": "error", "detail": "Tool syntax_checker failed: RuntimeError"}
+
+
 def test_get_platform_auth_status_blocks_when_metadata_exists_but_tool_missing() -> None:
     registry = RegistryStub({})
     registry._listed_tools = ["github_cli"]
