@@ -46,8 +46,8 @@ async def notify_terminal_update(application, chat_id: int, run) -> bool:
             lambda chunk: application.bot.send_message(chat_id=chat_id, text=chunk),
             _format_terminal_update(run),
         )
-    except Exception:
-        logger.exception("Run %s progress update delivery failed", run.run_id)
+    except Exception as exc:
+        logger.exception("Run %s progress update delivery failed: %s", run.run_id, exc)
         return False
     _terminal_delivery_registry(application).add(run.run_id)
     return True
@@ -109,8 +109,8 @@ async def watch_run_progress(application, runtime, chat_id: int, run_id: str) ->
                     lambda chunk: application.bot.send_message(chat_id=chat_id, text=chunk),
                     format_progress_update(run),
                 )
-        except Exception:
-            logger.exception("Run %s progress update delivery failed", run_id)
+        except Exception as exc:
+            logger.exception("Run %s progress update delivery failed: %s", run_id, exc)
             continue
 
         last_snapshot = snapshot
