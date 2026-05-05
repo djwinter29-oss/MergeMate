@@ -90,6 +90,15 @@ def print_config_path() -> None:
     typer.echo(str(resolve_config_path()))
 
 
+def _report_not_ready(response_body: str, payload: dict[str, object]) -> None:
+    """Print readiness failure and exit."""
+    if payload.get("status") == "connection_error":
+        typer.echo(response_body, err=True)
+    else:
+        typer.echo(response_body)
+    raise typer.Exit(code=1)
+
+
 @app.command("probe-readiness")
 def probe_readiness(
     config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
@@ -122,18 +131,10 @@ def probe_readiness(
             return
 
         if not wait:
-            if payload.get("status") == "connection_error":
-                typer.echo(response_body, err=True)
-            else:
-                typer.echo(response_body)
-            raise typer.Exit(code=1)
+            _report_not_ready(response_body, payload)
 
         if max_wait_seconds is not None and time.monotonic() - start_time >= max_wait_seconds:
-            if payload.get("status") == "connection_error":
-                typer.echo(response_body, err=True)
-            else:
-                typer.echo(response_body)
-            raise typer.Exit(code=1)
+            _report_not_ready(response_body, payload)
 
         time.sleep(interval_seconds)
 
