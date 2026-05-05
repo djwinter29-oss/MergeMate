@@ -23,6 +23,13 @@ class ProviderConfig(BaseModel):
     api_key_prefix: str = "Bearer"
     extra_headers: dict[str, str] = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def validate_provider_url(self):
+        parsed_provider_url = urlparse(self.provider_url)
+        if not parsed_provider_url.scheme or not parsed_provider_url.netloc:
+            raise ValueError("Provider URL must be an absolute URL")
+        return self
+
 
 class TelegramConfig(BaseModel):
     bot_token_env: str
