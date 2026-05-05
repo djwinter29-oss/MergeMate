@@ -353,6 +353,38 @@ async def test_stop_cancels_inflight_tasks_and_marks_runs_failed() -> None:
 
 
 @pytest.mark.asyncio
+async def test_heartbeat_retries_after_timeout_without_stopping_worker() -> None:
+    stop_event = asyncio.Event()
+
+    worker = _build_worker(
+        OrchestratorStub(),
+        RunRepositoryStub(),
+        RunJobRepositoryStub(),
+        heartbeat_interval_seconds=0.05,
+    )
+
+    heartbeat_task = asyncio.create_task(worker._heartbeat("job-hb", stop_event))
+    await asyncio.sleep(0.12)
+
+    assert len(worker._run_job_repository.heartbeat_calls) >= 2
+    for call in worker._run_job_repository.heartbeat_calls:
+        assert call == ("job-hb", "worker-1", 30)
+
+    stop_event.set()
+    await asyncio.sleep(0.1)
+
+    heartbeat_calls_before = len(worker._run_job_repository.heartbeat_calls)
+    await asyncio.sleep(0.15)
+    assert len(worker._run_job_repository.heartbeat_calls) == heartbeat_calls_before
+
+    heartbeat_task.cancel()
+    try:
+        await heartbeat_task
+    except asyncio.CancelledError:
+        pass
+
+
+@pytest.mark.asyncio
 async def test_enqueue_rejects_new_runs_after_stop() -> None:
     worker = _build_worker(OrchestratorStub(), RunRepositoryStub(), RunJobRepositoryStub())
 
