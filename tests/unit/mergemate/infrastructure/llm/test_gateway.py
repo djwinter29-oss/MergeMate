@@ -129,3 +129,23 @@ async def test_generate_raises_when_all_parallel_calls_fail() -> None:
 
     with pytest.raises(RuntimeError, match="All parallel model calls failed"):
         await gateway.generate("coder", "system", "user")
+
+
+@pytest.mark.asyncio
+async def test_generate_first_success_treats_missing_result_as_failure() -> None:
+    class NoneReturningClientStub:
+        async def generate(self, system_prompt: str, user_prompt: str) -> str:
+            return None  # type: ignore[return-value]
+
+    settings = SettingsStub(
+        provider_names=["none", "working"],
+        agents={"coder": AgentStub(parallel_mode="parallel", combine_strategy="first_success")},
+    )
+    gateway = ParallelLLMGateway(
+        settings,
+        {"none": NoneReturningClientStub(), "working": ClientStub("fallback")},
+    )
+
+    result = await gateway.generate("coder", "system", "user")
+
+    assert result == "fallback"
