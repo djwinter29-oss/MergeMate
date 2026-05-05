@@ -58,10 +58,15 @@ class TelegramRunLifecycleNotifier:
                     run.estimate_seconds,
                 ),
             )
-            start_progress_watcher(application, runtime, run.chat_id, run.run_id)
         except Exception:
             logger.exception("Run %s auto-start delivery failed", run.run_id)
             return False
+
+        try:
+            start_progress_watcher(application, runtime, run.chat_id, run.run_id)
+        except Exception:
+            logger.exception("Run %s progress watcher start failed", run.run_id)
+
         return True
 
     async def notify_terminal(self, run) -> bool:
