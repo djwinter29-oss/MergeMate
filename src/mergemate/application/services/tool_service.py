@@ -185,36 +185,12 @@ class ToolService:
         *,
         resume_stage: str | RunStage = RunStage.RETRIEVE_CONTEXT,
     ) -> str:
-        enabled_tools = self.list_enabled_tools(agent_name)
-        if not enabled_tools:
-            return ""
-
-        lines = ["Enabled runtime tools:", *[f"- {tool_name}" for tool_name in enabled_tools]]
-        for tool_name in enabled_tools:
-            metadata = self._tool_registry.get_tool_metadata(tool_name)
-            if (
-                metadata is None
-                or metadata.runtime_mode != "context"
-                or metadata.default_action is None
-                or not metadata.read_only
-            ):
-                continue
-            result = await asyncio.to_thread(
-                self.execute_enabled_tool,
-                agent_name,
-                tool_name,
-                {"action": metadata.default_action},
-                run_id=run_id,
-                resume_stage=resume_stage,
-            )
-            lines.extend(
-                (
-                    "",
-                    f"{metadata.context_key or tool_name} ({result['status']}):",
-                    result.get("detail", "").strip() or "(no detail)",
-                )
-            )
-        return "\n".join(lines).strip()
+        return await asyncio.to_thread(
+            self.build_runtime_tool_context,
+            run_id,
+            agent_name,
+            resume_stage=resume_stage,
+        )
 
     def get_repository_context(self, platform: str | None = None) -> dict[str, dict[str, str]]:
         context: dict[str, dict[str, str]] = {}

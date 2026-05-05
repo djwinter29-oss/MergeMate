@@ -11,6 +11,13 @@ def _remaining_seconds(run) -> int | None:
     return max(run.estimate_seconds - elapsed, 0)
 
 
+def _estimate_line(run, *, prefix: str = "\n") -> str:
+    remaining_seconds = _remaining_seconds(run)
+    if remaining_seconds is not None and run.status.value in {"queued", "running", "waiting_tool"}:
+        return f"{prefix}Estimated remaining time: {remaining_seconds}s."
+    return ""
+
+
 def _tool_events(run) -> list[dict[str, str]]:
     return list(getattr(run, "tool_events", []))
 
@@ -79,12 +86,7 @@ def format_status(run_id: str, status: str, estimate_seconds: int | None = None)
 
 
 def format_detailed_status(run) -> str:
-    remaining_seconds = _remaining_seconds(run)
-    estimate_line = (
-        f"\nEstimated remaining time: {remaining_seconds}s."
-        if remaining_seconds is not None and run.status.value in {"queued", "running", "waiting_tool"}
-        else ""
-    )
+    estimate_line = _estimate_line(run)
     tool_events = _tool_events(run)
     tool_activity = ""
     if tool_events:
@@ -143,12 +145,7 @@ def format_auto_execution_started(run_id: str, plan_text: str, estimate_seconds:
 
 
 def format_progress_update(run) -> str:
-    remaining_seconds = _remaining_seconds(run)
-    estimate_line = (
-        f" Estimated remaining time: {remaining_seconds}s."
-        if remaining_seconds is not None and run.status.value in {"queued", "running", "waiting_tool"}
-        else ""
-    )
+    estimate_line = _estimate_line(run, prefix=" ")
     latest_tool_event = _latest_tool_event(run)
     tool_activity = ""
     if latest_tool_event is not None:
