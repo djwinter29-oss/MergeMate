@@ -328,6 +328,36 @@ def test_config_model_rejects_conflicting_webhook_and_healthcheck_bindings() -> 
         AppConfig.model_validate(payload)
 
 
+@pytest.mark.parametrize(
+    ("webhook_host", "healthcheck_host"),
+    [
+        ("127.0.0.1", "localhost"),
+        ("localhost", "::1"),
+        (" [::1] ", "LOCALHOST"),
+        ("[::]", "127.0.0.1"),
+    ],
+)
+def test_config_model_rejects_equivalent_loopback_bindings(
+    webhook_host: str,
+    healthcheck_host: str,
+) -> None:
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "webhook",
+        "webhook_listen_host": webhook_host,
+        "webhook_listen_port": 8080,
+        "webhook_public_base_url": "https://bot.example.com",
+        "webhook_secret_token_env": "TELEGRAM_WEBHOOK_SECRET",
+        "webhook_healthcheck_enabled": True,
+        "webhook_healthcheck_listen_host": healthcheck_host,
+        "webhook_healthcheck_listen_port": 8080,
+    }
+
+    with pytest.raises(ValidationError, match="conflicting host/port bindings"):
+        AppConfig.model_validate(payload)
+
+
 def test_config_model_rejects_unknown_default_provider() -> None:
     payload = _build_config().model_dump()
     payload["default_provider"] = "missing"

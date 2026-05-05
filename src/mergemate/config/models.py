@@ -94,8 +94,33 @@ class TelegramConfig(BaseModel):
 
     @staticmethod
     def _hosts_may_conflict(first: str, second: str) -> bool:
-        wildcard_hosts = {"0.0.0.0", "::"}
-        return first == second or first in wildcard_hosts or second in wildcard_hosts
+        normalized_first = TelegramConfig._normalize_listener_host(first)
+        normalized_second = TelegramConfig._normalize_listener_host(second)
+
+        wildcard_hosts = {"wildcard-ipv4", "wildcard-ipv6"}
+        loopback_hosts = {"loopback-ipv4", "loopback-ipv6", "loopback-hostname"}
+
+        return (
+            normalized_first == normalized_second
+            or normalized_first in wildcard_hosts
+            or normalized_second in wildcard_hosts
+            or (normalized_first in loopback_hosts and normalized_second in loopback_hosts)
+        )
+
+    @staticmethod
+    def _normalize_listener_host(host: str) -> str:
+        normalized_host = host.strip().lower().strip("[]")
+        if normalized_host == "localhost":
+            return "loopback-hostname"
+        if normalized_host == "0.0.0.0":
+            return "wildcard-ipv4"
+        if normalized_host == "::":
+            return "wildcard-ipv6"
+        if normalized_host == "127.0.0.1":
+            return "loopback-ipv4"
+        if normalized_host == "::1":
+            return "loopback-ipv6"
+        return normalized_host
 
 
 class StorageConfig(BaseModel):
