@@ -129,9 +129,10 @@ async def test_notify_auto_execution_started_returns_false_when_runtime_not_boun
 async def test_notify_auto_execution_started_returns_false_on_send_failure(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    started_watchers: list[tuple[object, object, int, str]] = []
     monkeypatch.setattr(
         "mergemate.interfaces.telegram.lifecycle_notifier.start_progress_watcher",
-        lambda application, runtime, chat_id, run_id: None,
+        lambda application, runtime, chat_id, run_id: started_watchers.append((application, runtime, chat_id, run_id)),
     )
 
     notifier = TelegramRunLifecycleNotifier(SettingsStub())
@@ -149,6 +150,31 @@ async def test_notify_auto_execution_started_returns_false_on_send_failure(
 
     assert result is False
     assert len(application.bot.messages) == 0
+    assert started_watchers == []
+
+
+@pytest.mark.asyncio
+async def test_notify_auto_execution_started_returns_false_when_progress_watcher_start_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    notifier = TelegramRunLifecycleNotifier(SettingsStub())
+    application = ApplicationStub()
+    notifier.bind_application(application)
+    notifier.bind_runtime(object())
+    run = RunStub(run_id="run-2")
+
+    def failing_start_progress_watcher(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("watcher failed")
+
+    monkeypatch.setattr(
+        "mergemate.interfaces.telegram.lifecycle_notifier.start_progress_watcher",
+        failing_start_progress_watcher,
+    )
+
+    result = await notifier.notify_auto_execution_started(run)
+
+    assert result is False
+    assert len(application.bot.messages) == 1
 
 
 @pytest.mark.asyncio
