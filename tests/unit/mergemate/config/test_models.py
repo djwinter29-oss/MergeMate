@@ -296,6 +296,20 @@ def test_config_model_rejects_webhook_healthcheck_path_with_query_or_fragment() 
         AppConfig.model_validate(payload)
 
 
+def test_config_model_rejects_webhook_healthcheck_path_without_leading_slash() -> None:
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "webhook",
+        "webhook_public_base_url": "https://bot.example.com",
+        "webhook_secret_token_env": "TELEGRAM_WEBHOOK_SECRET",
+        "webhook_healthcheck_path": "healthz",
+    }
+
+    with pytest.raises(ValidationError, match="healthcheck path"):
+        AppConfig.model_validate(payload)
+
+
 def test_config_model_rejects_conflicting_webhook_and_healthcheck_bindings() -> None:
     payload = _build_config().model_dump()
     payload["telegram"] = {
