@@ -421,3 +421,20 @@ def test_config_model_rejects_duplicate_workflow_assignments() -> None:
 
     with pytest.raises(ValidationError, match="Duplicate workflows: generate_code"):
         AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_invalid_provider_url() -> None:
+    payload = _build_config().model_dump()
+    payload["providers"]["primary"]["provider_url"] = "not-a-url"
+
+    with pytest.raises(ValidationError, match="Provider URL must be an absolute URL"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_accepts_valid_provider_urls() -> None:
+    payload = _build_config().model_dump()
+    payload["providers"]["primary"]["provider_url"] = "https://api.custom.com/v1/chat/completions"
+
+    config = AppConfig.model_validate(payload)
+
+    assert config.providers["primary"].provider_url == "https://api.custom.com/v1/chat/completions"
