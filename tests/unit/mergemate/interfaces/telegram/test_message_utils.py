@@ -22,7 +22,7 @@ class TestSplitTelegramMessage:
     def test_empty_text_returns_single_chunk(self) -> None:
         assert split_telegram_message("") == [""]
 
-    def text_exact_limit_returns_single_chunk(self) -> None:
+    def test_exact_limit_returns_single_chunk(self) -> None:
         text = "x" * TELEGRAM_MESSAGE_LIMIT
         assert split_telegram_message(text) == [text]
 
