@@ -146,6 +146,14 @@ def test_config_model_raises_for_unknown_workflow() -> None:
         config.resolve_agent_name_for_workflow("debug_code")
 
 
+def test_config_model_rejects_duplicate_planning_workflow_assignment() -> None:
+    payload = _build_config().model_dump()
+    payload["agents"]["backup-planner"] = {"workflow": "planning"}
+
+    with pytest.raises(ValidationError, match="Duplicate workflows: planning"):
+        AppConfig.model_validate(payload)
+
+
 def test_config_model_rejects_non_positive_concurrency() -> None:
     payload = _build_config().model_dump()
     payload["runtime"]["max_concurrent_runs"] = 0
