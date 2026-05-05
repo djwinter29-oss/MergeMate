@@ -154,6 +154,14 @@ def test_config_model_rejects_duplicate_planning_workflow_assignment() -> None:
         AppConfig.model_validate(payload)
 
 
+def test_config_model_rejects_duplicate_generate_code_workflow_assignment() -> None:
+    payload = _build_config().model_dump()
+    payload["agents"]["backup-coder"] = {"workflow": "generate_code"}
+
+    with pytest.raises(ValidationError, match="Duplicate workflows: generate_code"):
+        AppConfig.model_validate(payload)
+
+
 def test_config_model_rejects_non_positive_concurrency() -> None:
     payload = _build_config().model_dump()
     payload["runtime"]["max_concurrent_runs"] = 0
