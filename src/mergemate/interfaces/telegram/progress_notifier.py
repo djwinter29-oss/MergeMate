@@ -14,10 +14,10 @@ logger = logging.getLogger(__name__)
 
 def _format_terminal_update(run) -> str:
     if run.status == RunStatus.COMPLETED:
-        return format_completion(run.run_id, getattr(run, "result_text", None) or "")
+        return format_completion(run.run_id, run.result_text or "")
     if run.status == RunStatus.CANCELLED:
         return format_cancelled(run.run_id)
-    return format_failure(run.run_id, getattr(run, "error_text", None))
+    return format_failure(run.run_id, run.error_text)
 
 
 def _tool_event_signature(run) -> tuple[str, str, str, str] | None:

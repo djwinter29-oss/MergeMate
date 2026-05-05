@@ -25,7 +25,7 @@ def split_telegram_message(text: str, limit: int = TELEGRAM_MESSAGE_LIMIT) -> li
 
 
 async def send_text_chunks(
-    send_text: Callable[..., Awaitable[object]],
+    send_text: Callable[[str], Awaitable[object]],
     text: str,
     *,
     limit: int = TELEGRAM_MESSAGE_LIMIT,
