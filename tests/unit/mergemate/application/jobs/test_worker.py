@@ -47,6 +47,16 @@ class BlockingOrchestratorStub:
             raise
 
 
+class BaseExceptionOrchestratorStub:
+    def __init__(self, error: BaseException) -> None:
+        self.error = error
+        self.calls: list[str] = []
+
+    async def process_run(self, run_id: str):
+        self.calls.append(run_id)
+        raise self.error
+
+
 class PendingOrchestratorStub:
     def __init__(self) -> None:
         self.calls: list[str] = []
@@ -240,6 +250,25 @@ async def test_consume_marks_execution_job_failed_when_orchestrator_raises() -> 
     assert repository.calls == [("run-2", RunStatus.FAILED, "boom")]
     assert run_job_repository.failed_calls == [("job-2", "boom")]
     assert notifier.terminal == ["run-2"]
+
+
+@pytest.mark.asyncio
+async def test_consume_propagates_system_exit_without_marking_run_failed() -> None:
+    orchestrator = BaseExceptionOrchestratorStub(SystemExit("stop"))
+    repository = RunRepositoryStub()
+    run_job_repository = RunJobRepositoryStub()
+    run_job_repository.add("job-system-exit", "run-system-exit")
+    notifier = LifecycleNotifierStub()
+    worker = _build_worker(orchestrator, repository, run_job_repository, notifier=notifier)
+
+    with pytest.raises(SystemExit, match="stop"):
+        await worker._consume("job-system-exit")
+
+    assert orchestrator.calls == ["run-system-exit"]
+    assert repository.calls == []
+    assert run_job_repository.failed_calls == []
+    assert run_job_repository.completed_calls == []
+    assert notifier.terminal == []
 
 
 @pytest.mark.asyncio
