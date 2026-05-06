@@ -5,7 +5,7 @@ import pytest
 
 from mergemate.application.execution_plan import DirectExecutionPlan, MultiStageExecutionPlan
 from mergemate.application.services.workflow_service import WorkflowService
-from mergemate.domain.shared import WorkflowName
+from mergemate.domain.shared import WorkflowName, uses_multi_stage_delivery
 
 
 class GatewayStub:
@@ -107,10 +107,10 @@ async def test_execute_direct_uses_requested_agent() -> None:
 
 
 def test_uses_multi_stage_delivery_is_explicit() -> None:
-    assert WorkflowService.uses_multi_stage_delivery("generate_code") is True
-    assert WorkflowService.uses_multi_stage_delivery("debug_code") is False
-    assert WorkflowService.uses_multi_stage_delivery("explain_code") is False
-    assert WorkflowService.uses_multi_stage_delivery(WorkflowName.GENERATE_CODE) is True
+    assert uses_multi_stage_delivery("generate_code") is True
+    assert uses_multi_stage_delivery("debug_code") is False
+    assert uses_multi_stage_delivery("explain_code") is False
+    assert uses_multi_stage_delivery(WorkflowName.GENERATE_CODE) is True
 
 
 def test_has_high_concerns_reads_first_line_only() -> None:

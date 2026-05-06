@@ -90,9 +90,11 @@ class TelegramConfig(BaseModel):
                 raise ValueError(
                     "Telegram webhook public base URL must be configured when mode is webhook"
                 )
-            _validate_absolute_url(url=self.webhook_public_base_url, label="Telegram webhook public base URL", allow_query_or_fragment=False)
-
-            parsed_base_url = urlparse(self.webhook_public_base_url)
+            parsed_base_url = _validate_absolute_url(
+                url=self.webhook_public_base_url,
+                label="Telegram webhook public base URL",
+                allow_query_or_fragment=False,
+            )
 
             is_loopback_host = (
                 parsed_base_url.hostname is not None
