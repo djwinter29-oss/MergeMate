@@ -40,8 +40,10 @@ class ParallelLLMGateway:
         for result in raw_results:
             if isinstance(result, BaseException):
                 results.append(result)
+            elif isinstance(result, str):
+                results.append(result)
             else:
-                results.append(str(result))
+                results.append(RuntimeError("Provider returned a non-text result."))
 
         successful_results: list[tuple[str, str]] = []
         failures: list[tuple[str, str]] = []
@@ -76,12 +78,11 @@ class ParallelLLMGateway:
 
         for completed_task in asyncio.as_completed(tasks):
             provider_name, result, error_detail = await completed_task
-            if error_detail is not None or result is None:
-                if error_detail is not None:
-                    failures.append((provider_name, error_detail))
-                elif result is None:
-                    failures.append((provider_name, "provider returned no result"))
+            if error_detail is not None:
+                failures.append((provider_name, error_detail))
                 continue
+
+            assert result is not None
 
             # Cancel remaining tasks since we got a successful result
             for pending_task in tasks:
@@ -89,7 +90,7 @@ class ParallelLLMGateway:
                     pending_task.cancel()
             # Wait for cancelled tasks to settle
             await asyncio.gather(*tasks, return_exceptions=True)
-            return result  # type: ignore[return-value]
+            return result
 
         failure_detail = "; ".join(f"{name}: {detail}" for name, detail in failures)
         raise RuntimeError(f"All parallel model calls failed. {failure_detail}")
@@ -115,7 +116,10 @@ class ParallelLLMGateway:
         system_prompt: str,
         user_prompt: str,
     ) -> str:
-        return await self._clients[provider_name].generate(system_prompt, user_prompt)
+        result = await self._clients[provider_name].generate(system_prompt, user_prompt)
+        if not isinstance(result, str):
+            raise RuntimeError("Provider returned a non-text result.")
+        return result
 
     @staticmethod
     def _format_sectioned_results(

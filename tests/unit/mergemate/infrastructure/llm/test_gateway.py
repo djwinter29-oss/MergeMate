@@ -18,6 +18,16 @@ class ClientStub:
         return self.result
 
 
+class NonStrClientStub:
+    def __init__(self, result: object) -> None:
+        self.result = result
+        self.calls = []
+
+    async def generate(self, system_prompt: str, user_prompt: str) -> str:
+        self.calls.append((system_prompt, user_prompt))
+        return self.result  # type: ignore[return-value]
+
+
 class DelayedClientStub:
     def __init__(self, result: str, *, delay_seconds: float) -> None:
         self.result = result
@@ -149,3 +159,21 @@ async def test_generate_first_success_treats_missing_result_as_failure() -> None
     result = await gateway.generate("coder", "system", "user")
 
     assert result == "fallback"
+
+
+@pytest.mark.asyncio
+async def test_generate_from_provider_raises_on_non_str_result() -> None:
+    """The gateway should reject non-str return values from provider clients."""
+    non_str = NonStrClientStub(42)  # int, not str
+    working = ClientStub("ok")
+    settings = SettingsStub(
+        provider_names=["bad", "good"],
+        agents={"coder": AgentStub(parallel_mode="parallel", combine_strategy="first_success")},
+    )
+    gateway = ParallelLLMGateway(settings, {"bad": non_str, "good": working})
+
+    result = await gateway.generate("coder", "system", "user")
+
+    # first_success strategy: "bad" returns int (non-str), should be treated as failure
+    # "good" should succeed and be returned
+    assert result == "ok"

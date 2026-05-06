@@ -21,6 +21,23 @@ async def test_generate_raises_when_api_key_missing() -> None:
 
 
 @pytest.mark.asyncio
+async def test_generate_raises_on_missing_provider_url_scheme() -> None:
+    """URL validation should reject URLs without http:// or https://."""
+    adapter = OpenAIAdapter(
+        model="gpt-5.4",
+        api_key="secret-key",
+        timeout_seconds=30,
+        provider_url="api.example.com/v1/chat/completions",
+        api_key_header="Authorization",
+        api_key_prefix="Bearer",
+        extra_headers={},
+    )
+
+    with pytest.raises(RuntimeError, match="Provider URL must include http:// or https://"):
+        await adapter.generate("system prompt", "user prompt")
+
+
+@pytest.mark.asyncio
 async def test_generate_posts_openai_compatible_request(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
 

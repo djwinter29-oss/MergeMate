@@ -45,6 +45,9 @@ class OpenAIAdapter:
                 f"for model {self._model} before executing this workflow."
             )
 
+        if not self._provider_url.startswith(("http://", "https://")):
+            raise RuntimeError("Provider URL must include http:// or https://.")
+
         payload = {
             "model": self._model,
             "messages": [
