@@ -1,7 +1,9 @@
 """Tool selection and invocation service."""
 
 import asyncio
+from collections.abc import Iterator
 
+from mergemate.domain.tools.entities import ToolMetadata
 from mergemate.domain.runs.value_objects import RunStage, RunStatus, tool_stage
 
 
@@ -192,18 +194,23 @@ class ToolService:
             resume_stage=resume_stage,
         )
 
+    def _iter_platform_tool_metadata(self, platform: str | None = None) -> Iterator[tuple[str, ToolMetadata]]:
+        for tool_name in self._tool_registry.list_tools():
+            metadata = self._tool_registry.get_tool_metadata(tool_name)
+            if metadata is None:
+                continue
+            if platform is not None and metadata.platform != platform:
+                continue
+            yield tool_name, metadata
+
     def get_repository_context(self, platform: str | None = None) -> dict[str, dict[str, str]]:
         context: dict[str, dict[str, str]] = {}
         platform_name = platform or self._settings.source_control.default_platform
 
-        for tool_name in self._tool_registry.list_tools():
-            metadata = self._tool_registry.get_tool_metadata(tool_name)
-            if (
-                metadata is None
-                or metadata.runtime_mode != "context"
-                or metadata.default_action is None
-                or not metadata.read_only
-            ):
+        for tool_name, metadata in self._iter_platform_tool_metadata():
+            if metadata.runtime_mode != "context" or metadata.default_action is None or not metadata.read_only:
+                continue
+            if metadata.platform is not None and metadata.platform != platform_name:
                 continue
             tool = self._tool_registry.get_tool(tool_name)
             if tool is None:
@@ -211,17 +218,14 @@ class ToolService:
             if metadata.context_key == "git":
                 context[metadata.context_key] = tool.invoke({"action": metadata.default_action})
                 continue
-            if metadata.platform == platform_name and metadata.context_key is not None:
+            if metadata.context_key is not None:
                 context[metadata.context_key] = tool.invoke({"action": metadata.default_action})
 
         return context
 
     def get_platform_auth_status(self, platform: str) -> dict[str, str]:
         saw_platform_metadata = False
-        for tool_name in self._tool_registry.list_tools():
-            metadata = self._tool_registry.get_tool_metadata(tool_name)
-            if metadata is None or metadata.platform != platform:
-                continue
+        for tool_name, metadata in self._iter_platform_tool_metadata(platform):
             saw_platform_metadata = True
             if metadata.auth_action is None:
                 break
