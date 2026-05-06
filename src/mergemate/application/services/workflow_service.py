@@ -17,12 +17,6 @@ class WorkflowService:
             )
         return DirectExecutionPlan(agent_name=agent_name)
 
-    def resolve_stage_agent_name(self, workflow: str, *, preferred_agent_name: str | None = None) -> str:
-        return self._settings.resolve_agent_name_for_workflow(
-            workflow,
-            preferred_agent_name=preferred_agent_name,
-        )
-
     async def _generate_stage_output(
         self,
         workflow: str,
@@ -31,7 +25,7 @@ class WorkflowService:
         *,
         preferred_agent_name: str | None = None,
     ) -> str:
-        agent_name = self.resolve_stage_agent_name(
+        agent_name = self._settings.resolve_agent_name_for_workflow(
             workflow,
             preferred_agent_name=preferred_agent_name,
         )
