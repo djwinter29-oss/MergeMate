@@ -392,6 +392,32 @@ def test_config_model_rejects_unknown_agent_workflow() -> None:
         AppConfig.model_validate(payload)
 
 
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("parallel_mode", "fanout"),
+        ("combine_strategy", "merge_all"),
+    ],
+)
+def test_config_model_rejects_unknown_parallel_execution_values(key: str, value: str) -> None:
+    payload = _build_config().model_dump()
+    payload["agents"]["coder"][key] = value
+
+    with pytest.raises(ValidationError, match=key):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_accepts_supported_parallel_execution_values() -> None:
+    payload = _build_config().model_dump()
+    payload["agents"]["coder"]["parallel_mode"] = "parallel"
+    payload["agents"]["coder"]["combine_strategy"] = "first_success"
+
+    config = AppConfig.model_validate(payload)
+
+    assert config.agents["coder"].parallel_mode == "parallel"
+    assert config.agents["coder"].combine_strategy == "first_success"
+
+
 def test_config_model_rejects_unknown_default_agent() -> None:
     payload = _build_config().model_dump()
     payload["default_agent"] = "missing"
