@@ -12,6 +12,19 @@ class RunStatus(StrEnum):
     FAILED = "failed"
     CANCELLED = "cancelled"
 
+    @classmethod
+    def terminal_statuses(cls) -> frozenset["RunStatus"]:
+        """Statuses that represent a terminal (final) run state."""
+        return frozenset({cls.COMPLETED, cls.FAILED, cls.CANCELLED})
+
+    @classmethod
+    def skip_process_statuses(cls) -> frozenset["RunStatus"]:
+        """Statuses for which a run should not be re-processed."""
+        return frozenset({
+            cls.COMPLETED, cls.FAILED, cls.CANCELLED,
+            cls.RUNNING, cls.WAITING_TOOL,
+        })
+
 
 class RunStage(StrEnum):
     PLANNING = "planning"

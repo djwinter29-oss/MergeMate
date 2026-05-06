@@ -73,6 +73,6 @@ class TelegramRunLifecycleNotifier:
         application = self._application
         if application is None:
             return False
-        if run.status not in {RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED}:
+        if run.status not in RunStatus.terminal_statuses():
             return False
         return await notify_terminal_update(application, run.chat_id, run)

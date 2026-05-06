@@ -173,7 +173,7 @@ class BackgroundRunWorker:
         existing = self._run_repository.get(run_id)
         if existing is None:
             return None
-        if existing.status in {RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED}:
+        if existing.status in RunStatus.terminal_statuses():
             return existing
         return self._run_repository.update_status(
             run_id,

@@ -3,6 +3,9 @@
 from datetime import UTC, datetime
 
 
+from mergemate.domain.runs.value_objects import RunStatus
+
+
 def _remaining_seconds(run) -> int | None:
     if run.estimate_seconds is None:
         return None
@@ -13,7 +16,11 @@ def _remaining_seconds(run) -> int | None:
 
 def _estimate_line(run, *, prefix: str = "\n") -> str:
     remaining_seconds = _remaining_seconds(run)
-    if remaining_seconds is not None and run.status.value in {"queued", "running", "waiting_tool"}:
+    if remaining_seconds is not None and run.status in {
+        RunStatus.QUEUED,
+        RunStatus.RUNNING,
+        RunStatus.WAITING_TOOL,
+    }:
         return f"{prefix}Estimated remaining time: {remaining_seconds}s."
     return ""
 

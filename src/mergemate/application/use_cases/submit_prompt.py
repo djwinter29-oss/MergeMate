@@ -192,7 +192,7 @@ class SubmitPromptUseCase:
             return None
         if chat_id is not None and existing.chat_id != chat_id:
             return None
-        if existing.status in {RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED}:
+        if existing.status in RunStatus.terminal_statuses():
             return ApproveRunResult(run_id=existing.run_id, dispatched=False, status=existing.status.value)
         if existing.plan_text is None:
             return ApproveRunResult(
