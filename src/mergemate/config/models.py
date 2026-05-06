@@ -307,19 +307,35 @@ class AppConfig(BaseModel):
             )
         return token
 
+    @staticmethod
+    def _resolve_subpath(
+        *,
+        subpath_str: str,
+        base_path: Path,
+    ) -> Path:
+        """Expand a subpath relative to a base path.
+
+        If the subpath is absolute (after expanduser), returns it normalized.
+        Otherwise joins it with the base path and resolves.
+        """
+        subpath = Path(subpath_str).expanduser()
+        if subpath.is_absolute():
+            return subpath.resolve()
+        return (base_path / subpath).resolve()
+
     def resolve_database_path(self, config_path: Path) -> Path:
         workspace_root = self.resolve_workspace_root(config_path)
-        database_path = Path(self.storage.database_path).expanduser()
-        if database_path.is_absolute():
-            return database_path
-        return (workspace_root / database_path).resolve()
+        return self._resolve_subpath(
+            subpath_str=self.storage.database_path,
+            base_path=workspace_root,
+        )
 
     def preview_database_path(self, config_path: Path) -> Path:
         workspace_root = self.preview_workspace_root(config_path)
-        database_path = Path(self.storage.database_path).expanduser()
-        if database_path.is_absolute():
-            return database_path.resolve()
-        return (workspace_root / database_path).resolve()
+        return self._resolve_subpath(
+            subpath_str=self.storage.database_path,
+            base_path=workspace_root,
+        )
 
     def resolve_workspace_root(self, config_path: Path) -> Path:
         resolved_workspace_root = self.preview_workspace_root(config_path)
@@ -327,17 +343,17 @@ class AppConfig(BaseModel):
         return resolved_workspace_root
 
     def preview_workspace_root(self, config_path: Path) -> Path:
-        workspace_root = Path(self.storage.workspace_root).expanduser()
-        if workspace_root.is_absolute():
-            return workspace_root.resolve()
-        return (config_path.parent / workspace_root).resolve()
+        return self._resolve_subpath(
+            subpath_str=self.storage.workspace_root,
+            base_path=config_path.parent,
+        )
 
     def resolve_docs_root(self, config_path: Path) -> Path:
         return (self.resolve_workspace_root(config_path) / "docs").resolve()
 
     def resolve_working_directory(self, config_path: Path) -> Path:
         workspace_root = self.resolve_workspace_root(config_path)
-        working_directory = Path(self.source_control.working_directory).expanduser()
-        if working_directory.is_absolute():
-            return working_directory
-        return (workspace_root / working_directory).resolve()
+        return self._resolve_subpath(
+            subpath_str=self.source_control.working_directory,
+            base_path=workspace_root,
+        )
