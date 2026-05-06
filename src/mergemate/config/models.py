@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, model_validator
@@ -24,7 +24,7 @@ class ProviderConfig(BaseModel):
     extra_headers: dict[str, str] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def validate_provider_url(self):
+    def validate_provider_url(self) -> Self:
         parsed_provider_url = urlparse(self.provider_url)
         if not parsed_provider_url.scheme or not parsed_provider_url.netloc:
             raise ValueError("Provider URL must be an absolute URL")
@@ -45,7 +45,7 @@ class TelegramConfig(BaseModel):
     webhook_healthcheck_path: str = "/healthz"
 
     @model_validator(mode="after")
-    def validate_webhook_settings(self):
+    def validate_webhook_settings(self) -> Self:
         self._validate_path(self.webhook_path, label="Telegram webhook path")
         self._validate_path(
             self.webhook_healthcheck_path,
@@ -194,7 +194,7 @@ class AppConfig(BaseModel):
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
     @model_validator(mode="after")
-    def validate_provider_references(self):
+    def validate_provider_references(self) -> Self:
         if self.default_agent not in self.agents:
             raise ValueError(f"Default agent {self.default_agent} is not configured")
 
