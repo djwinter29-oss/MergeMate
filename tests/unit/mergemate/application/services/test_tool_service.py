@@ -231,6 +231,7 @@ def test_get_repository_context_uses_explicit_platform_when_available() -> None:
 
     context = service.get_repository_context("gitlab")
 
+    assert context["git"]["detail"] == "git status"
     assert context["gitlab"]["detail"] == "glab repo view"
 
 
@@ -609,6 +610,29 @@ def test_get_repository_context_skips_tool_when_metadata_exists_but_instance_mis
 def test_get_repository_context_skips_tools_without_context_metadata() -> None:
     service = ToolService(
         RegistryStub({"syntax_checker": ToolStub({"status": "ok", "detail": "unused"})}),
+        SettingsStub(source_control=SourceControlConfigStub(), agents={}),
+    )
+
+    assert service.get_repository_context() == {}
+
+
+def test_get_repository_context_skips_non_read_only_context_metadata() -> None:
+    service = ToolService(
+        RegistryStub(
+            {
+                "github_cli": ToolStub(
+                    {"status": "ok", "detail": "should not be used"},
+                    ToolMetadata(
+                        name="github_cli",
+                        runtime_mode="context",
+                        default_action="repo_view",
+                        read_only=False,
+                        context_key="github",
+                        platform="github",
+                    ),
+                )
+            }
+        ),
         SettingsStub(source_control=SourceControlConfigStub(), agents={}),
     )
 

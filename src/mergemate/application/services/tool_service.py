@@ -84,6 +84,18 @@ class ToolService:
             "detail": f"Tool {tool_name} failed: {detail}",
         }
 
+    @staticmethod
+    def _is_runtime_context_metadata(metadata: ToolMetadata) -> bool:
+        return metadata.runtime_mode == "context" and metadata.default_action is not None and metadata.read_only
+
+    def _iter_repository_context_metadata(self, platform: str) -> Iterator[tuple[str, ToolMetadata]]:
+        for tool_name, metadata in self._iter_platform_tool_metadata():
+            if not self._is_runtime_context_metadata(metadata):
+                continue
+            if metadata.platform is not None and metadata.platform != platform:
+                continue
+            yield tool_name, metadata
+
     def execute_enabled_tool(
         self,
         agent_name: str,
@@ -153,12 +165,7 @@ class ToolService:
         lines = ["Enabled runtime tools:", *[f"- {tool_name}" for tool_name in enabled_tools]]
         for tool_name in enabled_tools:
             metadata = self._tool_registry.get_tool_metadata(tool_name)
-            if (
-                metadata is None
-                or metadata.runtime_mode != "context"
-                or metadata.default_action is None
-                or not metadata.read_only
-            ):
+            if metadata is None or not self._is_runtime_context_metadata(metadata):
                 continue
             result = self.execute_enabled_tool(
                 agent_name,
@@ -203,16 +210,9 @@ class ToolService:
         context: dict[str, dict[str, str]] = {}
         platform_name = platform or self._settings.source_control.default_platform
 
-        for tool_name, metadata in self._iter_platform_tool_metadata():
-            if metadata.runtime_mode != "context" or metadata.default_action is None or not metadata.read_only:
-                continue
-            if metadata.platform is not None and metadata.platform != platform_name:
-                continue
+        for tool_name, metadata in self._iter_repository_context_metadata(platform_name):
             tool = self._tool_registry.get_tool(tool_name)
             if tool is None:
-                continue
-            if metadata.context_key == "git":
-                context[metadata.context_key] = tool.invoke({"action": metadata.default_action})
                 continue
             if metadata.context_key is not None:
                 context[metadata.context_key] = tool.invoke({"action": metadata.default_action})
