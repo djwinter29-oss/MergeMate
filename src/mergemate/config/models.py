@@ -22,6 +22,14 @@ def _validate_absolute_url(*, url: str, label: str, allow_query_or_fragment: boo
     return parsed_url
 
 
+def _derive_normalized_host_category(
+    normalization_map: dict[str, str],
+    *,
+    prefix: str,
+) -> frozenset[str]:
+    return frozenset(value for value in normalization_map.values() if value.startswith(prefix))
+
+
 class LoggingConfig(BaseModel):
     level: str = "INFO"
 
@@ -53,6 +61,22 @@ class TelegramConfig(BaseModel):
     webhook_healthcheck_listen_host: str = "127.0.0.1"
     webhook_healthcheck_listen_port: int = Field(default=8081, ge=1, le=65535)
     webhook_healthcheck_path: str = "/healthz"
+
+    _HOST_NORMALIZATION_MAP: ClassVar[dict[str, str]] = {
+        "localhost": "loopback-hostname",
+        "0.0.0.0": "wildcard-ipv4",
+        "::": "wildcard-ipv6",
+        "127.0.0.1": "loopback-ipv4",
+        "::1": "loopback-ipv6",
+    }
+    _WILDCARD_HOSTS: ClassVar[frozenset[str]] = _derive_normalized_host_category(
+        _HOST_NORMALIZATION_MAP,
+        prefix="wildcard-",
+    )
+    _LOOPBACK_HOSTS: ClassVar[frozenset[str]] = _derive_normalized_host_category(
+        _HOST_NORMALIZATION_MAP,
+        prefix="loopback-",
+    )
 
     @model_validator(mode="after")
     def validate_webhook_settings(self) -> Self:
@@ -108,24 +132,15 @@ class TelegramConfig(BaseModel):
         normalized_first = TelegramConfig._normalize_listener_host(first)
         normalized_second = TelegramConfig._normalize_listener_host(second)
 
-        normalized_values = set(TelegramConfig._HOST_NORMALIZATION_MAP.values())
-        wildcard_hosts = {v for v in normalized_values if v.startswith("wildcard-")}
-        loopback_hosts = {v for v in normalized_values if v.startswith("loopback-")}
-
         return (
             normalized_first == normalized_second
-            or normalized_first in wildcard_hosts
-            or normalized_second in wildcard_hosts
-            or (normalized_first in loopback_hosts and normalized_second in loopback_hosts)
+            or normalized_first in TelegramConfig._WILDCARD_HOSTS
+            or normalized_second in TelegramConfig._WILDCARD_HOSTS
+            or (
+                normalized_first in TelegramConfig._LOOPBACK_HOSTS
+                and normalized_second in TelegramConfig._LOOPBACK_HOSTS
+            )
         )
-
-    _HOST_NORMALIZATION_MAP: ClassVar[dict[str, str]] = {
-        "localhost": "loopback-hostname",
-        "0.0.0.0": "wildcard-ipv4",
-        "::": "wildcard-ipv6",
-        "127.0.0.1": "loopback-ipv4",
-        "::1": "loopback-ipv6",
-    }
 
     @staticmethod
     def _normalize_listener_host(host: str) -> str:
