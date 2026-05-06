@@ -260,7 +260,7 @@ class AppConfig(BaseModel):
         agent = self.agents.get(agent_name)
         if agent is None or not agent.provider_names:
             return [self.default_provider]
-        return agent.provider_names
+        return list(agent.provider_names)
 
     def resolve_agent_name_for_workflow(
         self,
