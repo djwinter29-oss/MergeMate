@@ -474,3 +474,15 @@ def test_config_model_accepts_valid_provider_urls() -> None:
     config = AppConfig.model_validate(payload)
 
     assert config.providers["primary"].provider_url == "https://api.custom.com/v1/chat/completions"
+
+
+def test_config_model_accepts_provider_urls_with_query_parameters() -> None:
+    payload = _build_config().model_dump()
+    payload["providers"]["primary"]["provider_url"] = (
+        "https://your-endpoint.openai.azure.com/openai/deployments/reviewer/chat/completions"
+        "?api-version=2024-10-21"
+    )
+
+    config = AppConfig.model_validate(payload)
+
+    assert config.providers["primary"].provider_url.endswith("api-version=2024-10-21")

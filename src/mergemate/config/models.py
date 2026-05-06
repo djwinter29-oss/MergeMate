@@ -37,7 +37,7 @@ class ProviderConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_provider_url(self) -> Self:
-        _validate_absolute_url(url=self.provider_url, label="Provider URL", allow_query_or_fragment=False)
+        _validate_absolute_url(url=self.provider_url, label="Provider URL", allow_query_or_fragment=True)
         return self
 
 
