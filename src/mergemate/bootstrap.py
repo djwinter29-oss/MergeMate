@@ -108,7 +108,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
             api_key_prefix=provider_settings.api_key_prefix,
             extra_headers=provider_settings.extra_headers,
         )
-    llm_gateway = ParallelLLMGateway(settings, llm_clients)  # type: ignore[arg-type]
+    llm_gateway = ParallelLLMGateway(settings, llm_clients)
 
     tool_registry = ToolRegistry(
         {
