@@ -15,9 +15,13 @@ class ParallelLLMGateway:
         self._settings = settings
         self._clients = clients
 
-    async def generate(self, agent_name: str, system_prompt: str, user_prompt: str) -> str:
+    def _resolve_available_provider_names(self, agent_name: str) -> list[str]:
         provider_names = self._settings.resolve_agent_provider_names(agent_name)
-        available_names = [name for name in provider_names if name in self._clients]
+        unique_provider_names = dict.fromkeys(provider_names)
+        return [name for name in unique_provider_names if name in self._clients]
+
+    async def generate(self, agent_name: str, system_prompt: str, user_prompt: str) -> str:
+        available_names = self._resolve_available_provider_names(agent_name)
         if not available_names:
             raise ValueError(f"No configured providers are available for agent {agent_name}")
 
@@ -56,9 +60,6 @@ class ParallelLLMGateway:
         if not successful_results:
             failure_detail = "; ".join(f"{name}: {detail}" for name, detail in failures)
             raise RuntimeError(f"All parallel model calls failed. {failure_detail}")
-
-        if combine_strategy == "first_success":
-            return successful_results[0][1]
 
         return self._format_sectioned_results(successful_results, failures)
 

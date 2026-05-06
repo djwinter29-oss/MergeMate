@@ -94,6 +94,24 @@ async def test_generate_returns_first_success_for_parallel_mode() -> None:
 
 
 @pytest.mark.asyncio
+async def test_generate_deduplicates_repeated_provider_aliases() -> None:
+    first = ClientStub("first")
+    second = ClientStub("second")
+    settings = SettingsStub(
+        provider_names=["one", "one", "two", "one"],
+        agents={"coder": AgentStub(parallel_mode="parallel", combine_strategy="sectioned")},
+    )
+    gateway = ParallelLLMGateway(settings, {"one": first, "two": second})
+
+    result = await gateway.generate("coder", "system", "user")
+
+    assert result.count("## one\nfirst") == 1
+    assert result.count("## two\nsecond") == 1
+    assert first.calls == [("system", "user")]
+    assert second.calls == [("system", "user")]
+
+
+@pytest.mark.asyncio
 async def test_generate_first_success_cancels_slower_parallel_calls() -> None:
     fast = DelayedClientStub("fast", delay_seconds=0.01)
     slow = DelayedClientStub("slow", delay_seconds=5)
