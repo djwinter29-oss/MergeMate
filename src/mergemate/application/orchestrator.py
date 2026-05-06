@@ -39,13 +39,7 @@ class AgentOrchestrator:
         run = self._run_repository.get(run_id)
         if run is None:
             raise ValueError(f"Run {run_id} was not found")
-        if run.status in {
-            RunStatus.COMPLETED,
-            RunStatus.FAILED,
-            RunStatus.CANCELLED,
-            RunStatus.RUNNING,
-            RunStatus.WAITING_TOOL,
-        }:
+        if run.status in RunStatus.skip_process_statuses():
             return run
         if not run.approved:
             return run

@@ -84,7 +84,7 @@ async def stop_progress_watchers(application) -> None:
 async def watch_run_progress(application, runtime, chat_id: int, run_id: str) -> None:
     interval_seconds = max(runtime.settings.runtime.status_update_interval_seconds, 1)
     last_snapshot: tuple[str, str, int, tuple[str, str, str, str] | None] | None = None
-    terminal_statuses = {RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED}
+    terminal_statuses = RunStatus.terminal_statuses()
     terminal_deliveries = _terminal_delivery_registry(application)
 
     while True:
