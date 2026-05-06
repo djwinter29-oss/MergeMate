@@ -108,8 +108,9 @@ class TelegramConfig(BaseModel):
         normalized_first = TelegramConfig._normalize_listener_host(first)
         normalized_second = TelegramConfig._normalize_listener_host(second)
 
-        wildcard_hosts = {"wildcard-ipv4", "wildcard-ipv6"}
-        loopback_hosts = {"loopback-ipv4", "loopback-ipv6", "loopback-hostname"}
+        normalized_values = set(TelegramConfig._HOST_NORMALIZATION_MAP.values())
+        wildcard_hosts = {v for v in normalized_values if v.startswith("wildcard-")}
+        loopback_hosts = {v for v in normalized_values if v.startswith("loopback-")}
 
         return (
             normalized_first == normalized_second
