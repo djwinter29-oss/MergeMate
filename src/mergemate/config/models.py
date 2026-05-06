@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Literal, Self
+from typing import ClassVar, Literal, Self
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel, Field, model_validator
@@ -115,17 +115,18 @@ class TelegramConfig(BaseModel):
             or (normalized_first in loopback_hosts and normalized_second in loopback_hosts)
         )
 
+    _HOST_NORMALIZATION_MAP: ClassVar[dict[str, str]] = {
+        "localhost": "loopback-hostname",
+        "0.0.0.0": "wildcard-ipv4",
+        "::": "wildcard-ipv6",
+        "127.0.0.1": "loopback-ipv4",
+        "::1": "loopback-ipv6",
+    }
+
     @staticmethod
     def _normalize_listener_host(host: str) -> str:
-        _host_normalization_map = {
-            "localhost": "loopback-hostname",
-            "0.0.0.0": "wildcard-ipv4",
-            "::": "wildcard-ipv6",
-            "127.0.0.1": "loopback-ipv4",
-            "::1": "loopback-ipv6",
-        }
         normalized_host = host.strip().lower().strip("[]")
-        return _host_normalization_map.get(normalized_host, normalized_host)
+        return TelegramConfig._HOST_NORMALIZATION_MAP.get(normalized_host, normalized_host)
 
 
 class StorageConfig(BaseModel):
