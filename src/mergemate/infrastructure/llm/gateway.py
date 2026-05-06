@@ -2,18 +2,16 @@
 
 import asyncio
 from collections.abc import Mapping
-from typing import Any, Protocol
+from typing import Any
 
-
-class _LLMClient(Protocol):
-    async def generate(self, system_prompt: str, user_prompt: str) -> str: ...
+from mergemate.infrastructure.llm.base import LLMClient
 
 
 class ParallelLLMGateway:
     _settings: Any
-    _clients: Mapping[str, _LLMClient]
+    _clients: Mapping[str, LLMClient]
 
-    def __init__(self, settings: Any, clients: Mapping[str, _LLMClient]) -> None:
+    def __init__(self, settings: Any, clients: Mapping[str, LLMClient]) -> None:
         self._settings = settings
         self._clients = clients
 
@@ -76,26 +74,22 @@ class ParallelLLMGateway:
         ]
         failures: list[tuple[str, str]] = []
 
-        try:
-            for completed_task in asyncio.as_completed(tasks):
-                provider_name, result, error_detail = await completed_task
+        for completed_task in asyncio.as_completed(tasks):
+            provider_name, result, error_detail = await completed_task
+            if error_detail is not None or result is None:
                 if error_detail is not None:
                     failures.append((provider_name, error_detail))
-                    continue
-
-                for pending_task in tasks:
-                    if pending_task is not completed_task and not pending_task.done():
-                        pending_task.cancel()
-                await asyncio.gather(*tasks, return_exceptions=True)
-                if result is None:
+                elif result is None:
                     failures.append((provider_name, "provider returned no result"))
-                    continue
-                return result
-        finally:
+                continue
+
+            # Cancel remaining tasks since we got a successful result
             for pending_task in tasks:
-                if not pending_task.done():
+                if pending_task is not completed_task and not pending_task.done():
                     pending_task.cancel()
+            # Wait for cancelled tasks to settle
             await asyncio.gather(*tasks, return_exceptions=True)
+            return result  # type: ignore[return-value]
 
         failure_detail = "; ".join(f"{name}: {detail}" for name, detail in failures)
         raise RuntimeError(f"All parallel model calls failed. {failure_detail}")
