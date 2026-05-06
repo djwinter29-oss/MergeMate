@@ -4,11 +4,16 @@ from __future__ import annotations
 
 from pathlib import Path
 import subprocess
+from typing import ClassVar
 
 from mergemate.domain.tools.entities import ToolMetadata
 
 
 class _BaseCliTool:
+    _default_action: ClassVar[str]
+    _command_map: ClassVar[dict[str, list[str]]]
+    _unsupported_action_label: ClassVar[str]
+
     def __init__(self, executable: str, working_directory: Path, timeout_seconds: int) -> None:
         self._executable = executable
         self._working_directory = working_directory
@@ -39,6 +44,13 @@ class _BaseCliTool:
             return {"status": "error", "detail": output or f"{self._executable} command failed"}
         return {"status": "ok", "detail": output}
 
+    def invoke(self, payload: dict[str, str]) -> dict[str, str]:
+        action = payload.get("action", self._default_action)
+        args = self._command_map.get(action)
+        if args is None:
+            return {"status": "error", "detail": f"Unsupported {self._unsupported_action_label} action: {action}"}
+        return self._run(args)
+
 
 class GitRepositoryTool(_BaseCliTool):
     name = "git_repository"
@@ -50,19 +62,14 @@ class GitRepositoryTool(_BaseCliTool):
         blocks_run_state="waiting_tool",
         context_key="git",
     )
-
-    def invoke(self, payload: dict[str, str]) -> dict[str, str]:
-        action = payload.get("action", "status")
-        command_map = {
-            "status": ["status", "--short", "--branch"],
-            "branch": ["branch", "--show-current"],
-            "remotes": ["remote", "-v"],
-            "diff_summary": ["diff", "--stat"],
-        }
-        args = command_map.get(action)
-        if args is None:
-            return {"status": "error", "detail": f"Unsupported git action: {action}"}
-        return self._run(args)
+    _default_action = "status"
+    _unsupported_action_label = "git"
+    _command_map = {
+        "status": ["status", "--short", "--branch"],
+        "branch": ["branch", "--show-current"],
+        "remotes": ["remote", "-v"],
+        "diff_summary": ["diff", "--stat"],
+    }
 
 
 class GitHubCliTool(_BaseCliTool):
@@ -77,18 +84,13 @@ class GitHubCliTool(_BaseCliTool):
         auth_action="auth_status",
         platform="github",
     )
-
-    def invoke(self, payload: dict[str, str]) -> dict[str, str]:
-        action = payload.get("action", "repo_view")
-        command_map = {
-            "auth_status": ["auth", "status"],
-            "repo_view": ["repo", "view"],
-            "pr_status": ["pr", "status"],
-        }
-        args = command_map.get(action)
-        if args is None:
-            return {"status": "error", "detail": f"Unsupported GitHub action: {action}"}
-        return self._run(args)
+    _default_action = "repo_view"
+    _unsupported_action_label = "GitHub"
+    _command_map = {
+        "auth_status": ["auth", "status"],
+        "repo_view": ["repo", "view"],
+        "pr_status": ["pr", "status"],
+    }
 
 
 class GitLabCliTool(_BaseCliTool):
@@ -103,15 +105,11 @@ class GitLabCliTool(_BaseCliTool):
         auth_action="auth_status",
         platform="gitlab",
     )
+    _default_action = "repo_view"
+    _unsupported_action_label = "GitLab"
+    _command_map = {
+        "auth_status": ["auth", "status"],
+        "repo_view": ["repo", "view"],
+        "mr_status": ["mr", "status"],
+    }
 
-    def invoke(self, payload: dict[str, str]) -> dict[str, str]:
-        action = payload.get("action", "repo_view")
-        command_map = {
-            "auth_status": ["auth", "status"],
-            "repo_view": ["repo", "view"],
-            "mr_status": ["mr", "status"],
-        }
-        args = command_map.get(action)
-        if args is None:
-            return {"status": "error", "detail": f"Unsupported GitLab action: {action}"}
-        return self._run(args)
