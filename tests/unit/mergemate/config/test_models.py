@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from mergemate.config.models import AppConfig
+from mergemate.config.models import AppConfig, TelegramConfig
 from mergemate.domain.shared import WorkflowName
 
 
@@ -486,3 +486,29 @@ def test_config_model_accepts_provider_urls_with_query_parameters() -> None:
     config = AppConfig.model_validate(payload)
 
     assert config.providers["primary"].provider_url.endswith("api-version=2024-10-21")
+
+
+@pytest.mark.parametrize(
+    ("host", "expected"),
+    [
+        (" localhost ", "loopback-hostname"),
+        ("0.0.0.0", "wildcard-ipv4"),
+        ("[::1]", "loopback-ipv6"),
+        ("example.com", "example.com"),
+    ],
+)
+def test_telegram_config_normalizes_listener_hosts(host: str, expected: str) -> None:
+    assert TelegramConfig._normalize_listener_host(host) == expected
+
+
+@pytest.mark.parametrize(
+    ("first", "second", "expected"),
+    [
+        ("0.0.0.0", "127.0.0.1", True),
+        ("localhost", "::1", True),
+        ("example.com", "127.0.0.1", False),
+        ("example.com", "example.com", True),
+    ],
+)
+def test_telegram_config_host_conflict_detection(first: str, second: str, expected: bool) -> None:
+    assert TelegramConfig._hosts_may_conflict(first, second) is expected
