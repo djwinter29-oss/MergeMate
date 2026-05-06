@@ -3,11 +3,20 @@
 import os
 from pathlib import Path
 from typing import Literal, Self
-from urllib.parse import urlparse
+from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel, Field, model_validator
 
 from mergemate.domain.shared import WorkflowName, is_user_facing_workflow
+
+
+def _validate_absolute_url(*, url: str, label: str, allow_query_or_fragment: bool) -> ParseResult:
+    parsed_url = urlparse(url)
+    if not parsed_url.scheme or not parsed_url.netloc:
+        raise ValueError(f"{label} must be an absolute URL")
+    if not allow_query_or_fragment and (parsed_url.query or parsed_url.fragment):
+        raise ValueError(f"{label} must not include query or fragment components")
+    return parsed_url
 
 
 class LoggingConfig(BaseModel):
@@ -25,9 +34,7 @@ class ProviderConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_provider_url(self) -> Self:
-        parsed_provider_url = urlparse(self.provider_url)
-        if not parsed_provider_url.scheme or not parsed_provider_url.netloc:
-            raise ValueError("Provider URL must be an absolute URL")
+        _validate_absolute_url(url=self.provider_url, label="Provider URL", allow_query_or_fragment=False)
         return self
 
 
@@ -51,20 +58,14 @@ class TelegramConfig(BaseModel):
             self.webhook_healthcheck_path,
             label="Telegram webhook healthcheck path",
         )
-        if self.mode == "webhook" and not self.webhook_public_base_url:
-            raise ValueError(
-                "Telegram webhook public base URL must be configured when mode is webhook"
-            )
         if self.mode == "webhook":
+            if not self.webhook_public_base_url:
+                raise ValueError(
+                    "Telegram webhook public base URL must be configured when mode is webhook"
+                )
+            _validate_absolute_url(url=self.webhook_public_base_url, label="Telegram webhook public base URL", allow_query_or_fragment=False)
+
             parsed_base_url = urlparse(self.webhook_public_base_url)
-            if not parsed_base_url.scheme or not parsed_base_url.netloc:
-                raise ValueError(
-                    "Telegram webhook public base URL must be an absolute URL when mode is webhook"
-                )
-            if parsed_base_url.query or parsed_base_url.fragment:
-                raise ValueError(
-                    "Telegram webhook public base URL must not include query or fragment components"
-                )
 
             is_loopback_host = parsed_base_url.hostname in {"localhost", "127.0.0.1", "::1"}
             if parsed_base_url.scheme != "https" and not (
@@ -116,18 +117,15 @@ class TelegramConfig(BaseModel):
 
     @staticmethod
     def _normalize_listener_host(host: str) -> str:
+        _host_normalization_map = {
+            "localhost": "loopback-hostname",
+            "0.0.0.0": "wildcard-ipv4",
+            "::": "wildcard-ipv6",
+            "127.0.0.1": "loopback-ipv4",
+            "::1": "loopback-ipv6",
+        }
         normalized_host = host.strip().lower().strip("[]")
-        if normalized_host == "localhost":
-            return "loopback-hostname"
-        if normalized_host == "0.0.0.0":
-            return "wildcard-ipv4"
-        if normalized_host == "::":
-            return "wildcard-ipv6"
-        if normalized_host == "127.0.0.1":
-            return "loopback-ipv4"
-        if normalized_host == "::1":
-            return "loopback-ipv6"
-        return normalized_host
+        return _host_normalization_map.get(normalized_host, normalized_host)
 
 
 class StorageConfig(BaseModel):
