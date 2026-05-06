@@ -9,6 +9,9 @@ from pydantic import BaseModel, Field, model_validator
 
 from mergemate.domain.shared import WorkflowName, is_user_facing_workflow
 
+ParallelMode = Literal["single", "parallel"]
+CombineStrategy = Literal["sectioned", "first_success"]
+
 
 def _validate_absolute_url(*, url: str, label: str, allow_query_or_fragment: bool) -> ParseResult:
     parsed_url = urlparse(url)
@@ -174,8 +177,8 @@ class AgentConfig(BaseModel):
     workflow: WorkflowName
     tools: list[str] = Field(default_factory=list)
     provider_names: list[str] = Field(default_factory=list)
-    parallel_mode: str = "single"
-    combine_strategy: str = "sectioned"
+    parallel_mode: ParallelMode = "single"
+    combine_strategy: CombineStrategy = "sectioned"
 
 
 class AppConfig(BaseModel):
