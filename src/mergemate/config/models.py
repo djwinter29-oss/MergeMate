@@ -94,7 +94,11 @@ class TelegramConfig(BaseModel):
 
             parsed_base_url = urlparse(self.webhook_public_base_url)
 
-            is_loopback_host = parsed_base_url.hostname in {"localhost", "127.0.0.1", "::1"}
+            is_loopback_host = (
+                parsed_base_url.hostname is not None
+                and TelegramConfig._normalize_listener_host(parsed_base_url.hostname)
+                in TelegramConfig._LOOPBACK_HOSTS
+            )
             if parsed_base_url.scheme != "https" and not (
                 parsed_base_url.scheme == "http" and is_loopback_host
             ):
