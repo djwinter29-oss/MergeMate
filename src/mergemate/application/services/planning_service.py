@@ -6,9 +6,6 @@ class PlanningService:
         self._llm_gateway = llm_gateway
         self._settings = settings
 
-    def resolve_planner_agent_name(self) -> str:
-        return self._settings.resolve_agent_name_for_workflow("planning")
-
     async def draft_plan(self, prompt: str, prior_feedback: str | None = None) -> str:
         system_prompt = (
             "You are the planning and coordination agent. Capture and confirm requirements. "
@@ -29,16 +26,12 @@ class PlanningService:
         if prior_feedback:
             user_prompt += f"\n\nIncorporate this feedback or reviewer concern:\n{prior_feedback.strip()}"
         return await self._llm_gateway.generate(
-            self.resolve_planner_agent_name(),
+            self._settings.resolve_agent_name_for_workflow("planning"),
             system_prompt,
             user_prompt,
         )
 
     async def revise_plan(self, existing_prompt: str, feedback: str) -> tuple[str, str]:
-        updated_prompt = self.merge_feedback(existing_prompt, feedback)
+        updated_prompt = f"{existing_prompt}\n\nAdditional user feedback:\n{feedback.strip()}"
         plan_text = await self.draft_plan(updated_prompt)
         return updated_prompt, plan_text
-
-    @staticmethod
-    def merge_feedback(existing_prompt: str, feedback: str) -> str:
-        return f"{existing_prompt}\n\nAdditional user feedback:\n{feedback.strip()}"
