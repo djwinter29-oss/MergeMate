@@ -255,7 +255,6 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         try:
             completed = await runtime.submit_prompt.complete_planning(
                 submit_result.run_id,
-                on_finished=lambda result: None,
             )
         except PromptSubmissionError:
             return

@@ -101,8 +101,6 @@ class SubmitPromptUseCase:
     async def complete_planning(
         self,
         run_id: str,
-        *,
-        on_finished: object | None = None,
     ) -> SubmitPromptResult | None:
         run = self._run_repository.get(run_id)
         if run is None:
@@ -139,9 +137,6 @@ class SubmitPromptUseCase:
             estimate_seconds=run.estimate_seconds,
             plan_text=plan_text,
         )
-
-    async def revise_plan(self, run_id: str, feedback: str) -> SubmitPromptResult | None:
-        return await self.revise_plan_for_chat(run_id, feedback)
 
     async def revise_plan_for_chat(
         self,
