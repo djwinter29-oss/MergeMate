@@ -13,7 +13,7 @@ class WorkflowService:
     def uses_multi_stage_delivery(cls, workflow: str) -> bool:
         return workflow_uses_multi_stage_delivery(workflow)
 
-    def build_execution_plan(self, workflow: str, *, agent_name: str):
+    def build_execution_plan(self, workflow: str, *, agent_name: str) -> DirectExecutionPlan | MultiStageExecutionPlan:
         if self.uses_multi_stage_delivery(workflow):
             return MultiStageExecutionPlan(
                 agent_name=agent_name,
@@ -27,17 +27,27 @@ class WorkflowService:
             preferred_agent_name=preferred_agent_name,
         )
 
+    async def _generate_stage_output(
+        self,
+        workflow: str,
+        system_prompt: str,
+        user_prompt: str,
+        *,
+        preferred_agent_name: str | None = None,
+    ) -> str:
+        agent_name = self.resolve_stage_agent_name(
+            workflow,
+            preferred_agent_name=preferred_agent_name,
+        )
+        return await self._llm_gateway.generate(agent_name, system_prompt, user_prompt)
+
     async def create_design(self, plan_text: str, context_text: str) -> str:
         system_prompt = (
             "You are the architect agent. Create an implementation-ready design from the approved plan. "
             "Be concrete about modules, interfaces, data flow, and testing seams."
         )
         user_prompt = f"Approved plan:\n{plan_text}\n\nRetrieved context:\n{context_text}"
-        return await self._llm_gateway.generate(
-            self.resolve_stage_agent_name("design"),
-            system_prompt,
-            user_prompt,
-        )
+        return await self._generate_stage_output("design", system_prompt, user_prompt)
 
     async def generate_code(
         self,
@@ -55,10 +65,11 @@ class WorkflowService:
             f"Plan:\n{plan_text}\n\nDesign:\n{design_text}\n\nContext:\n{context_text}\n\n"
             "Produce implementation details and code-oriented output."
         )
-        return await self._llm_gateway.generate(
-            self.resolve_stage_agent_name("generate_code", preferred_agent_name=agent_name),
+        return await self._generate_stage_output(
+            "generate_code",
             system_prompt,
             user_prompt,
+            preferred_agent_name=agent_name,
         )
 
     async def execute_direct(self, agent_name: str, system_prompt: str, user_prompt: str) -> str:
@@ -72,11 +83,7 @@ class WorkflowService:
         user_prompt = (
             f"Plan:\n{plan_text}\n\nDesign:\n{design_text}\n\nImplementation:\n{implementation_text}"
         )
-        return await self._llm_gateway.generate(
-            self.resolve_stage_agent_name("testing"),
-            system_prompt,
-            user_prompt,
-        )
+        return await self._generate_stage_output("testing", system_prompt, user_prompt)
 
     async def review(self, plan_text: str, design_text: str, implementation_text: str, test_text: str) -> str:
         system_prompt = (
@@ -87,11 +94,7 @@ class WorkflowService:
         user_prompt = (
             f"Plan:\n{plan_text}\n\nDesign:\n{design_text}\n\nImplementation:\n{implementation_text}\n\nTests:\n{test_text}"
         )
-        return await self._llm_gateway.generate(
-            self.resolve_stage_agent_name("review"),
-            system_prompt,
-            user_prompt,
-        )
+        return await self._generate_stage_output("review", system_prompt, user_prompt)
 
     @staticmethod
     def has_high_concerns(review_text: str) -> bool:
