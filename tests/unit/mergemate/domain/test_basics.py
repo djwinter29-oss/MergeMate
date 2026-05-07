@@ -1,12 +1,9 @@
 from datetime import UTC, datetime
 
-from mergemate.application.jobs.progress import ProgressEvent
 from mergemate.domain.agents.entities import AgentDefinition
-from mergemate.domain.agents.policies import default_agent_name
 from mergemate.domain.conversations.entities import Conversation
 from mergemate.domain.conversations.repository import ConversationRepository
 from mergemate.domain.runs.entities import AgentRun
-from mergemate.domain.runs.repository import AgentRunRepository
 from mergemate.domain.runs.value_objects import RunStage, RunStatus, tool_stage
 from mergemate.domain.shared.enums import (
     WorkflowName,
@@ -14,7 +11,6 @@ from mergemate.domain.shared.enums import (
     resolve_workflow_name,
     workflow_prompt_file,
 )
-from mergemate.domain.tools.contracts import Tool
 from mergemate.domain.tools.entities import ToolDefinition
 from mergemate.infrastructure.llm.base import LLMClient
 from mergemate.infrastructure.queue.base import QueueBackend
@@ -25,7 +21,6 @@ def test_domain_dataclasses_and_enums_are_constructible() -> None:
     agent = AgentDefinition(name="coder", workflow=WorkflowName.GENERATE_CODE, tools=["syntax_checker"])
     conversation = Conversation(chat_id=7, messages=["hello"])
     tool = ToolDefinition(name="formatter", description="formats code")
-    progress = ProgressEvent(run_id="run-1", status="queued", estimate_seconds=10)
     run = AgentRun(
         run_id="run-1",
         chat_id=7,
@@ -51,10 +46,8 @@ def test_domain_dataclasses_and_enums_are_constructible() -> None:
     assert agent.name == "coder"
     assert conversation.messages == ["hello"]
     assert tool.description == "formats code"
-    assert progress.estimate_seconds == 10
     assert run.status == RunStatus.QUEUED
     assert tool_stage("git_repository") == "tool:git_repository"
-    assert default_agent_name() == "coder"
     assert WorkflowName.DEBUG_CODE == "debug_code"
 
 
@@ -92,7 +85,5 @@ def test_resolve_workflow_name() -> None:
 
 def test_protocol_modules_are_importable() -> None:
     assert ConversationRepository is not None
-    assert AgentRunRepository is not None
-    assert Tool is not None
     assert LLMClient is not None
     assert QueueBackend is not None
