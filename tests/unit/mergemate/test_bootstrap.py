@@ -160,7 +160,6 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
     monkeypatch.setattr(bootstrap_module, "BackgroundRunWorker", WorkerStub)
     monkeypatch.setattr(bootstrap_module, "RunDispatcher", DispatcherStub)
     monkeypatch.setattr(bootstrap_module, "SubmitPromptUseCase", SubmitPromptStub)
-    monkeypatch.setattr(bootstrap_module, "ApproveRunUseCase", lambda submit: ("approve", submit))
     monkeypatch.setattr(bootstrap_module, "GetRunStatusUseCase", lambda repo, tool_event_repo: ("status", repo, tool_event_repo))
     monkeypatch.setattr(bootstrap_module, "CancelRunUseCase", lambda repo: ("cancel", repo))
 
@@ -168,7 +167,6 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
 
     assert runtime.config_path == config_path
     assert runtime.database.path == tmp_path / "workspace" / ".state" / "runtime.db"
-    assert runtime.approve_run[0] == "approve"
     startup_log_call = next(args for args, _ in recorded.calls if args and args[0] == "log_startup_configuration")
     assert startup_log_call[2] == config_path
     assert startup_log_call[3] == tmp_path / "workspace" / ".state" / "runtime.db"
@@ -243,7 +241,6 @@ def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Pa
     monkeypatch.setattr(bootstrap_module, "BackgroundRunWorker", lambda **kwargs: "worker")
     monkeypatch.setattr(bootstrap_module, "RunDispatcher", lambda run_job_repository, queue_backend: "dispatcher")
     monkeypatch.setattr(bootstrap_module, "SubmitPromptUseCase", lambda *args: "submit_prompt")
-    monkeypatch.setattr(bootstrap_module, "ApproveRunUseCase", lambda submit: "approve_run")
     monkeypatch.setattr(bootstrap_module, "GetRunStatusUseCase", lambda repo, tool_event_repo: "get_run_status")
     monkeypatch.setattr(bootstrap_module, "CancelRunUseCase", lambda repo: "cancel_run")
     monkeypatch.setattr(bootstrap_module, "CodeFormatterTool", lambda: "formatter")

@@ -5,7 +5,6 @@ import pytest
 from mergemate.application.jobs.dispatcher import RunDispatcher
 from mergemate.application.use_cases.cancel_run import CancelRunUseCase
 from mergemate.application.services.context_service import ContextService
-from mergemate.application.use_cases.approve_run import ApproveRunUseCase
 from mergemate.application.use_cases.get_run_status import GetRunStatusUseCase
 from mergemate.application.use_cases.submit_prompt import SubmitPromptUseCase
 from mergemate.domain.runs.value_objects import RunStatus
@@ -69,7 +68,7 @@ def sqlite_runtime(tmp_path):
         "run_job_repository": run_job_repository,
         "conversation_repository": conversation_repository,
         "submit_prompt": submit_prompt,
-        "approve_run": ApproveRunUseCase(submit_prompt),
+        "approve_run": submit_prompt,
         "cancel_run": CancelRunUseCase(run_repository),
         "get_run_status": GetRunStatusUseCase(run_repository),
         "worker": queue_backend,
@@ -117,7 +116,7 @@ async def test_approve_run_dispatches_and_updates_persisted_status(sqlite_runtim
     )
     await sqlite_runtime["submit_prompt"].complete_planning(submit_result.run_id)
 
-    approval_result = sqlite_runtime["approve_run"].execute(submit_result.run_id, chat_id=777)
+    approval_result = sqlite_runtime["submit_prompt"].approve(submit_result.run_id, chat_id=777)
     saved_run = sqlite_runtime["run_repository"].get(submit_result.run_id)
 
     assert approval_result is not None
@@ -144,7 +143,7 @@ async def test_run_access_is_scoped_to_chat(sqlite_runtime) -> None:
     )
 
     assert sqlite_runtime["get_run_status"].execute(submit_result.run_id, chat_id=999) is None
-    assert sqlite_runtime["approve_run"].execute(submit_result.run_id, chat_id=999) is None
+    assert sqlite_runtime["submit_prompt"].approve(submit_result.run_id, chat_id=999) is None
     assert await sqlite_runtime["submit_prompt"].revise_plan_for_chat(
         submit_result.run_id,
         "change scope",

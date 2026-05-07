@@ -40,20 +40,15 @@ class ParallelLLMGateway:
             for name in available_names
         ]
         raw_results = await asyncio.gather(*tasks, return_exceptions=True)
-        results: list[BaseException | str] = []
-        for result in raw_results:
-            if isinstance(result, BaseException):
-                results.append(result)
-            elif isinstance(result, str):
-                results.append(result)
-            else:
-                results.append(RuntimeError("Provider returned a non-text result."))
 
         successful_results: list[tuple[str, str]] = []
         failures: list[tuple[str, str]] = []
-        for provider_name, result in zip(available_names, results, strict=True):
+        for provider_name, result in zip(available_names, raw_results, strict=True):
             if isinstance(result, BaseException):
                 failures.append((provider_name, str(result)))
+                continue
+            if not isinstance(result, str):
+                failures.append((provider_name, "Provider returned a non-text result."))
                 continue
             successful_results.append((provider_name, result))
 

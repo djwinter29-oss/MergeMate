@@ -78,33 +78,36 @@ class WebhookHealthServer:
         state = self._state
 
         class Handler(BaseHTTPRequestHandler):
-            def do_GET(self) -> None:
+            def _resolve_status(self) -> int | None:
                 if self.path != expected_path:
+                    return None
+                payload = state.snapshot()
+                return HTTPStatus.OK if payload["status"] == "ready" else HTTPStatus.SERVICE_UNAVAILABLE
+
+            def _send_json_response(self, status_code: int, *, body: bytes | None = None) -> None:
+                self.send_response(status_code)
+                self.send_header("Content-Type", "application/json")
+                if body is not None:
+                    self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                if body is not None:
+                    self.wfile.write(body)
+
+            def do_GET(self) -> None:
+                status = self._resolve_status()
+                if status is None:
                     self.send_error(HTTPStatus.NOT_FOUND)
                     return
-
                 payload = state.snapshot()
                 body = json.dumps(payload).encode("utf-8")
-                status_code = (
-                    HTTPStatus.OK if payload["status"] == "ready" else HTTPStatus.SERVICE_UNAVAILABLE
-                )
-                self.send_response(status_code)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
+                self._send_json_response(status, body=body)
 
             def do_HEAD(self) -> None:
-                if self.path != expected_path:
+                status = self._resolve_status()
+                if status is None:
                     self.send_error(HTTPStatus.NOT_FOUND)
                     return
-                payload = state.snapshot()
-                status_code = (
-                    HTTPStatus.OK if payload["status"] == "ready" else HTTPStatus.SERVICE_UNAVAILABLE
-                )
-                self.send_response(status_code)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
+                self._send_json_response(status)
 
             def log_message(self, format: str, *args) -> None:
                 return

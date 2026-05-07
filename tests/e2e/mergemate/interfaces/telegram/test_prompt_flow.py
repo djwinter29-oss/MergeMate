@@ -81,13 +81,15 @@ class GetRunStatusStub:
 
 
 class SubmitPromptStub:
-    def __init__(self, result: SubmitPromptResult, revised_result: SubmitPromptResult | None = None, complete_result: SubmitPromptResult | None = None) -> None:
+    def __init__(self, result: SubmitPromptResult, revised_result: SubmitPromptResult | None = None, complete_result: SubmitPromptResult | None = None, approve_result: ApproveRunResult | None = None) -> None:
         self.result = result
         self.revised_result = revised_result
         self.complete_result = complete_result or result
+        self.approve_result = approve_result
         self.execute_calls: list[dict[str, object]] = []
         self.revise_calls: list[tuple[str, str, int | None]] = []
         self.complete_calls: list[str] = []
+        self.approve_calls: list[tuple[str, int | None]] = []
 
     async def execute(self, **kwargs) -> SubmitPromptResult:
         self.execute_calls.append(kwargs)
@@ -107,6 +109,10 @@ class SubmitPromptStub:
         self.revise_calls.append((run_id, feedback, chat_id))
         return self.revised_result
 
+    def approve(self, run_id: str, *, chat_id: int | None = None, on_finished=None) -> ApproveRunResult | None:
+        self.approve_calls.append((run_id, chat_id))
+        return self.approve_result
+
 
 class ApproveRunStub:
     def __init__(self, result: ApproveRunResult) -> None:
@@ -116,6 +122,9 @@ class ApproveRunStub:
     def execute(self, run_id: str, *, chat_id: int | None = None, on_finished=None):
         self.calls.append((run_id, chat_id))
         return self.result
+
+    def approve(self, run_id: str, *, chat_id: int | None = None, on_finished=None) -> ApproveRunResult:
+        return self.execute(run_id, chat_id=chat_id, on_finished=on_finished)
 
 
 def _build_update(message_text: str):
@@ -132,7 +141,7 @@ def _build_runtime(*, latest_run=None, submit_prompt=None, approve_run=None):
     return SimpleNamespace(
         settings=RuntimeSettingsStub(),
         get_run_status=GetRunStatusStub(latest_run=latest_run),
-        submit_prompt=submit_prompt,
+        submit_prompt=submit_prompt or approve_run,
         approve_run=approve_run,
     )
 

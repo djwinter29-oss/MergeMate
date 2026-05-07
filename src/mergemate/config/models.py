@@ -350,17 +350,15 @@ class AppConfig(BaseModel):
         return (base_path / subpath).resolve()
 
     def resolve_database_path(self, config_path: Path) -> Path:
-        workspace_root = self.resolve_workspace_root(config_path)
         return self._resolve_subpath(
             subpath_str=self.storage.database_path,
-            base_path=workspace_root,
+            base_path=self.resolve_workspace_root(config_path),
         )
 
     def preview_database_path(self, config_path: Path) -> Path:
-        workspace_root = self.preview_workspace_root(config_path)
         return self._resolve_subpath(
             subpath_str=self.storage.database_path,
-            base_path=workspace_root,
+            base_path=self.preview_workspace_root(config_path),
         )
 
     def resolve_workspace_root(self, config_path: Path) -> Path:
@@ -378,8 +376,7 @@ class AppConfig(BaseModel):
         return (self.resolve_workspace_root(config_path) / "docs").resolve()
 
     def resolve_working_directory(self, config_path: Path) -> Path:
-        workspace_root = self.resolve_workspace_root(config_path)
         return self._resolve_subpath(
             subpath_str=self.source_control.working_directory,
-            base_path=workspace_root,
+            base_path=self.resolve_workspace_root(config_path),
         )
