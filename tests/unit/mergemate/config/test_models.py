@@ -442,12 +442,22 @@ def test_config_model_requires_planning_agent() -> None:
         AppConfig.model_validate(payload)
 
 
-def test_config_model_requires_multi_stage_support_agents_for_generate_code() -> None:
+@pytest.mark.parametrize(
+    ("missing_agent", "expected_message"),
+    [
+        ("architect", "design"),
+        ("tester", "testing"),
+        ("reviewer", "review"),
+    ],
+)
+def test_config_model_requires_multi_stage_support_agents_for_generate_code(
+    missing_agent: str,
+    expected_message: str,
+) -> None:
     payload = _build_config().model_dump()
-    payload["agents"].pop("architect")
-    payload["agents"].pop("tester")
+    payload["agents"].pop(missing_agent)
 
-    with pytest.raises(ValidationError, match="design, testing"):
+    with pytest.raises(ValidationError, match=expected_message):
         AppConfig.model_validate(payload)
 
 
