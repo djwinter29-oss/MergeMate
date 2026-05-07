@@ -180,7 +180,6 @@ class SubmitPromptUseCase:
         run_id: str,
         *,
         chat_id: int | None = None,
-        on_finished=None,
     ) -> ApproveRunResult | None:
         existing = self._run_repository.get(run_id)
         if existing is None:

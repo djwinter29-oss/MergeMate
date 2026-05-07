@@ -121,8 +121,8 @@ class ApproveRunStub:
         self.result = result
         self.calls = []
 
-    def execute(self, run_id: str, *, chat_id: int | None = None, on_finished=None):
-        self.calls.append((run_id, chat_id, on_finished is not None))
+    def execute(self, run_id: str, *, chat_id: int | None = None):
+        self.calls.append((run_id, chat_id, False))
         return self.result
 
 
