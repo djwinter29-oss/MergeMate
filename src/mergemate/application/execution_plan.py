@@ -1,9 +1,39 @@
 """Execution plan models for workflow delivery."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any, Callable
 
 from mergemate.domain.runs.value_objects import RunStage, RunStatus
+
+
+def _check_cancelled(
+    *,
+    run_id: str,
+    run_repository: Any,
+    is_cancelled: Callable[[str], bool],
+    stage: StageDescriptor | None = None,
+) -> Any | None:
+    """If the run has been cancelled, return the updated run; otherwise None."""
+    if stage is not None and not stage.checks_cancellation_before:
+        return None
+    if is_cancelled(run_id):
+        return run_repository.get(run_id)
+    return None
+
+
+def _check_after_cancelled(
+    *,
+    run_id: str,
+    run_repository: Any,
+    is_cancelled: Callable[[str], bool],
+    stage: StageDescriptor,
+) -> Any | None:
+    """Check if run was cancelled after a stage, return updated run if so."""
+    if stage.checks_cancellation_after and is_cancelled(run_id):
+        return run_repository.get(run_id)
+    return None
 
 
 @dataclass(slots=True, frozen=True)
@@ -52,15 +82,21 @@ class DirectExecutionPlan:
 
     async def execute(self, runtime: ExecutionRuntime, execution: ExecutionContext):
         run = execution.run
-        if runtime.is_cancelled(run.run_id):
-            return runtime.run_repository.get(run.run_id)
+        cancelled = _check_cancelled(
+            run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
+        )
+        if cancelled is not None:
+            return cancelled
         direct_result = await runtime.workflow_service.execute_direct(
             self._agent_name,
             execution.system_prompt,
             execution.context_text,
         )
-        if runtime.is_cancelled(run.run_id):
-            return runtime.run_repository.get(run.run_id)
+        cancelled = _check_cancelled(
+            run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
+        )
+        if cancelled is not None:
+            return cancelled
         runtime.run_repository.save_artifacts(
             run.run_id,
             current_stage=self.stages[0].current_stage,
@@ -138,8 +174,12 @@ class MultiStageExecutionPlan:
         design_stage, implementation_stage, testing_stage, review_stage, replanning_stage = self.stages
 
         for iteration in range(1, self._max_iterations + 1):
-            if design_stage.checks_cancellation_before and runtime.is_cancelled(run.run_id):
-                return runtime.run_repository.get(run.run_id)
+            cancelled = _check_cancelled(
+                run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
+                stage=design_stage,
+            )
+            if cancelled is not None:
+                return cancelled
 
             design_text = await runtime.workflow_service.create_design(current_plan, execution.context_text)
             design_document_path = str(
@@ -156,8 +196,12 @@ class MultiStageExecutionPlan:
                 design_text=design_text,
                 review_iterations=iteration,
             )
-            if design_stage.checks_cancellation_after and runtime.is_cancelled(run.run_id):
-                return runtime.run_repository.get(run.run_id)
+            cancelled = _check_after_cancelled(
+                run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
+                stage=design_stage,
+            )
+            if cancelled is not None:
+                return cancelled
 
             implementation_text = await runtime.workflow_service.generate_code(
                 current_plan,
@@ -171,8 +215,12 @@ class MultiStageExecutionPlan:
                 result_text=implementation_text,
                 review_iterations=iteration,
             )
-            if implementation_stage.checks_cancellation_after and runtime.is_cancelled(run.run_id):
-                return runtime.run_repository.get(run.run_id)
+            cancelled = _check_after_cancelled(
+                run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
+                stage=implementation_stage,
+            )
+            if cancelled is not None:
+                return cancelled
 
             test_text = await runtime.workflow_service.generate_tests(current_plan, design_text, implementation_text)
             test_document_path = str(
@@ -190,8 +238,12 @@ class MultiStageExecutionPlan:
                 test_text=test_text,
                 review_iterations=iteration,
             )
-            if testing_stage.checks_cancellation_after and runtime.is_cancelled(run.run_id):
-                return runtime.run_repository.get(run.run_id)
+            cancelled = _check_after_cancelled(
+                run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
+                stage=testing_stage,
+            )
+            if cancelled is not None:
+                return cancelled
 
             review_text = await runtime.workflow_service.review(
                 current_plan,
@@ -216,8 +268,12 @@ class MultiStageExecutionPlan:
                 review_text=review_text,
                 review_iterations=iteration,
             )
-            if review_stage.checks_cancellation_after and runtime.is_cancelled(run.run_id):
-                return runtime.run_repository.get(run.run_id)
+            cancelled = _check_after_cancelled(
+                run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
+                stage=review_stage,
+            )
+            if cancelled is not None:
+                return cancelled
 
             if not runtime.workflow_service.has_high_concerns(review_text):
                 break
@@ -230,8 +286,12 @@ class MultiStageExecutionPlan:
                 current_plan,
                 current_stage=replanning_stage.current_stage,
             )
-            if replanning_stage.checks_cancellation_after and runtime.is_cancelled(run.run_id):
-                return runtime.run_repository.get(run.run_id)
+            cancelled = _check_after_cancelled(
+                run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
+                stage=replanning_stage,
+            )
+            if cancelled is not None:
+                return cancelled
 
         latest_run = runtime.run_repository.get(run.run_id)
         if latest_run is not None and latest_run.status == RunStatus.CANCELLED:
