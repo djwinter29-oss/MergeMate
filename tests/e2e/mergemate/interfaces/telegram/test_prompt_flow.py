@@ -87,14 +87,14 @@ class SubmitPromptStub:
         self.complete_result = complete_result or result
         self.execute_calls: list[dict[str, object]] = []
         self.revise_calls: list[tuple[str, str, int | None]] = []
-        self.complete_calls: list[tuple[str, bool]] = []
+        self.complete_calls: list[str] = []
 
     async def execute(self, **kwargs) -> SubmitPromptResult:
         self.execute_calls.append(kwargs)
         return self.result
 
-    async def complete_planning(self, run_id: str, *, on_finished=None) -> SubmitPromptResult | None:
-        self.complete_calls.append((run_id, on_finished is not None))
+    async def complete_planning(self, run_id: str) -> SubmitPromptResult | None:
+        self.complete_calls.append(run_id)
         return self.complete_result
 
     async def revise_plan_for_chat(
@@ -194,7 +194,7 @@ async def test_handle_prompt_returns_confirmation_plan_for_new_request(monkeypat
     await asyncio.sleep(0)
 
     assert submit_prompt.execute_calls
-    assert submit_prompt.complete_calls == [("run-123", True)]
+    assert submit_prompt.complete_calls == ["run-123"]
     assert started_watchers == []
     assert len(message.replies) == 1
     assert "Request accepted. Run ID: run-123." in message.replies[0]

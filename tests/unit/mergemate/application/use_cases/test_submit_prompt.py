@@ -489,7 +489,7 @@ def test_approve_does_not_dispatch_when_transition_was_already_claimed() -> None
 
 
 @pytest.mark.asyncio
-async def test_revise_plan_wrapper_returns_updated_result() -> None:
+async def test_revise_plan_for_chat_returns_updated_result() -> None:
     repository = InMemoryRunRepository()
     context_service = ContextServiceStub()
     use_case = SubmitPromptUseCase(
@@ -508,7 +508,7 @@ async def test_revise_plan_wrapper_returns_updated_result() -> None:
     )
     run_id = next(iter(repository.runs))
 
-    result = await use_case.revise_plan(run_id, "add logs")
+    result = await use_case.revise_plan_for_chat(run_id, "add logs")
 
     assert result is not None
     assert result.plan_text == "plan for build feature\n\nAdditional user feedback:\nadd logs"
