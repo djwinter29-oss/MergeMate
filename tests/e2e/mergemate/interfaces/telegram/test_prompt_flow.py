@@ -109,7 +109,7 @@ class SubmitPromptStub:
         self.revise_calls.append((run_id, feedback, chat_id))
         return self.revised_result
 
-    def approve(self, run_id: str, *, chat_id: int | None = None, on_finished=None) -> ApproveRunResult | None:
+    def approve(self, run_id: str, *, chat_id: int | None = None) -> ApproveRunResult | None:
         self.approve_calls.append((run_id, chat_id))
         return self.approve_result
 
@@ -119,12 +119,12 @@ class ApproveRunStub:
         self.result = result
         self.calls: list[tuple[str, int | None]] = []
 
-    def execute(self, run_id: str, *, chat_id: int | None = None, on_finished=None):
+    def execute(self, run_id: str, *, chat_id: int | None = None):
         self.calls.append((run_id, chat_id))
         return self.result
 
-    def approve(self, run_id: str, *, chat_id: int | None = None, on_finished=None) -> ApproveRunResult:
-        return self.execute(run_id, chat_id=chat_id, on_finished=on_finished)
+    def approve(self, run_id: str, *, chat_id: int | None = None) -> ApproveRunResult:
+        return self.execute(run_id, chat_id=chat_id)
 
 
 def _build_update(message_text: str):
