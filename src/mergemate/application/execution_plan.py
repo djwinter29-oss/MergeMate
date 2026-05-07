@@ -64,14 +64,8 @@ class ExecutionRuntime:
     is_cancelled: Callable[[str], bool]
 
 
-class DirectExecutionPlan:
-    stages = (
-        StageDescriptor(
-            name="execution",
-            current_stage=RunStage.EXECUTION,
-            uses_tool_context=True,
-        ),
-    )
+class BaseExecutionPlan:
+    stages: tuple[StageDescriptor, ...] = ()
 
     def __init__(self, agent_name: str) -> None:
         self._agent_name = agent_name
@@ -79,6 +73,16 @@ class DirectExecutionPlan:
     @property
     def requires_tool_context(self) -> bool:
         return any(stage.uses_tool_context for stage in self.stages)
+
+
+class DirectExecutionPlan(BaseExecutionPlan):
+    stages = (
+        StageDescriptor(
+            name="execution",
+            current_stage=RunStage.EXECUTION,
+            uses_tool_context=True,
+        ),
+    )
 
     async def execute(self, runtime: ExecutionRuntime, execution: ExecutionContext):
         run = execution.run
@@ -119,7 +123,7 @@ class DirectExecutionPlan:
         return completed_run
 
 
-class MultiStageExecutionPlan:
+class MultiStageExecutionPlan(BaseExecutionPlan):
     stages = (
         StageDescriptor(
             name="design",
@@ -152,14 +156,10 @@ class MultiStageExecutionPlan:
     )
 
     def __init__(self, agent_name: str, max_iterations: int) -> None:
-        self._agent_name = agent_name
+        super().__init__(agent_name)
         if max_iterations < 1:
             raise ValueError("max_iterations must be at least 1")
         self._max_iterations = max_iterations
-
-    @property
-    def requires_tool_context(self) -> bool:
-        return any(stage.uses_tool_context for stage in self.stages)
 
     async def execute(self, runtime: ExecutionRuntime, execution: ExecutionContext):
         run = execution.run
