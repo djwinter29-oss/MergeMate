@@ -1,5 +1,6 @@
 """Configuration models for MergeMate."""
 
+from collections import Counter
 import os
 from pathlib import Path
 from typing import ClassVar, Literal, Self
@@ -239,9 +240,7 @@ class AppConfig(BaseModel):
                         f"Agent {agent_name} references unknown provider {provider_name}"
                     )
 
-        workflow_counts: dict[WorkflowName, int] = {}
-        for agent in self.agents.values():
-            workflow_counts[agent.workflow] = workflow_counts.get(agent.workflow, 0) + 1
+        workflow_counts = Counter(agent.workflow for agent in self.agents.values())
 
         duplicated_workflows = sorted(
             workflow.value for workflow, count in workflow_counts.items() if count > 1
