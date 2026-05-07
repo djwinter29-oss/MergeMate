@@ -195,7 +195,7 @@ async def test_handle_prompt_returns_confirmation_plan_for_new_request(monkeypat
 
     monkeypatch.setattr(
         handlers,
-        "_start_progress_watcher",
+        "start_progress_watcher",
         lambda application, runtime, chat_id, run_id: started_watchers.append((chat_id, run_id)),
     )
 
@@ -237,7 +237,7 @@ async def test_handle_prompt_revises_existing_plan(monkeypatch: pytest.MonkeyPat
 
     monkeypatch.setattr(
         handlers,
-        "_start_progress_watcher",
+        "start_progress_watcher",
         lambda application, runtime, chat_id, run_id: started_watchers.append((chat_id, run_id)),
     )
 
@@ -265,7 +265,7 @@ async def test_approve_command_replies_and_starts_progress_watcher(monkeypatch: 
 
     monkeypatch.setattr(
         handlers,
-        "_start_progress_watcher",
+        "start_progress_watcher",
         lambda application, runtime, chat_id, run_id: started_watchers.append((chat_id, run_id)),
     )
 

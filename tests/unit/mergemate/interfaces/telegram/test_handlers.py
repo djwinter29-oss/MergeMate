@@ -375,7 +375,7 @@ async def test_tools_command_accepts_missing_context_args() -> None:
 @pytest.mark.asyncio
 async def test_approve_command_handles_missing_failed_and_not_needed_runs(monkeypatch: pytest.MonkeyPatch) -> None:
     started = []
-    monkeypatch.setattr(handlers, "_start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    monkeypatch.setattr(handlers, "start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
     runtime = _runtime(
         latest=GetRunStatusStub([None, RunStub(run_id="run-2")]),
         approve=ApproveRunStub(SimpleNamespace(run_id="run-3", dispatched=False, status="completed")),
@@ -410,7 +410,7 @@ async def test_approve_command_handles_missing_failed_and_not_needed_runs(monkey
 @pytest.mark.asyncio
 async def test_approve_command_starts_watcher_when_dispatched(monkeypatch: pytest.MonkeyPatch) -> None:
     started = []
-    monkeypatch.setattr(handlers, "_start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    monkeypatch.setattr(handlers, "start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
     runtime = _runtime(approve=ApproveRunStub(SimpleNamespace(run_id="run-4", dispatched=True, status="queued")))
     application = ApplicationStub(runtime)
     message = MessageStub("/approve run-4")
@@ -447,7 +447,7 @@ async def test_approve_command_reports_planning_in_progress_error() -> None:
 @pytest.mark.asyncio
 async def test_approve_command_uses_latest_run_when_no_argument(monkeypatch: pytest.MonkeyPatch) -> None:
     started = []
-    monkeypatch.setattr(handlers, "_start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    monkeypatch.setattr(handlers, "start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
     runtime = _runtime(
         latest=GetRunStatusStub([RunStub(run_id="run-latest")]),
         approve=ApproveRunStub(SimpleNamespace(run_id="run-latest", dispatched=True, status="queued")),
@@ -531,7 +531,7 @@ def test_start_progress_watcher_creates_task(monkeypatch: pytest.MonkeyPatch) ->
         lambda application, runtime, chat_id, run_id: started.append((chat_id, run_id)),
     )
 
-    handlers._start_progress_watcher(application, runtime, 5, "run-1")
+    handlers.start_progress_watcher(application, runtime, 5, "run-1")
 
     assert started == [(5, "run-1")]
 
@@ -659,7 +659,7 @@ async def test_handle_prompt_splits_oversized_revision_error() -> None:
 @pytest.mark.asyncio
 async def test_handle_prompt_handles_auto_execution_and_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
     started = []
-    monkeypatch.setattr(handlers, "_start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    monkeypatch.setattr(handlers, "start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
 
     auto_submit = SubmitPromptStub(
         execute_result=SimpleNamespace(run_id="run-8", status="queued", plan_text=None, estimate_seconds=12),
@@ -689,7 +689,7 @@ async def test_handle_prompt_handles_auto_execution_and_confirmation(monkeypatch
 @pytest.mark.asyncio
 async def test_handle_prompt_splits_oversized_auto_execution_and_confirmation_messages(monkeypatch: pytest.MonkeyPatch) -> None:
     started = []
-    monkeypatch.setattr(handlers, "_start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    monkeypatch.setattr(handlers, "start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
 
     auto_submit = SubmitPromptStub(
         execute_result=SimpleNamespace(run_id="run-8", status="queued", plan_text=None, estimate_seconds=12),
@@ -784,48 +784,3 @@ async def test_approve_command_splits_oversized_stored_error_text() -> None:
 
     assert len(message.replies) == 2
     assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for reply in message.replies)
-
-
-@pytest.mark.asyncio
-async def test_notify_terminal_update_formats_terminal_messages() -> None:
-    runtime = _runtime()
-    application = ApplicationStub(runtime)
-
-    await handlers._notify_terminal_update(
-        application,
-        5,
-        SimpleNamespace(status=RunStatus.COMPLETED, run_id="run-1", result_text="done", error_text=None),
-    )
-    await handlers._notify_terminal_update(
-        application,
-        5,
-        SimpleNamespace(status=RunStatus.CANCELLED, run_id="run-2", result_text=None, error_text=None),
-    )
-    await handlers._notify_terminal_update(
-        application,
-        5,
-        SimpleNamespace(status=RunStatus.FAILED, run_id="run-3", result_text=None, error_text="boom"),
-    )
-
-    assert application.bot.messages == [
-        (5, "Run run-1 completed.\n\ndone"),
-        (5, "Run run-2 was cancelled."),
-        (5, "Run run-3 failed.\n\nboom"),
-    ]
-
-
-@pytest.mark.asyncio
-async def test_notify_terminal_update_splits_oversized_messages() -> None:
-    runtime = _runtime()
-    application = ApplicationStub(runtime)
-    long_text = "x" * (handlers.TELEGRAM_MESSAGE_LIMIT + 250)
-
-    await handlers._notify_terminal_update(
-        application,
-        5,
-        SimpleNamespace(status=RunStatus.COMPLETED, run_id="run-long", result_text=long_text, error_text=None),
-    )
-
-    assert len(application.bot.messages) == 2
-    assert all(len(message_text) <= handlers.TELEGRAM_MESSAGE_LIMIT for _, message_text in application.bot.messages)
-    assert application.bot.messages[0][1].startswith("Run run-long completed.")
