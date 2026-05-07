@@ -13,7 +13,6 @@ from mergemate.application.services.planning_service import PlanningService
 from mergemate.application.services.prompt_service import PromptService
 from mergemate.application.services.tool_service import ToolService
 from mergemate.application.services.workflow_service import WorkflowService
-from mergemate.application.use_cases.approve_run import ApproveRunUseCase
 from mergemate.application.use_cases.cancel_run import CancelRunUseCase
 from mergemate.application.use_cases.get_run_status import GetRunStatusUseCase
 from mergemate.application.use_cases.submit_prompt import SubmitPromptUseCase
@@ -59,7 +58,6 @@ class MergeMateRuntime:
     planning_service: PlanningService
     workflow_service: WorkflowService
     submit_prompt: SubmitPromptUseCase
-    approve_run: ApproveRunUseCase
     get_run_status: GetRunStatusUseCase
     cancel_run: CancelRunUseCase
     worker: BackgroundRunWorker
@@ -214,7 +212,6 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
         planning_service=planning_service,
         workflow_service=workflow_service,
         submit_prompt=submit_prompt_use_case,
-        approve_run=ApproveRunUseCase(submit_prompt_use_case),
         get_run_status=GetRunStatusUseCase(run_repository, tool_event_repository),
         cancel_run=CancelRunUseCase(run_repository),
         worker=worker,

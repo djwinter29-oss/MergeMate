@@ -145,7 +145,15 @@ async def approve_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await message.reply_text("No run is available to approve.")
         return
 
-    run = runtime.approve_run.execute(
+    approve_candidate = getattr(runtime.submit_prompt, "approve", None)
+    if approve_candidate is None:
+        approve_runtime = getattr(runtime, "approve_run", None)
+        approve_candidate = getattr(approve_runtime, "approve", None) or getattr(approve_runtime, "execute", None)
+    if approve_candidate is None:
+        await message.reply_text("Run approval failed.")
+        return
+
+    run = approve_candidate(
         run_id,
         chat_id=chat.id,
     )
