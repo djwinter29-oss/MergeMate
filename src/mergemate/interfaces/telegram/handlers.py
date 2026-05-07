@@ -19,7 +19,7 @@ from mergemate.interfaces.telegram.presenter import (
     format_tool_history,
     format_welcome,
 )
-from mergemate.interfaces.telegram.progress_notifier import notify_terminal_update, start_progress_watcher
+from mergemate.interfaces.telegram.progress_notifier import start_progress_watcher
 
 
 TELEGRAM_MESSAGE_LIMIT = message_utils.TELEGRAM_MESSAGE_LIMIT
@@ -28,14 +28,6 @@ MAX_TOOL_HISTORY_LIMIT = 50
 
 def _runtime(context: ContextTypes.DEFAULT_TYPE):
     return context.application.bot_data["runtime"]
-
-
-def _start_progress_watcher(application, runtime, chat_id: int, run_id: str) -> None:
-    start_progress_watcher(application, runtime, chat_id, run_id)
-
-
-async def _notify_terminal_update(application, chat_id: int, run) -> None:
-    await notify_terminal_update(application, chat_id, run)
 
 
 def _is_chat_entry_agent(runtime, agent_name: str) -> bool:
@@ -167,7 +159,7 @@ async def approve_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await message.reply_text(format_approval_not_needed(run.run_id, run.status))
         return
     await message.reply_text(format_approval_started(run.run_id))
-    _start_progress_watcher(context.application, runtime, chat.id, run.run_id)
+    start_progress_watcher(context.application, runtime, chat.id, run.run_id)
 
 
 async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -267,9 +259,11 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         except PromptSubmissionError:
             return
         if completed is not None and completed.plan_text:
-            await context.application.bot.send_message(
-                chat_id=request.chat_id,
-                text=format_plan_for_confirmation(
+            await message_utils.send_text_chunks(
+                lambda chunk: context.application.bot.send_message(
+                    chat_id=request.chat_id, text=chunk,
+                ),
+                format_plan_for_confirmation(
                     completed.run_id,
                     runtime.settings.resolve_agent_name_for_workflow("planning"),
                     completed.plan_text,
