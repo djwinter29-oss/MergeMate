@@ -78,11 +78,12 @@ class WebhookHealthServer:
         state = self._state
 
         class Handler(BaseHTTPRequestHandler):
-            def _resolve_status(self) -> int | None:
+            def _resolve_status(self) -> tuple[int | None, dict[str, str] | None]:
                 if self.path != expected_path:
-                    return None
+                    return None, None
                 payload = state.snapshot()
-                return HTTPStatus.OK if payload["status"] == "ready" else HTTPStatus.SERVICE_UNAVAILABLE
+                status_code = HTTPStatus.OK if payload["status"] == "ready" else HTTPStatus.SERVICE_UNAVAILABLE
+                return status_code, payload
 
             def _send_json_response(self, status_code: int, *, body: bytes | None = None) -> None:
                 self.send_response(status_code)
@@ -94,16 +95,15 @@ class WebhookHealthServer:
                     self.wfile.write(body)
 
             def do_GET(self) -> None:
-                status = self._resolve_status()
+                status, payload = self._resolve_status()
                 if status is None:
                     self.send_error(HTTPStatus.NOT_FOUND)
                     return
-                payload = state.snapshot()
                 body = json.dumps(payload).encode("utf-8")
                 self._send_json_response(status, body=body)
 
             def do_HEAD(self) -> None:
-                status = self._resolve_status()
+                status, _ = self._resolve_status()
                 if status is None:
                     self.send_error(HTTPStatus.NOT_FOUND)
                     return
