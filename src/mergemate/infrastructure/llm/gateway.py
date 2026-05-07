@@ -47,9 +47,6 @@ class ParallelLLMGateway:
             if isinstance(result, BaseException):
                 failures.append((provider_name, str(result)))
                 continue
-            if not isinstance(result, str):
-                failures.append((provider_name, "Provider returned a non-text result."))
-                continue
             successful_results.append((provider_name, result))
 
         if not successful_results:
