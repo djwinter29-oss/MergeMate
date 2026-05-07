@@ -89,15 +89,17 @@ class GetRunStatusStub:
 
 
 class SubmitPromptStub:
-    def __init__(self, execute_result=None, revise_result=None, execute_error: Exception | None = None, complete_result=None, complete_error: Exception | None = None) -> None:
+    def __init__(self, execute_result=None, revise_result=None, execute_error: Exception | None = None, complete_result=None, complete_error: Exception | None = None, approve_result=None) -> None:
         self.execute_result = execute_result
         self.revise_result = revise_result
         self.execute_error = execute_error
         self.complete_result = complete_result or execute_result
         self.complete_error = complete_error
+        self.approve_result = approve_result
         self.execute_calls = []
         self.revise_calls = []
         self.complete_calls = []
+        self.approve_calls = []
 
     async def execute(self, **kwargs):
         self.execute_calls.append(kwargs)
@@ -114,6 +116,12 @@ class SubmitPromptStub:
     async def revise_plan_for_chat(self, run_id: str, feedback: str, *, chat_id: int | None = None):
         self.revise_calls.append((run_id, feedback, chat_id))
         return self.revise_result
+
+    def approve(self, run_id: str, *, chat_id: int | None = None):
+        self.approve_calls.append((run_id, chat_id))
+        if callable(self.approve_result):
+            return self.approve_result(run_id, chat_id=chat_id)
+        return self.approve_result
 
 
 class ApproveRunStub:
@@ -142,11 +150,16 @@ def _runtime(*, latest=None, submit=None, approve=None, cancel=None, default_age
         agents={default_agent: SimpleNamespace(workflow=workflow)},
         resolve_agent_name_for_workflow=lambda requested_workflow: "planner" if requested_workflow == "planning" else default_agent,
     )
+    if approve is not None and isinstance(approve, ApproveRunStub):
+        approve_result = approve.result
+    else:
+        approve_result = approve
+    if approve is not None and submit is not None:
+        submit.approve_result = approve_result
     return SimpleNamespace(
         settings=settings,
         get_run_status=latest or GetRunStatusStub(),
-        submit_prompt=submit or SubmitPromptStub(),
-        approve_run=approve or ApproveRunStub(None),
+        submit_prompt=submit or SubmitPromptStub(approve_result=approve_result),
         cancel_run=cancel or CancelRunStub(None),
     )
 
@@ -419,7 +432,7 @@ async def test_approve_command_starts_watcher_when_dispatched(monkeypatch: pytes
 
     assert "approved" in message.replies[0]
     assert started == [(5, "run-4")]
-    assert runtime.approve_run.calls == [("run-4", 5, False)]
+    assert runtime.submit_prompt.approve_calls == [("run-4", 5)]
 
 
 @pytest.mark.asyncio
