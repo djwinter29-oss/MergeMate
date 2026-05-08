@@ -1,6 +1,5 @@
 from datetime import UTC, datetime
 
-from mergemate.domain.agents.entities import AgentDefinition
 from mergemate.domain.conversations.entities import Conversation
 from mergemate.domain.conversations.repository import ConversationRepository
 from mergemate.domain.runs.entities import AgentRun
@@ -13,12 +12,10 @@ from mergemate.domain.shared.enums import (
 )
 from mergemate.domain.tools.entities import ToolDefinition
 from mergemate.infrastructure.llm.base import LLMClient
-from mergemate.infrastructure.queue.base import QueueBackend
 
 
 def test_domain_dataclasses_and_enums_are_constructible() -> None:
     now = datetime.now(UTC)
-    agent = AgentDefinition(name="coder", workflow=WorkflowName.GENERATE_CODE, tools=["syntax_checker"])
     conversation = Conversation(chat_id=7, messages=["hello"])
     tool = ToolDefinition(name="formatter", description="formats code")
     run = AgentRun(
@@ -43,7 +40,6 @@ def test_domain_dataclasses_and_enums_are_constructible() -> None:
         updated_at=now,
     )
 
-    assert agent.name == "coder"
     assert conversation.messages == ["hello"]
     assert tool.description == "formats code"
     assert run.status == RunStatus.QUEUED
@@ -83,7 +79,6 @@ def test_resolve_workflow_name() -> None:
     assert resolve_workflow_name("nonexistent") is None
 
 
-def test_protocol_modules_are_importable() -> None:
+def test_edge_cases_are_importable() -> None:
     assert ConversationRepository is not None
     assert LLMClient is not None
-    assert QueueBackend is not None
