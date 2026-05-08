@@ -104,7 +104,7 @@ class BackgroundRunWorker:
         finally:
             heartbeat_stop.set()
             await asyncio.gather(heartbeat_task, return_exceptions=True)
-        
+
         if run is not None:
             await self._notify_job_completion(job.job_type, run)
 
