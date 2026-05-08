@@ -252,13 +252,27 @@ def test_config_model_rejects_webhook_path_without_leading_slash() -> None:
         AppConfig.model_validate(payload)
 
 
-def test_config_model_rejects_webhook_path_with_query_or_fragment() -> None:
+def test_config_model_rejects_webhook_path_with_query() -> None:
     payload = _build_config().model_dump()
     payload["telegram"] = {
         "bot_token_env": "TELEGRAM_TOKEN",
         "mode": "webhook",
         "webhook_public_base_url": "https://bot.example.com",
         "webhook_path": "/telegram-hook?foo=bar",
+        "webhook_secret_token_env": "TELEGRAM_WEBHOOK_SECRET",
+    }
+
+    with pytest.raises(ValidationError, match="must not include query or fragment"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_webhook_path_with_fragment() -> None:
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "webhook",
+        "webhook_public_base_url": "https://bot.example.com",
+        "webhook_path": "/telegram-hook#section",
         "webhook_secret_token_env": "TELEGRAM_WEBHOOK_SECRET",
     }
 
@@ -292,7 +306,7 @@ def test_config_model_rejects_webhook_url_with_query_or_fragment() -> None:
         AppConfig.model_validate(payload)
 
 
-def test_config_model_rejects_webhook_healthcheck_path_with_query_or_fragment() -> None:
+def test_config_model_rejects_webhook_healthcheck_path_with_query() -> None:
     payload = _build_config().model_dump()
     payload["telegram"] = {
         "bot_token_env": "TELEGRAM_TOKEN",
@@ -300,6 +314,20 @@ def test_config_model_rejects_webhook_healthcheck_path_with_query_or_fragment() 
         "webhook_public_base_url": "https://bot.example.com",
         "webhook_secret_token_env": "TELEGRAM_WEBHOOK_SECRET",
         "webhook_healthcheck_path": "/healthz?full=true",
+    }
+
+    with pytest.raises(ValidationError, match="healthcheck path"):
+        AppConfig.model_validate(payload)
+
+
+def test_config_model_rejects_webhook_healthcheck_path_with_fragment() -> None:
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "webhook",
+        "webhook_public_base_url": "https://bot.example.com",
+        "webhook_secret_token_env": "TELEGRAM_WEBHOOK_SECRET",
+        "webhook_healthcheck_path": "/healthz#readiness",
     }
 
     with pytest.raises(ValidationError, match="healthcheck path"):
