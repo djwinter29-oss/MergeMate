@@ -2,13 +2,7 @@ import logging
 from pathlib import Path
 from types import SimpleNamespace
 
-from mergemate.config.logging import configure_logging, log_startup_configuration
-
-
-def test_configure_logging_is_reexported() -> None:
-    assert callable(configure_logging)
-    assert "configure_logging" in __import__("mergemate.config.logging", fromlist=["__all__"]).__all__
-    assert "log_startup_configuration" in __import__("mergemate.config.logging", fromlist=["__all__"]).__all__
+from mergemate.infrastructure.telemetry.logger import configure_logging, log_startup_configuration
 
 
 def test_configure_logging_defaults_unknown_level_to_info(monkeypatch) -> None:

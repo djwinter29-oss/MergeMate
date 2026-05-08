@@ -180,6 +180,27 @@ def test_probe_readiness_reports_ready_status(monkeypatch: pytest.MonkeyPatch) -
     assert '{"status": "ready"}' in result.stdout
 
 
+def test_probe_readiness_requires_webhook_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    """_resolve_readiness_url raises when telegram.mode is not webhook."""
+    settings = SimpleNamespace(
+        telegram=SimpleNamespace(
+            mode="polling",
+            webhook_healthcheck_enabled=True,
+            webhook_healthcheck_listen_host="127.0.0.1",
+            webhook_healthcheck_listen_port=8081,
+            webhook_healthcheck_path="/healthz",
+        )
+    )
+
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+
+    result = runner.invoke(cli.app, ["probe-readiness"])
+
+    assert result.exit_code != 0
+    assert isinstance(result.exception, ValueError)
+    assert "webhook" in str(result.exception)
+
+
 def test_probe_readiness_fails_for_disabled_healthcheck(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = SimpleNamespace(
         telegram=SimpleNamespace(
