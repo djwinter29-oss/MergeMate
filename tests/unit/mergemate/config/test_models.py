@@ -522,3 +522,33 @@ def test_telegram_config_normalizes_listener_hosts(host: str, expected: str) -> 
 )
 def test_telegram_config_host_conflict_detection(first: str, second: str, expected: bool) -> None:
     assert TelegramConfig._hosts_may_conflict(first, second) is expected
+
+
+def test_config_model_raises_when_webhook_secret_token_env_var_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    """resolve_telegram_webhook_secret_token raises when the env var is not set."""
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "webhook",
+        "webhook_public_base_url": "https://bot.example.com",
+        "webhook_secret_token_env": "TELEGRAM_WEBHOOK_SECRET",
+    }
+    config = AppConfig.model_validate(payload)
+    monkeypatch.delenv("TELEGRAM_WEBHOOK_SECRET", raising=False)
+
+    with pytest.raises(ValueError, match="Telegram webhook secret token not found in environment variable TELEGRAM_WEBHOOK_SECRET"):
+        config.resolve_telegram_webhook_secret_token()
+
+
+def test_config_model_raises_when_webhook_url_requested_without_base_url() -> None:
+    """resolve_telegram_webhook_url raises when webhook_public_base_url is not configured."""
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "polling",
+        "webhook_public_base_url": None,
+    }
+    config = AppConfig.model_validate(payload)
+
+    with pytest.raises(ValueError, match="Telegram webhook public base URL must be configured"):
+        config.resolve_telegram_webhook_url()
