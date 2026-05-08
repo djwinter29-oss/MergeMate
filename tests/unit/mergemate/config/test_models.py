@@ -531,7 +531,10 @@ def test_config_model_accepts_provider_urls_with_query_parameters() -> None:
     [
         (" localhost ", "loopback-hostname"),
         ("0.0.0.0", "wildcard-ipv4"),
+        ("::", "wildcard-ipv6"),
+        ("[::]", "wildcard-ipv6"),
         ("[::1]", "loopback-ipv6"),
+        ("::1", "loopback-ipv6"),
         ("example.com", "example.com"),
     ],
 )
@@ -543,7 +546,9 @@ def test_telegram_config_normalizes_listener_hosts(host: str, expected: str) -> 
     ("first", "second", "expected"),
     [
         ("0.0.0.0", "127.0.0.1", True),
+        ("127.0.0.1", "0.0.0.0", True),
         ("localhost", "::1", True),
+        ("[::]", "0.0.0.0", True),
         ("example.com", "127.0.0.1", False),
         ("example.com", "example.com", True),
     ],
