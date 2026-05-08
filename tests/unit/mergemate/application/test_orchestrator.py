@@ -439,7 +439,7 @@ async def test_process_run_returns_cancelled_direct_run_without_persisting_succe
     )
 
     sequence = iter([False, True])
-    orchestrator._is_cancelled = lambda run_id: next(sequence, False)
+    orchestrator._is_cancelled = lambda _run_id: next(sequence, False)
     repository.run.status = RunStatus.CANCELLED
 
     run = await orchestrator.process_run("run-1")
@@ -623,7 +623,7 @@ async def test_process_run_returns_when_cancelled_at_intermediate_checkpoints(ca
     )
 
     sequence = iter(cancel_sequence)
-    orchestrator._is_cancelled = lambda run_id: next(sequence, False)
+    orchestrator._is_cancelled = lambda _run_id: next(sequence, False)
 
     run = await orchestrator.process_run("run-1")
 
@@ -648,7 +648,7 @@ async def test_process_run_returns_when_cancelled_after_replanning() -> None:
     )
 
     sequence = iter([False, False, False, False, False, True])
-    orchestrator._is_cancelled = lambda run_id: next(sequence, False)
+    orchestrator._is_cancelled = lambda _run_id: next(sequence, False)
 
     run = await orchestrator.process_run("run-1")
 
@@ -677,7 +677,7 @@ async def test_process_run_returns_latest_cancelled_run_after_loop() -> None:
         llm_gateway=None,
         settings=SettingsStub(),
     )
-    orchestrator._is_cancelled = lambda run_id: False
+    orchestrator._is_cancelled = lambda _run_id: False
 
     run = await orchestrator.process_run("run-1")
 

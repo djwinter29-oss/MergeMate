@@ -45,7 +45,7 @@ def test_run_bot_prints_config_and_runs(monkeypatch: pytest.MonkeyPatch) -> None
         def run(self) -> None:
             observed["ran"] = True
 
-    monkeypatch.setattr(cli, "bootstrap", lambda config: _runtime())
+    monkeypatch.setattr(cli, "bootstrap", lambda _config: _runtime())
     monkeypatch.setattr(cli, "TelegramBotRuntime", BotRuntimeStub)
 
     result = runner.invoke(cli.app, ["run-bot"])
@@ -56,17 +56,17 @@ def test_run_bot_prints_config_and_runs(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 def test_validate_config_prints_resolved_paths(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "resolve_config_path", lambda config: Path("/tmp/config.yaml"))
+    monkeypatch.setattr(cli, "resolve_config_path", lambda _config: Path("/tmp/config.yaml"))
     settings = SimpleNamespace(
         telegram=SimpleNamespace(mode="polling"),
         resolve_telegram_token=lambda: "token",
-        resolve_provider_api_key=lambda provider_name=None: "provider-token",
-        resolve_agent_provider_names=lambda agent_name: ["primary"],
+        resolve_provider_api_key=lambda _provider_name=None: "provider-token",
+        resolve_agent_provider_names=lambda _agent_name: ["primary"],
         agents={"coder": SimpleNamespace()},
-        preview_database_path=lambda resolved: Path("/tmp/runtime.db"),
+        preview_database_path=lambda _resolved: Path("/tmp/runtime.db"),
     )
-    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
-    monkeypatch.setattr(cli, "bootstrap", lambda config: (_ for _ in ()).throw(AssertionError("bootstrap should not be called")))
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
+    monkeypatch.setattr(cli, "bootstrap", lambda _config: (_ for _ in ()).throw(AssertionError("bootstrap should not be called")))
 
     result = runner.invoke(cli.app, ["validate-config"])
 
@@ -76,18 +76,18 @@ def test_validate_config_prints_resolved_paths(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_validate_config_resolves_webhook_settings(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "resolve_config_path", lambda config: Path("/tmp/config.yaml"))
+    monkeypatch.setattr(cli, "resolve_config_path", lambda _config: Path("/tmp/config.yaml"))
     settings = SimpleNamespace(
         telegram=SimpleNamespace(mode="webhook"),
         resolve_telegram_token=lambda: "token",
         resolve_telegram_webhook_url=lambda: "https://bot.example.com/telegram/webhook",
         resolve_telegram_webhook_secret_token=lambda: "secret",
-        resolve_provider_api_key=lambda provider_name=None: "provider-token",
-        resolve_agent_provider_names=lambda agent_name: ["primary"],
+        resolve_provider_api_key=lambda _provider_name=None: "provider-token",
+        resolve_agent_provider_names=lambda _agent_name: ["primary"],
         agents={"coder": SimpleNamespace()},
-        preview_database_path=lambda resolved: Path("/tmp/runtime.db"),
+        preview_database_path=lambda _resolved: Path("/tmp/runtime.db"),
     )
-    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
 
     result = runner.invoke(cli.app, ["validate-config"])
 
@@ -95,7 +95,7 @@ def test_validate_config_resolves_webhook_settings(monkeypatch: pytest.MonkeyPat
 
 
 def test_validate_config_fails_for_missing_explicit_path(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "resolve_config_path", lambda config: (_ for _ in ()).throw(FileNotFoundError("Configuration file not found: /tmp/missing.yaml")))
+    monkeypatch.setattr(cli, "resolve_config_path", lambda _config: (_ for _ in ()).throw(FileNotFoundError("Configuration file not found: /tmp/missing.yaml")))
 
     result = runner.invoke(cli.app, ["validate-config", "--config", "/tmp/missing.yaml"])
 
@@ -104,16 +104,16 @@ def test_validate_config_fails_for_missing_explicit_path(monkeypatch: pytest.Mon
 
 
 def test_validate_config_fails_when_telegram_token_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "resolve_config_path", lambda config: Path("/tmp/config.yaml"))
+    monkeypatch.setattr(cli, "resolve_config_path", lambda _config: Path("/tmp/config.yaml"))
     settings = SimpleNamespace(
         telegram=SimpleNamespace(mode="polling"),
         resolve_telegram_token=lambda: (_ for _ in ()).throw(ValueError("Telegram bot token not found in environment variable TELEGRAM_TOKEN")),
-        resolve_provider_api_key=lambda provider_name=None: "provider-token",
-        resolve_agent_provider_names=lambda agent_name: ["primary"],
+        resolve_provider_api_key=lambda _provider_name=None: "provider-token",
+        resolve_agent_provider_names=lambda _agent_name: ["primary"],
         agents={"coder": SimpleNamespace()},
-        preview_database_path=lambda resolved: Path("/tmp/runtime.db"),
+        preview_database_path=lambda _resolved: Path("/tmp/runtime.db"),
     )
-    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
 
     result = runner.invoke(cli.app, ["validate-config"])
 
@@ -122,18 +122,18 @@ def test_validate_config_fails_when_telegram_token_is_missing(monkeypatch: pytes
 
 
 def test_validate_config_fails_when_provider_reference_is_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "resolve_config_path", lambda config: Path("/tmp/config.yaml"))
+    monkeypatch.setattr(cli, "resolve_config_path", lambda _config: Path("/tmp/config.yaml"))
     settings = SimpleNamespace(
         telegram=SimpleNamespace(mode="polling"),
         resolve_telegram_token=lambda: "token",
-        resolve_provider_api_key=lambda provider_name=None: "provider-token",
-        resolve_agent_provider_names=lambda agent_name: (_ for _ in ()).throw(
+        resolve_provider_api_key=lambda _provider_name=None: "provider-token",
+        resolve_agent_provider_names=lambda _agent_name: (_ for _ in ()).throw(
             ValueError("Agent coder references unknown provider missing")
         ),
         agents={"coder": SimpleNamespace()},
-        preview_database_path=lambda resolved: Path("/tmp/runtime.db"),
+        preview_database_path=lambda _resolved: Path("/tmp/runtime.db"),
     )
-    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
 
     result = runner.invoke(cli.app, ["validate-config"])
 
@@ -142,7 +142,7 @@ def test_validate_config_fails_when_provider_reference_is_invalid(monkeypatch: p
 
 
 def test_print_config_path_outputs_default_path(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "resolve_config_path", lambda config=None: Path("/tmp/default.yaml"))
+    monkeypatch.setattr(cli, "resolve_config_path", lambda _config=None: Path("/tmp/default.yaml"))
 
     result = runner.invoke(cli.app, ["print-config-path"])
 
@@ -171,7 +171,7 @@ def test_probe_readiness_reports_ready_status(monkeypatch: pytest.MonkeyPatch) -
         def read(self) -> bytes:
             return b'{"status": "ready"}'
 
-    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
     monkeypatch.setattr(cli, "urlopen", lambda url, timeout: ResponseStub())
 
     result = runner.invoke(cli.app, ["probe-readiness"])
@@ -192,7 +192,7 @@ def test_probe_readiness_requires_webhook_mode(monkeypatch: pytest.MonkeyPatch) 
         )
     )
 
-    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
 
     result = runner.invoke(cli.app, ["probe-readiness"])
 
@@ -212,7 +212,7 @@ def test_probe_readiness_fails_for_disabled_healthcheck(monkeypatch: pytest.Monk
         )
     )
 
-    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
 
     result = runner.invoke(cli.app, ["probe-readiness"])
 
@@ -241,7 +241,7 @@ def test_probe_readiness_fails_for_non_ready_status(monkeypatch: pytest.MonkeyPa
         def read(self) -> bytes:
             return b'{"status": "starting"}'
 
-    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
     monkeypatch.setattr(cli, "urlopen", lambda url, timeout: ResponseStub())
 
     result = runner.invoke(cli.app, ["probe-readiness"])
@@ -268,7 +268,7 @@ def test_probe_readiness_fails_for_http_error(monkeypatch: pytest.MonkeyPatch) -
         def read(self) -> bytes:
             return b'{"status": "starting"}'
 
-    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
     monkeypatch.setattr(cli, "urlopen", lambda url, timeout: (_ for _ in ()).throw(ErrorStub()))
 
     result = runner.invoke(cli.app, ["probe-readiness"])
@@ -288,7 +288,7 @@ def test_probe_readiness_fails_for_connection_error(monkeypatch: pytest.MonkeyPa
         )
     )
 
-    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
     monkeypatch.setattr(cli, "urlopen", lambda url, timeout: (_ for _ in ()).throw(URLError("connection refused")))
 
     result = runner.invoke(cli.app, ["probe-readiness"])
@@ -326,7 +326,7 @@ def test_probe_readiness_waits_until_ready(monkeypatch: pytest.MonkeyPatch) -> N
     def fake_urlopen(url, timeout):
         return ResponseStub(responses.pop(0))
 
-    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
     monkeypatch.setattr(cli, "urlopen", fake_urlopen)
     monkeypatch.setattr(cli.time, "sleep", lambda seconds: sleep_calls.append(seconds))
 
@@ -360,7 +360,7 @@ def test_probe_readiness_wait_times_out(monkeypatch: pytest.MonkeyPatch) -> None
         def read(self) -> bytes:
             return b'{"status": "starting"}'
 
-    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
     monkeypatch.setattr(cli, "urlopen", lambda url, timeout: ResponseStub())
     monkeypatch.setattr(cli.time, "sleep", lambda seconds: sleep_calls.append(seconds))
     monkeypatch.setattr(cli.time, "monotonic", lambda: next(monotonic_values))
@@ -407,7 +407,7 @@ def test_probe_readiness_wait_retries_connection_failures(monkeypatch: pytest.Mo
             raise next_attempt
         return ResponseStub(next_attempt)
 
-    monkeypatch.setattr(cli, "load_runtime_settings", lambda config: settings)
+    monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
     monkeypatch.setattr(cli, "urlopen", fake_urlopen)
     monkeypatch.setattr(cli.time, "sleep", lambda seconds: sleep_calls.append(seconds))
 
@@ -422,7 +422,7 @@ def test_install_package_exits_nonzero_for_error(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(
         cli,
         "bootstrap",
-        lambda config: _runtime(ToolServiceStub(install_result={"status": "error", "detail": "failed"})),
+        lambda _config: _runtime(ToolServiceStub(install_result={"status": "error", "detail": "failed"})),
     )
 
     result = runner.invoke(cli.app, ["install-package", "requests"])
@@ -435,7 +435,7 @@ def test_install_package_allows_blocked_result(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(
         cli,
         "bootstrap",
-        lambda config: _runtime(ToolServiceStub(install_result={"status": "blocked", "detail": "blocked"})),
+        lambda _config: _runtime(ToolServiceStub(install_result={"status": "blocked", "detail": "blocked"})),
     )
 
     result = runner.invoke(cli.app, ["install-package", "requests"])
@@ -448,7 +448,7 @@ def test_repo_context_prints_each_tool_result(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr(
         cli,
         "bootstrap",
-        lambda config: _runtime(
+        lambda _config: _runtime(
             ToolServiceStub(context_result={"git": {"status": "ok", "detail": "git detail"}, "github": {"status": "error", "detail": "gh detail"}})
         ),
     )
@@ -466,7 +466,7 @@ def test_platform_auth_exits_nonzero_for_failure(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(
         cli,
         "bootstrap",
-        lambda config: _runtime(ToolServiceStub(auth_result={"status": "error", "detail": "no auth"})),
+        lambda _config: _runtime(ToolServiceStub(auth_result={"status": "error", "detail": "no auth"})),
     )
 
     result = runner.invoke(cli.app, ["platform-auth", "github"])
@@ -476,7 +476,7 @@ def test_platform_auth_exits_nonzero_for_failure(monkeypatch: pytest.MonkeyPatch
 
 
 def test_platform_auth_prints_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "bootstrap", lambda config: _runtime())
+    monkeypatch.setattr(cli, "bootstrap", lambda _config: _runtime())
 
     result = runner.invoke(cli.app, ["platform-auth", "github"])
 

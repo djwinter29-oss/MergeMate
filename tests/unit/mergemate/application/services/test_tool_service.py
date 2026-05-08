@@ -595,7 +595,7 @@ def test_get_repository_context_skips_listed_tools_without_instances() -> None:
 def test_get_repository_context_skips_tool_when_metadata_exists_but_instance_missing() -> None:
     registry = RegistryStub({})
     registry._listed_tools = ["git_repository"]
-    registry.get_tool_metadata = lambda name: ToolMetadata(
+    registry.get_tool_metadata = lambda _name: ToolMetadata(
         name="git_repository",
         runtime_mode="context",
         default_action="status",
@@ -732,7 +732,7 @@ def test_execute_enabled_tool_fallback_to_class_name_when_error_strips_to_empty(
 def test_get_platform_auth_status_blocks_when_metadata_exists_but_tool_missing() -> None:
     registry = RegistryStub({})
     registry._listed_tools = ["github_cli"]
-    registry.get_tool_metadata = lambda name: ToolMetadata(
+    registry.get_tool_metadata = lambda _name: ToolMetadata(
         name="github_cli",
         runtime_mode="context",
         default_action="repo_view",
