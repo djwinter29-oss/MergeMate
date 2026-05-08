@@ -74,12 +74,12 @@ def test_build_application_registers_handlers(monkeypatch: pytest.MonkeyPatch) -
     runtime = RuntimeStub(
         settings=SimpleNamespace(telegram=SimpleNamespace(mode="polling"), resolve_telegram_token=lambda: "token"),
         worker=SimpleNamespace(),
-        lifecycle_notifier=SimpleNamespace(bind_application=lambda application: None),
+        lifecycle_notifier=SimpleNamespace(bind_application=lambda _application: None),
     )
 
     monkeypatch.setattr(telegram_bot, "ApplicationBuilder", lambda: builder)
     monkeypatch.setattr(telegram_bot, "CommandHandler", lambda name, fn: ("command", name, fn.__name__))
-    monkeypatch.setattr(telegram_bot, "MessageHandler", lambda filt, fn: ("message", fn.__name__))
+    monkeypatch.setattr(telegram_bot, "MessageHandler", lambda _filt, fn: ("message", fn.__name__))
     monkeypatch.setattr(
         telegram_bot,
         "filters",
@@ -158,7 +158,7 @@ def test_run_webhook_uses_webhook_settings(monkeypatch: pytest.MonkeyPatch) -> N
     )
     bot_runtime = telegram_bot.TelegramBotRuntime(runtime)
 
-    monkeypatch.setattr(bot_runtime, "build_application", lambda **kwargs: application)
+    monkeypatch.setattr(bot_runtime, "build_application", lambda **_kwargs: application)
     monkeypatch.setattr(telegram_bot, "Update", SimpleNamespace(ALL_TYPES="all-types"))
     monkeypatch.setattr(telegram_bot, "WebhookHealthServer", HealthServerStub)
     monkeypatch.setattr(telegram_bot, "WebhookReadinessState", ReadinessStateStub)
@@ -208,7 +208,7 @@ def test_run_webhook_skips_health_server_when_disabled(monkeypatch: pytest.Monke
     )
     bot_runtime = telegram_bot.TelegramBotRuntime(runtime)
 
-    monkeypatch.setattr(bot_runtime, "build_application", lambda **kwargs: application)
+    monkeypatch.setattr(bot_runtime, "build_application", lambda **_kwargs: application)
     monkeypatch.setattr(telegram_bot, "Update", SimpleNamespace(ALL_TYPES="all-types"))
     monkeypatch.setattr(telegram_bot, "WebhookHealthServer", HealthServerStub)
 

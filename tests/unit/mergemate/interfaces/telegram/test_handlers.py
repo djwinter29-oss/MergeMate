@@ -388,7 +388,7 @@ async def test_tools_command_accepts_missing_context_args() -> None:
 @pytest.mark.asyncio
 async def test_approve_command_handles_missing_failed_and_not_needed_runs(monkeypatch: pytest.MonkeyPatch) -> None:
     started = []
-    monkeypatch.setattr(handlers, "start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    monkeypatch.setattr(handlers, "start_progress_watcher", lambda _app, _runtime, chat_id, run_id: started.append((chat_id, run_id)))
     runtime = _runtime(
         latest=GetRunStatusStub([None, RunStub(run_id="run-2")]),
         approve=ApproveRunStub(SimpleNamespace(run_id="run-3", dispatched=False, status="completed")),
@@ -423,7 +423,7 @@ async def test_approve_command_handles_missing_failed_and_not_needed_runs(monkey
 @pytest.mark.asyncio
 async def test_approve_command_starts_watcher_when_dispatched(monkeypatch: pytest.MonkeyPatch) -> None:
     started = []
-    monkeypatch.setattr(handlers, "start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    monkeypatch.setattr(handlers, "start_progress_watcher", lambda _app, _runtime, chat_id, run_id: started.append((chat_id, run_id)))
     runtime = _runtime(approve=ApproveRunStub(SimpleNamespace(run_id="run-4", dispatched=True, status="queued")))
     application = ApplicationStub(runtime)
     message = MessageStub("/approve run-4")
@@ -460,7 +460,7 @@ async def test_approve_command_reports_planning_in_progress_error() -> None:
 @pytest.mark.asyncio
 async def test_approve_command_uses_latest_run_when_no_argument(monkeypatch: pytest.MonkeyPatch) -> None:
     started = []
-    monkeypatch.setattr(handlers, "start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    monkeypatch.setattr(handlers, "start_progress_watcher", lambda _app, _runtime, chat_id, run_id: started.append((chat_id, run_id)))
     runtime = _runtime(
         latest=GetRunStatusStub([RunStub(run_id="run-latest")]),
         approve=ApproveRunStub(SimpleNamespace(run_id="run-latest", dispatched=True, status="queued")),
@@ -541,7 +541,7 @@ def test_start_progress_watcher_creates_task(monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(
         handlers,
         "start_progress_watcher",
-        lambda application, runtime, chat_id, run_id: started.append((chat_id, run_id)),
+        lambda _application, _runtime, chat_id, run_id: started.append((chat_id, run_id)),
     )
 
     handlers.start_progress_watcher(application, runtime, 5, "run-1")
@@ -672,7 +672,7 @@ async def test_handle_prompt_splits_oversized_revision_error() -> None:
 @pytest.mark.asyncio
 async def test_handle_prompt_handles_auto_execution_and_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
     started = []
-    monkeypatch.setattr(handlers, "start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    monkeypatch.setattr(handlers, "start_progress_watcher", lambda _app, _runtime, chat_id, run_id: started.append((chat_id, run_id)))
 
     auto_submit = SubmitPromptStub(
         execute_result=SimpleNamespace(run_id="run-8", status="queued", plan_text=None, estimate_seconds=12),
@@ -702,7 +702,7 @@ async def test_handle_prompt_handles_auto_execution_and_confirmation(monkeypatch
 @pytest.mark.asyncio
 async def test_handle_prompt_splits_oversized_auto_execution_and_confirmation_messages(monkeypatch: pytest.MonkeyPatch) -> None:
     started = []
-    monkeypatch.setattr(handlers, "start_progress_watcher", lambda app, runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    monkeypatch.setattr(handlers, "start_progress_watcher", lambda _app, _runtime, chat_id, run_id: started.append((chat_id, run_id)))
 
     auto_submit = SubmitPromptStub(
         execute_result=SimpleNamespace(run_id="run-8", status="queued", plan_text=None, estimate_seconds=12),

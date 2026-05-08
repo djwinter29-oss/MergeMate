@@ -44,9 +44,9 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
             job_heartbeat_interval_seconds=10,
         ),
         workflow_control=SimpleNamespace(),
-        resolve_database_path=lambda resolved: tmp_path / "workspace" / ".state" / "runtime.db",
-        resolve_docs_root=lambda resolved: tmp_path / "workspace" / "docs",
-        resolve_working_directory=lambda resolved: tmp_path / "workspace" / "repo",
+        resolve_database_path=lambda _resolved: tmp_path / "workspace" / ".state" / "runtime.db",
+        resolve_docs_root=lambda _resolved: tmp_path / "workspace" / "docs",
+        resolve_working_directory=lambda _resolved: tmp_path / "workspace" / "repo",
         resolve_provider_api_key=lambda provider_name: f"key-for-{provider_name}",
     )
 
@@ -122,8 +122,8 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
         def __init__(self, *args) -> None:
             recorded.record("submit_prompt", *args)
 
-    monkeypatch.setattr(bootstrap_module, "resolve_config_path", lambda explicit=None: config_path)
-    monkeypatch.setattr(bootstrap_module, "load_runtime_settings", lambda explicit=None: settings)
+    monkeypatch.setattr(bootstrap_module, "resolve_config_path", lambda _explicit=None: config_path)
+    monkeypatch.setattr(bootstrap_module, "load_runtime_settings", lambda _explicit=None: settings)
     monkeypatch.setattr(bootstrap_module, "configure_logging", lambda level: recorded.record("configure_logging", level))
     monkeypatch.setattr(
         bootstrap_module,
@@ -202,49 +202,49 @@ def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Pa
             job_heartbeat_interval_seconds=10,
         ),
         workflow_control=SimpleNamespace(),
-        resolve_database_path=lambda resolved: tmp_path / "db.sqlite",
-        resolve_docs_root=lambda resolved: tmp_path / "docs",
-        resolve_working_directory=lambda resolved: tmp_path,
-        resolve_provider_api_key=lambda provider_name: None,
+        resolve_database_path=lambda _resolved: tmp_path / "db.sqlite",
+        resolve_docs_root=lambda _resolved: tmp_path / "docs",
+        resolve_working_directory=lambda _resolved: tmp_path,
+        resolve_provider_api_key=lambda _provider_name: None,
     )
     captured = {}
 
-    monkeypatch.setattr(bootstrap_module, "resolve_config_path", lambda explicit=None: tmp_path / "config.yaml")
-    monkeypatch.setattr(bootstrap_module, "load_runtime_settings", lambda explicit=None: settings)
-    monkeypatch.setattr(bootstrap_module, "configure_logging", lambda level: None)
+    monkeypatch.setattr(bootstrap_module, "resolve_config_path", lambda _explicit=None: tmp_path / "config.yaml")
+    monkeypatch.setattr(bootstrap_module, "load_runtime_settings", lambda _explicit=None: settings)
+    monkeypatch.setattr(bootstrap_module, "configure_logging", lambda _level: None)
     monkeypatch.setattr(
         bootstrap_module,
         "log_startup_configuration",
-        lambda wired_settings, *, config_path, database_path: None,
+        lambda _wired_settings, *, config_path, database_path: None,
     )
     monkeypatch.setattr(bootstrap_module, "SQLiteDatabase", lambda path: SimpleNamespace(path=path, initialize=lambda: None))
-    monkeypatch.setattr(bootstrap_module, "SQLiteRunRepository", lambda database: "run_repo")
-    monkeypatch.setattr(bootstrap_module, "SQLiteRunJobRepository", lambda database: "run_job_repo")
-    monkeypatch.setattr(bootstrap_module, "SQLiteConversationRepository", lambda database: "conversation_repo")
-    monkeypatch.setattr(bootstrap_module, "SQLiteLearningRepository", lambda database: "learning_repo")
-    monkeypatch.setattr(bootstrap_module, "SQLiteToolEventRepository", lambda database: "tool_event_repo")
-    monkeypatch.setattr(bootstrap_module, "ContextService", lambda repo: "context_service")
-    monkeypatch.setattr(bootstrap_module, "LearningService", lambda *args, **kwargs: "learning_service")
-    monkeypatch.setattr(bootstrap_module, "DocumentationService", lambda docs_root: "documentation_service")
-    monkeypatch.setattr(bootstrap_module, "PromptService", lambda prompts_root: "prompt_service")
-    monkeypatch.setattr(bootstrap_module, "ParallelLLMGateway", lambda wired_settings, llm_clients: "gateway")
-    monkeypatch.setattr(bootstrap_module, "ToolService", lambda registry, wired_settings, **kwargs: "tool_service")
-    monkeypatch.setattr(bootstrap_module, "PlanningService", lambda gateway, wired_settings: "planning_service")
-    monkeypatch.setattr(bootstrap_module, "WorkflowService", lambda gateway, wired_settings: "workflow_service")
+    monkeypatch.setattr(bootstrap_module, "SQLiteRunRepository", lambda _database: "run_repo")
+    monkeypatch.setattr(bootstrap_module, "SQLiteRunJobRepository", lambda _database: "run_job_repo")
+    monkeypatch.setattr(bootstrap_module, "SQLiteConversationRepository", lambda _database: "conversation_repo")
+    monkeypatch.setattr(bootstrap_module, "SQLiteLearningRepository", lambda _database: "learning_repo")
+    monkeypatch.setattr(bootstrap_module, "SQLiteToolEventRepository", lambda _database: "tool_event_repo")
+    monkeypatch.setattr(bootstrap_module, "ContextService", lambda _repo: "context_service")
+    monkeypatch.setattr(bootstrap_module, "LearningService", lambda *_args, **_kwargs: "learning_service")
+    monkeypatch.setattr(bootstrap_module, "DocumentationService", lambda _docs_root: "documentation_service")
+    monkeypatch.setattr(bootstrap_module, "PromptService", lambda _prompts_root: "prompt_service")
+    monkeypatch.setattr(bootstrap_module, "ParallelLLMGateway", lambda _wired_settings, _llm_clients: "gateway")
+    monkeypatch.setattr(bootstrap_module, "ToolService", lambda _registry, _wired_settings, **_kwargs: "tool_service")
+    monkeypatch.setattr(bootstrap_module, "PlanningService", lambda _gateway, _wired_settings: "planning_service")
+    monkeypatch.setattr(bootstrap_module, "WorkflowService", lambda _gateway, _wired_settings: "workflow_service")
     monkeypatch.setattr(bootstrap_module, "LocalQueue", lambda: "queue_backend")
     monkeypatch.setattr(
         bootstrap_module,
         "TelegramRunLifecycleNotifier",
-        lambda settings: SimpleNamespace(bind_runtime=lambda runtime: None),
+        lambda _settings: SimpleNamespace(bind_runtime=lambda _runtime: None),
     )
-    monkeypatch.setattr(bootstrap_module, "AgentOrchestrator", lambda **kwargs: "orchestrator")
-    monkeypatch.setattr(bootstrap_module, "BackgroundRunWorker", lambda **kwargs: "worker")
-    monkeypatch.setattr(bootstrap_module, "RunDispatcher", lambda run_job_repository, queue_backend: "dispatcher")
-    monkeypatch.setattr(bootstrap_module, "SubmitPromptUseCase", lambda *args: "submit_prompt")
-    monkeypatch.setattr(bootstrap_module, "GetRunStatusUseCase", lambda repo, tool_event_repo: "get_run_status")
-    monkeypatch.setattr(bootstrap_module, "CancelRunUseCase", lambda repo: "cancel_run")
+    monkeypatch.setattr(bootstrap_module, "AgentOrchestrator", lambda **_kwargs: "orchestrator")
+    monkeypatch.setattr(bootstrap_module, "BackgroundRunWorker", lambda **_kwargs: "worker")
+    monkeypatch.setattr(bootstrap_module, "RunDispatcher", lambda _run_job_repository, _queue_backend: "dispatcher")
+    monkeypatch.setattr(bootstrap_module, "SubmitPromptUseCase", lambda *_args: "submit_prompt")
+    monkeypatch.setattr(bootstrap_module, "GetRunStatusUseCase", lambda _repo, _tool_event_repo: "get_run_status")
+    monkeypatch.setattr(bootstrap_module, "CancelRunUseCase", lambda _repo: "cancel_run")
     monkeypatch.setattr(bootstrap_module, "CodeFormatterTool", lambda: "formatter")
-    monkeypatch.setattr(bootstrap_module, "PackageInstallerTool", lambda **kwargs: "package_installer")
+    monkeypatch.setattr(bootstrap_module, "PackageInstallerTool", lambda **_kwargs: "package_installer")
     monkeypatch.setattr(bootstrap_module, "SyntaxCheckerTool", lambda: "syntax_checker")
 
     class ToolRegistryStub:
