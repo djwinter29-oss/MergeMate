@@ -64,8 +64,8 @@ class BackgroundRunWorker:
         task = asyncio.create_task(self._consume(job_id))
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
-        task.add_done_callback(lambda completed_task: self._active_job_ids.discard(job_id))
-        task.add_done_callback(lambda completed_task: self._queue_backend.acknowledge(job_id))
+        task.add_done_callback(lambda _: self._active_job_ids.discard(job_id))
+        task.add_done_callback(lambda _: self._queue_backend.acknowledge(job_id))
 
     async def stop(self) -> None:
         self._stopping = True

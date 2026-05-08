@@ -109,7 +109,7 @@ class WebhookHealthServer:
                     return
                 self._send_json_response(status)
 
-            def log_message(self, format: str, *args) -> None:
+            def log_message(self, fmt: str, *args) -> None:
                 return
 
         return Handler
