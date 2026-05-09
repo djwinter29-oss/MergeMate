@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from mergemate.application.use_cases.submit_prompt import PromptSubmissionError
 from mergemate.domain.shared import RunJobStatus, RunJobType, RunStatus
+from mergemate.domain.shared.exceptions import WorkerStoppedError
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ class BackgroundRunWorker:
         job_id: str,
     ) -> None:
         if self._stopping:
-            raise RuntimeError("Background worker is stopping and cannot accept new runs.")
+            raise WorkerStoppedError("Background worker is stopping and cannot accept new runs.")
         if job_id in self._active_job_ids:
             return
         self._active_job_ids.add(job_id)

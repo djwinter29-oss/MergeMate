@@ -8,6 +8,13 @@ from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel, Field, model_validator
 
+from mergemate.domain.shared.exceptions import (
+    AgentNotFoundError,
+    ConfigurationError,
+    ProviderNotFoundError,
+    WorkflowNotFoundError,
+)
+
 from mergemate.domain.policies import is_user_facing_workflow
 from mergemate.domain.shared import WorkflowName
 
@@ -18,9 +25,9 @@ CombineStrategy = Literal["sectioned", "first_success"]
 def _validate_absolute_url(*, url: str, label: str, allow_query_or_fragment: bool) -> ParseResult:
     parsed_url = urlparse(url)
     if not parsed_url.scheme or not parsed_url.netloc:
-        raise ValueError(f"{label} must be an absolute URL")
+        raise ConfigurationError(f"{label} must be an absolute URL")
     if not allow_query_or_fragment and (parsed_url.query or parsed_url.fragment):
-        raise ValueError(f"{label} must not include query or fragment components")
+        raise ConfigurationError(f"{label} must not include query or fragment components")
     return parsed_url
 
 
@@ -264,7 +271,7 @@ class AppConfig(BaseModel):
     @model_validator(mode="after")
     def validate_provider_references(self) -> Self:
         if self.default_agent not in self.agents:
-            raise ValueError(f"Default agent {self.default_agent} is not configured")
+            raise AgentNotFoundError(f"Default agent {self.default_agent} is not configured")
 
         default_agent_workflow = self.agents[self.default_agent].workflow
         if not is_user_facing_workflow(default_agent_workflow):
@@ -274,7 +281,7 @@ class AppConfig(BaseModel):
             )
 
         if self.default_provider not in self.providers:
-            raise ValueError(f"Default provider {self.default_provider} is not configured")
+            raise ProviderNotFoundError(f"Default provider {self.default_provider} is not configured")
 
         for agent_name, agent in self.agents.items():
             for provider_name in agent.provider_names:
@@ -297,7 +304,7 @@ class AppConfig(BaseModel):
 
         available_workflows = set(workflow_counts)
         if WorkflowName.PLANNING not in available_workflows:
-            raise ValueError("A planning role must be configured")
+            raise ConfigurationError("A planning role must be configured")
 
         if WorkflowName.GENERATE_CODE in available_workflows:
             required_multi_stage_workflows = {
@@ -356,7 +363,7 @@ class AppConfig(BaseModel):
             if agent.workflow == resolved_workflow:
                 return agent_name
 
-        raise ValueError(f"No configured agent found for workflow {resolved_workflow.value}")
+        raise WorkflowNotFoundError(f"No configured agent found for workflow {resolved_workflow.value}")
 
     def resolve_telegram_token(self) -> str:
         token = os.getenv(self.telegram.bot_token_env)

@@ -8,6 +8,7 @@ from mergemate.application.execution_plan import DirectExecutionPlan, MultiStage
 from mergemate.application.orchestrator import AgentOrchestrator
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.shared import RunStatus
+from mergemate.domain.shared.exceptions import RunNotFoundError
 from mergemate.domain.shared import WorkflowName
 from mergemate.domain.workflows.stage import get_workflow_definitions
 
@@ -537,7 +538,7 @@ async def test_process_run_raises_when_run_is_missing() -> None:
         ),
     )
 
-    with pytest.raises(ValueError, match="was not found"):
+    with pytest.raises(RunNotFoundError, match="was not found"):
         await orchestrator.process_run("missing")
 
 

@@ -5,6 +5,10 @@ from collections.abc import Mapping
 from typing import Any
 
 from mergemate.infrastructure.llm.base import LLMClient
+from mergemate.domain.shared.exceptions import (
+    AllProvidersFailedError,
+    ProviderResponseError,
+)
 
 
 class ParallelLLMGateway:
@@ -23,7 +27,7 @@ class ParallelLLMGateway:
     async def generate(self, agent_name: str, system_prompt: str, user_prompt: str) -> str:
         available_names = self._resolve_available_provider_names(agent_name)
         if not available_names:
-            raise ValueError(f"No configured providers are available for agent {agent_name}")
+            raise AllProvidersFailedError(f"No configured providers are available for agent {agent_name}")
 
         agent = self._settings.agents.get(agent_name)
         parallel_mode = agent.parallel_mode if agent is not None else "single"
@@ -51,7 +55,7 @@ class ParallelLLMGateway:
 
         if not successful_results:
             failure_detail = "; ".join(f"{name}: {detail}" for name, detail in failures)
-            raise RuntimeError(f"All parallel model calls failed. {failure_detail}")
+            raise AllProvidersFailedError(f"All parallel model calls failed. {failure_detail}")
 
         return self._format_sectioned_results(successful_results, failures)
 
@@ -86,7 +90,7 @@ class ParallelLLMGateway:
             return result
 
         failure_detail = "; ".join(f"{name}: {detail}" for name, detail in failures)
-        raise RuntimeError(f"All parallel model calls failed. {failure_detail}")
+        raise AllProvidersFailedError(f"All parallel model calls failed. {failure_detail}")
 
     async def _generate_first_success_result(
         self,
@@ -111,7 +115,7 @@ class ParallelLLMGateway:
     ) -> str:
         result = await self._clients[provider_name].generate(system_prompt, user_prompt)
         if not isinstance(result, str):
-            raise RuntimeError("Provider returned a non-text result.")
+            raise ProviderResponseError("Provider returned a non-text result.")
         return result
 
     @staticmethod

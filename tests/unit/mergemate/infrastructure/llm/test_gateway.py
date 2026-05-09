@@ -4,6 +4,7 @@ import asyncio
 import pytest
 
 from mergemate.infrastructure.llm.gateway import ParallelLLMGateway
+from mergemate.domain.shared.exceptions import AllProvidersFailedError
 
 
 class ClientStub:
@@ -155,7 +156,7 @@ async def test_generate_raises_when_all_parallel_calls_fail() -> None:
         {"one": ClientStub(RuntimeError("boom")), "two": ClientStub(RuntimeError("snap"))},
     )
 
-    with pytest.raises(RuntimeError, match="All parallel model calls failed"):
+    with pytest.raises(AllProvidersFailedError, match="All parallel model calls failed"):
         await gateway.generate("coder", "system", "user")
 
 

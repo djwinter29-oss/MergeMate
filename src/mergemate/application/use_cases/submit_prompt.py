@@ -8,6 +8,7 @@ from mergemate.application.jobs.dispatcher import RunDispatcher
 from mergemate.application.jobs.estimator import estimate_duration
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.shared import RunJobType, RunStage, RunStatus
+from mergemate.domain.shared.exceptions import RunSubmissionError
 
 
 @dataclass(slots=True)
@@ -26,7 +27,7 @@ class ApproveRunResult:
     error_text: str | None = None
 
 
-class PromptSubmissionError(RuntimeError):
+class PromptSubmissionError(RunSubmissionError):
     def __init__(self, run_id: str, error_text: str) -> None:
         super().__init__(error_text)
         self.run_id = run_id

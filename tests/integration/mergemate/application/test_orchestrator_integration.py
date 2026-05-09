@@ -23,6 +23,7 @@ from mergemate.application.services.context_service import ContextService
 from mergemate.application.services.workflow_service import WorkflowService
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.shared import RunStage, RunStatus
+from mergemate.domain.shared.exceptions import RunNotFoundError
 from mergemate.infrastructure.persistence.sqlite import (
     SQLiteConversationRepository,
     SQLiteDatabase,
@@ -457,7 +458,7 @@ class TestOrchestratorFullPipeline:
         """process_run raises ValueError for non-existent run IDs."""
         orchestrator = sqlite_orchestrator["orchestrator"]
 
-        with pytest.raises(ValueError, match="was not found"):
+        with pytest.raises(RunNotFoundError, match="was not found"):
             await orchestrator.process_run("nonexistent")
 
     @pytest.mark.asyncio

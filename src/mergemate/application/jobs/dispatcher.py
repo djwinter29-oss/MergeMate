@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from mergemate.domain.shared import RunJobType
+from mergemate.domain.shared.exceptions import JobQueueError
 
 
 @dataclass(slots=True)
@@ -27,7 +28,7 @@ class RunDispatcher:
         decision = self._run_job_repository.ensure_queued_job(run_id, job_type=job_type)
         job = decision.job
         if job is None:
-            raise RuntimeError(f"Unable to queue background job for run {run_id}.")
+            raise JobQueueError(f"Unable to queue background job for run {run_id}.")
         self._queue_backend.enqueue(job.job_id)
         return DispatchResult(
             run_id=run_id,

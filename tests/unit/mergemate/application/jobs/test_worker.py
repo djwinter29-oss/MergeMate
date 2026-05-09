@@ -6,6 +6,7 @@ import pytest
 
 from mergemate.application.jobs.worker import BackgroundRunWorker
 from mergemate.application.use_cases.submit_prompt import PromptSubmissionError
+from mergemate.domain.shared.exceptions import WorkerStoppedError
 from mergemate.domain.runs.entities import RunJob
 from mergemate.domain.shared import RunJobStatus, RunJobType, RunStatus
 
@@ -419,7 +420,7 @@ async def test_enqueue_rejects_new_runs_after_stop() -> None:
 
     await worker.stop()
 
-    with pytest.raises(RuntimeError, match="Background worker is stopping"):
+    with pytest.raises(WorkerStoppedError, match="Background worker is stopping"):
         worker.enqueue("job-6")
 
 

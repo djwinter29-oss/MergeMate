@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from mergemate.domain.shared import RunStage, RunStatus
+from mergemate.domain.shared.exceptions import StageExecutionError
 from mergemate.domain.workflows.handlers import get_stage_handler
 from mergemate.domain.workflows.stage import WorkflowDefinition, WorkflowStage
 
@@ -206,7 +207,7 @@ class MultiStageExecutionPlan(BaseExecutionPlan):
     ) -> None:
         super().__init__(agent_name)
         if max_iterations < 1:
-            raise ValueError("max_iterations must be at least 1")
+            raise StageExecutionError("max_iterations must be at least 1")
         self._max_iterations = max_iterations
         self._workflow_definition = workflow_definition
 
@@ -232,7 +233,7 @@ class MultiStageExecutionPlan(BaseExecutionPlan):
         Raises ``ValueError`` if no workflow definition was provided.
         """
         if self._workflow_definition is None:
-            raise ValueError(
+            raise StageExecutionError(
                 "MultiStageExecutionPlan requires a workflow_definition. "
                 "Pass it via the constructor or use WorkflowService.build_execution_plan()."
             )
@@ -272,7 +273,7 @@ class MultiStageExecutionPlan(BaseExecutionPlan):
 
                 handler = get_stage_handler(stage.handler)
                 if handler is None:
-                    raise ValueError(
+                    raise StageExecutionError(
                         f"No handler registered for stage {stage.name!r} "
                         f"(handler key: {stage.handler!r}). "
                         f"Register a handler with @register_handler({stage.handler!r})."
@@ -304,7 +305,7 @@ class MultiStageExecutionPlan(BaseExecutionPlan):
             if replan_stage is not None:
                 handler = get_stage_handler(replan_stage.handler)
                 if handler is None:
-                    raise ValueError(
+                    raise StageExecutionError(
                         f"No handler registered for replanning stage "
                         f"(handler key: {replan_stage.handler!r})."
                     )

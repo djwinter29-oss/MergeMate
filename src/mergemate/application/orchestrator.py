@@ -3,6 +3,7 @@
 from mergemate.application.execution_plan import ExecutionContext, ExecutionRuntime, OrchestratorDependencies
 from mergemate.domain.agents import get_soul
 from mergemate.domain.shared import RunStage, RunStatus
+from mergemate.domain.shared.exceptions import RunNotFoundError
 
 
 class AgentOrchestrator:
@@ -31,7 +32,7 @@ class AgentOrchestrator:
     async def process_run(self, run_id: str):
         run = self._run_repository.get(run_id)
         if run is None:
-            raise ValueError(f"Run {run_id} was not found")
+            raise RunNotFoundError(f"Run {run_id} was not found")
         if run.status in RunStatus.skip_process_statuses():
             return run
         if not run.approved:

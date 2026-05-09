@@ -6,6 +6,7 @@ from typing import Any
 from mergemate.application.execution_plan import DirectExecutionPlan, MultiStageExecutionPlan
 from mergemate.domain.policies import uses_multi_stage_delivery
 from mergemate.domain.shared.enums import WorkflowName
+from mergemate.domain.shared.exceptions import ParallelWorkerError
 from mergemate.domain.workflows.stage import get_workflow_definitions
 
 
@@ -78,7 +79,7 @@ class WorkflowService:
 
         if not non_error_results:
             err_msgs = [str(r) for r in raw_results if isinstance(r, Exception)]
-            raise RuntimeError(f"All parallel workers failed: {'; '.join(err_msgs)}")
+            raise ParallelWorkerError(f"All parallel workers failed: {'; '.join(err_msgs)}")
 
         strategy = role_config.combine_strategy or "sectioned"
         if strategy == "first_success":

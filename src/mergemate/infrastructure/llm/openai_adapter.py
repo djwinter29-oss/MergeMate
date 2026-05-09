@@ -2,20 +2,22 @@
 
 import httpx
 
+from mergemate.domain.shared.exceptions import ConfigurationError, ProviderResponseError
+
 
 def _extract_message_content(data: dict[str, object]) -> str:
     choices = data.get("choices")
     if not isinstance(choices, list) or not choices:
-        raise RuntimeError("Provider returned an invalid response: missing choices[0].")
+        raise ProviderResponseError("Provider returned an invalid response: missing choices[0].")
     first_choice = choices[0]
     if not isinstance(first_choice, dict):
-        raise RuntimeError("Provider returned an invalid response: choices[0] was not an object.")
+        raise ProviderResponseError("Provider returned an invalid response: choices[0] was not an object.")
     message = first_choice.get("message")
     if not isinstance(message, dict):
-        raise RuntimeError("Provider returned an invalid response: choices[0].message was missing.")
+        raise ProviderResponseError("Provider returned an invalid response: choices[0].message was missing.")
     content = message.get("content")
     if not isinstance(content, str):
-        raise RuntimeError("Provider returned an invalid response: choices[0].message.content was not text.")
+        raise ProviderResponseError("Provider returned an invalid response: choices[0].message.content was not text.")
     return content.strip()
 
 
@@ -46,7 +48,7 @@ class OpenAIAdapter:
             )
 
         if not self._provider_url.startswith(("http://", "https://")):
-            raise RuntimeError("Provider URL must include http:// or https://.")
+            raise ConfigurationError("Provider URL must include http:// or https://.")
 
         payload = {
             "model": self._model,
@@ -73,5 +75,5 @@ class OpenAIAdapter:
             response.raise_for_status()
             data = response.json()
         if not isinstance(data, dict):
-            raise RuntimeError("Provider returned an invalid response: top-level JSON object was expected.")
+            raise ProviderResponseError("Provider returned an invalid response: top-level JSON object was expected.")
         return _extract_message_content(data)

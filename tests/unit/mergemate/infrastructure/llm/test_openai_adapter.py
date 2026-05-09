@@ -1,5 +1,6 @@
 import pytest
 
+from mergemate.domain.shared.exceptions import ConfigurationError, ProviderResponseError
 from mergemate.infrastructure.llm import openai_adapter
 from mergemate.infrastructure.llm.openai_adapter import OpenAIAdapter
 
@@ -33,7 +34,7 @@ async def test_generate_raises_on_missing_provider_url_scheme() -> None:
         extra_headers={},
     )
 
-    with pytest.raises(RuntimeError, match="Provider URL must include http:// or https://"):
+    with pytest.raises(ConfigurationError, match="Provider URL must include http:// or https://"):
         await adapter.generate("system prompt", "user prompt")
 
 
@@ -176,5 +177,5 @@ async def test_generate_rejects_invalid_provider_response(monkeypatch: pytest.Mo
         extra_headers={},
     )
 
-    with pytest.raises(RuntimeError, match="invalid response"):
+    with pytest.raises(ProviderResponseError, match="invalid response"):
         await adapter.generate("system prompt", "user prompt")

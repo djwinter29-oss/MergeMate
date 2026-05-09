@@ -8,6 +8,7 @@ from mergemate.application.execution_plan import DirectExecutionPlan, MultiStage
 from mergemate.application.services.workflow_service import WorkflowService
 from mergemate.domain.shared import WorkflowName
 from mergemate.domain.policies import uses_multi_stage_delivery
+from mergemate.domain.shared.exceptions import ParallelWorkerError, StageExecutionError
 
 
 class GatewayStub:
@@ -161,7 +162,7 @@ def test_build_execution_plan_rejects_non_positive_review_iterations() -> None:
         SettingsStub(workflow_control=WorkflowControlStub(max_review_iterations=0)),
     )
 
-    with pytest.raises(ValueError, match="max_iterations must be at least 1"):
+    with pytest.raises(StageExecutionError, match="max_iterations must be at least 1"):
         service.build_execution_plan("generate_code", agent_name="coder")
 
 
@@ -348,7 +349,7 @@ async def test_parallel_mode_raises_when_all_workers_fail() -> None:
     gateway = FailingWorkerGatewayStub(failing_agents={"worker-alpha", "worker-beta"})
     service = WorkflowService(gateway, SettingsStubWithParallel())
 
-    with pytest.raises(RuntimeError, match="All parallel workers failed"):
+    with pytest.raises(ParallelWorkerError, match="All parallel workers failed"):
         await service.generate_code("plan", "design", "context")
 
 
