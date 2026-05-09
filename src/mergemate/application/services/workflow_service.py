@@ -1,5 +1,8 @@
 """Workflow planning, design, implementation, testing, and review orchestration prompts."""
 
+import asyncio
+from typing import Any
+
 from mergemate.application.execution_plan import DirectExecutionPlan, MultiStageExecutionPlan
 from mergemate.domain.policies import uses_multi_stage_delivery
 from mergemate.domain.shared.enums import WorkflowName
@@ -33,7 +36,62 @@ class WorkflowService:
             workflow,
             preferred_agent_name=preferred_agent_name,
         )
+        role_config = getattr(self._settings, 'roles', None)
+        if role_config is not None:
+            role_config = role_config.get(agent_name)
+        if role_config is not None and role_config.parallel_mode == "parallel" and len(role_config.workers) > 1:
+            return await self._run_parallel_stage(
+                workflow=workflow,
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                role_config=role_config,
+                preferred_agent_name=preferred_agent_name,
+            )
         return await self._llm_gateway.generate(agent_name, system_prompt, user_prompt)
+
+    async def _run_parallel_stage(
+        self,
+        workflow: str,
+        system_prompt: str,
+        user_prompt: str,
+        role_config: Any,
+        *,
+        preferred_agent_name: str | None = None,
+    ) -> str:
+        """Run multiple workers in parallel and combine results."""
+        async def _run_worker(worker_name: str) -> str:
+            agent_name = self._settings.resolve_agent_name_for_workflow(
+                workflow,
+                preferred_agent_name=preferred_agent_name or worker_name,
+            )
+            return await self._llm_gateway.generate(agent_name, system_prompt, user_prompt)
+
+        worker_names = [w.name for w in role_config.workers]
+        raw_results: list[Any] = await asyncio.gather(
+            *[_run_worker(name) for name in worker_names],
+            return_exceptions=True,
+        )
+
+        non_error_results = [
+            r for r in raw_results if not isinstance(r, Exception)
+        ]
+
+        if not non_error_results:
+            err_msgs = [str(r) for r in raw_results if isinstance(r, Exception)]
+            raise RuntimeError(f"All parallel workers failed: {'; '.join(err_msgs)}")
+
+        strategy = role_config.combine_strategy or "sectioned"
+        if strategy == "first_success":
+            return non_error_results[0]
+
+        # sectioned: join results with worker name headers
+        output_parts: list[str] = []
+        for name, result in zip(worker_names, raw_results):
+            if isinstance(result, Exception):
+                output_parts.append(f"## {name} (FAILED)\n{result}")
+            else:
+                output_parts.append(f"## {name}\n{result}")
+        return "\n\n".join(output_parts)
 
     async def create_design(self, plan_text: str, context_text: str) -> str:
         system_prompt = (
