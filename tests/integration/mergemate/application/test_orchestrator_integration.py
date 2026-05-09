@@ -304,10 +304,8 @@ class TestOrchestratorFullPipeline:
         run_repo = sqlite_orchestrator["run_repo"]
         orchestrator = sqlite_orchestrator["orchestrator"]
         mock_llm = sqlite_orchestrator["mock_llm"]
-        context = sqlite_orchestrator["context_service"]
         learning = sqlite_orchestrator["learning_service"]
         docs = sqlite_orchestrator["docs_service"]
-        planning = sqlite_orchestrator["planning_service"]
 
         _create_run(run_repo)
 
@@ -324,7 +322,7 @@ class TestOrchestratorFullPipeline:
         assert len(docs.calls) == 3
 
         # Context appended (final result sent to conversation)
-        messages = sqlite_orchestrator["context_service"].list_messages(2001)
+        messages = sqlite_orchestrator["context_service"].load_recent_messages(2001)
         assert len(messages) >= 1
         assert messages[-1]["role"] == "assistant"
 
@@ -343,7 +341,6 @@ class TestOrchestratorFullPipeline:
         """
         run_repo = sqlite_orchestrator["run_repo"]
         orchestrator = sqlite_orchestrator["orchestrator"]
-        mock_llm = sqlite_orchestrator["mock_llm"]
         planning = sqlite_orchestrator["planning_service"]
 
         _create_run(run_repo)
@@ -352,8 +349,11 @@ class TestOrchestratorFullPipeline:
         class HighConcernsLLM(MockLLM):
             async def generate(self, agent_name: str, system_prompt: str, user_prompt: str) -> str:
                 await super().generate(agent_name, system_prompt, user_prompt)
+                # _count is incremented by super().generate() — it's now 1-indexed
+                # Iteration 1: design(1), code(2), test(3), review(4) -> HIGH
+                # Iteration 2: design(5), code(6), test(7), review(8) -> LOW
                 if "review agent" in system_prompt.lower():
-                    if self._count <= 1:
+                    if self._count == 4:
                         return "HIGH_CONCERNS: yes\nNeeds refactoring."
                     return "HIGH_CONCERNS: no\nAccepted."
                 return f"Stage response #{self._count}"
@@ -362,6 +362,8 @@ class TestOrchestratorFullPipeline:
             SimpleNamespace(generate=HighConcernsLLM().generate),
             SettingsStub(workflow_control=WorkflowControlStub(max_review_iterations=3)),
         )
+        # Also update the deps so ExecutionRuntime.from_deps picks up the change
+        orchestrator._deps.workflow_service = orchestrator._workflow_service
 
         result = await orchestrator.process_run("orch-run-1")
 
