@@ -5,7 +5,7 @@ import logging
 from uuid import uuid4
 
 from mergemate.application.use_cases.submit_prompt import PromptSubmissionError
-from mergemate.domain.runs.value_objects import RunJobStatus, RunJobType, RunStatus
+from mergemate.domain.shared import RunJobStatus, RunJobType, RunStatus
 
 logger = logging.getLogger(__name__)
 

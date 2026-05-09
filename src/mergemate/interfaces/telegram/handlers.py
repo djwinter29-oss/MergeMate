@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from mergemate.application.use_cases.submit_prompt import PromptSubmissionError
-from mergemate.domain.shared import is_user_facing_workflow
+from mergemate.domain.policies import is_user_facing_workflow
 from mergemate.interfaces.telegram import message_utils
 from mergemate.interfaces.telegram.models import TelegramRequest
 from mergemate.interfaces.telegram.presenter import (

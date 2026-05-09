@@ -1,7 +1,9 @@
 """Workflow planning, design, implementation, testing, and review orchestration prompts."""
 
 from mergemate.application.execution_plan import DirectExecutionPlan, MultiStageExecutionPlan
-from mergemate.domain.shared import uses_multi_stage_delivery
+from mergemate.domain.policies import uses_multi_stage_delivery
+from mergemate.domain.shared.enums import WorkflowName
+from mergemate.domain.workflows.stage import get_workflow_definitions
 
 
 class WorkflowService:
@@ -11,9 +13,11 @@ class WorkflowService:
 
     def build_execution_plan(self, workflow: str, *, agent_name: str) -> DirectExecutionPlan | MultiStageExecutionPlan:
         if uses_multi_stage_delivery(workflow):
+            wf_def = get_workflow_definitions().get(WorkflowName(workflow))
             return MultiStageExecutionPlan(
                 agent_name=agent_name,
                 max_iterations=self._settings.workflow_control.max_review_iterations,
+                workflow_definition=wf_def,
             )
         return DirectExecutionPlan(agent_name=agent_name)
 

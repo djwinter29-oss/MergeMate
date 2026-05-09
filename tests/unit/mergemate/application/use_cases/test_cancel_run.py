@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from mergemate.application.use_cases.cancel_run import CancelRunUseCase
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.shared import RunStatus
 
 
 @dataclass(slots=True)

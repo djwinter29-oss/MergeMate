@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from mergemate.domain.shared import workflow_prompt_file
+from mergemate.domain.policies import workflow_prompt_file
 
 
 class PromptService:

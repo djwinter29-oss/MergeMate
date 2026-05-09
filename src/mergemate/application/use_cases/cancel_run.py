@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.shared import RunStatus
 
 
 @dataclass(slots=True)

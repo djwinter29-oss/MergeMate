@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from mergemate.domain.runs.entities import AgentRun, RunJob
 from mergemate.domain.runs.repository import ApprovalDecision, QueuedRunJobDecision, StatusUpdateDecision
-from mergemate.domain.runs.value_objects import RunJobStatus, RunJobType, RunStage, RunStatus
+from mergemate.domain.shared import RunJobStatus, RunJobType, RunStage, RunStatus
 
 
 def _to_datetime(value: str) -> datetime:

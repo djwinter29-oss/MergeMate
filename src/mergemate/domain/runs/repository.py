@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from mergemate.domain.runs.entities import AgentRun, RunJob
-from mergemate.domain.runs.value_objects import RunJobType, RunStage, RunStatus
+from mergemate.domain.shared import RunJobType, RunStage, RunStatus
 
 
 @dataclass(slots=True)

@@ -7,7 +7,7 @@ import pytest
 from mergemate.application.jobs.worker import BackgroundRunWorker
 from mergemate.application.use_cases.submit_prompt import PromptSubmissionError
 from mergemate.domain.runs.entities import RunJob
-from mergemate.domain.runs.value_objects import RunJobStatus, RunJobType, RunStatus
+from mergemate.domain.shared import RunJobStatus, RunJobType, RunStatus
 
 
 @dataclass(slots=True)

@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 import sqlite3
 
 from mergemate.domain.runs.entities import AgentRun
-from mergemate.domain.runs.value_objects import RunJobStatus, RunJobType, RunStatus
+from mergemate.domain.shared import RunJobStatus, RunJobType, RunStatus
 from mergemate.infrastructure.persistence.sqlite import (
     SQLiteConversationRepository,
     SQLiteDatabase,

@@ -1,7 +1,7 @@
 """Workflow orchestration entrypoint."""
 
-from mergemate.application.execution_plan import ExecutionContext, ExecutionRuntime
-from mergemate.domain.runs.value_objects import RunStage, RunStatus
+from mergemate.application.execution_plan import ExecutionContext, ExecutionRuntime, OrchestratorDependencies
+from mergemate.domain.shared import RunStage, RunStatus
 
 
 class AgentOrchestrator:
@@ -9,27 +9,19 @@ class AgentOrchestrator:
 
     def __init__(
         self,
-        run_repository,
-        context_service,
-        documentation_service,
-        learning_service,
-        planning_service,
-        prompt_service,
-        tool_service,
-        workflow_service,
-        llm_gateway,
-        settings,
+        deps: OrchestratorDependencies,
     ) -> None:
-        self._run_repository = run_repository
-        self._context_service = context_service
-        self._documentation_service = documentation_service
-        self._learning_service = learning_service
-        self._planning_service = planning_service
-        self._prompt_service = prompt_service
-        self._tool_service = tool_service
-        self._workflow_service = workflow_service
-        self._llm_gateway = llm_gateway
-        self._settings = settings
+        self._deps = deps
+        self._run_repository = deps.run_repository
+        self._context_service = deps.context_service
+        self._documentation_service = deps.documentation_service
+        self._learning_service = deps.learning_service
+        self._planning_service = deps.planning_service
+        self._prompt_service = deps.prompt_service
+        self._tool_service = deps.tool_service
+        self._workflow_service = deps.workflow_service
+        self._llm_gateway = deps.llm_gateway
+        self._settings = deps.settings
 
     def _is_cancelled(self, run_id: str) -> bool:
         latest_run = self._run_repository.get(run_id)
@@ -81,14 +73,8 @@ class AgentOrchestrator:
             if tool_context:
                 context_text = f"{context_text}\n\nRuntime tool context:\n{tool_context}".strip()
 
-        runtime = ExecutionRuntime(
-            run_repository=self._run_repository,
-            context_service=self._context_service,
-            documentation_service=self._documentation_service,
-            learning_service=self._learning_service,
-            planning_service=self._planning_service,
-            workflow_service=self._workflow_service,
-            settings=self._settings,
+        runtime = ExecutionRuntime.from_deps(
+            self._deps,
             is_cancelled=self._is_cancelled,
         )
         execution = ExecutionContext(run=run, system_prompt=system_prompt, context_text=context_text)

@@ -6,7 +6,7 @@ import asyncio
 import pytest
 
 from mergemate.domain.runs.entities import AgentRun
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.shared import RunStatus
 from mergemate.interfaces.telegram.progress_notifier import (
     notify_terminal_update,
     start_progress_watcher,

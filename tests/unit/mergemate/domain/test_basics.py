@@ -3,13 +3,13 @@ from datetime import UTC, datetime
 from mergemate.domain.conversations.entities import Conversation
 from mergemate.domain.conversations.repository import ConversationRepository
 from mergemate.domain.runs.entities import AgentRun
-from mergemate.domain.runs.value_objects import RunStage, RunStatus, tool_stage
-from mergemate.domain.shared.enums import (
-    WorkflowName,
+from mergemate.domain.shared import RunStage, RunStatus, tool_stage
+from mergemate.domain.policies import (
     is_user_facing_workflow,
     resolve_workflow_name,
     workflow_prompt_file,
 )
+from mergemate.domain.shared.enums import WorkflowName
 from mergemate.domain.tools.entities import ToolDefinition
 from mergemate.infrastructure.llm.base import LLMClient
 

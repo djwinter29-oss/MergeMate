@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import Iterator
 
 from mergemate.domain.tools.entities import ToolMetadata
-from mergemate.domain.runs.value_objects import RunStage, RunStatus, tool_stage
+from mergemate.domain.shared import RunStage, RunStatus, tool_stage
 
 
 class ToolService:

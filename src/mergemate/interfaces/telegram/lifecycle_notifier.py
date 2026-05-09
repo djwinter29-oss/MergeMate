@@ -1,8 +1,10 @@
 """Telegram delivery adapter for background run lifecycle events."""
 
+import asyncio
 import logging
+from typing import Protocol
 
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.shared import RunStatus
 from mergemate.interfaces.telegram import message_utils
 from mergemate.interfaces.telegram.presenter import (
     format_auto_execution_started,
@@ -10,22 +12,47 @@ from mergemate.interfaces.telegram.presenter import (
 )
 from mergemate.interfaces.telegram.progress_notifier import notify_terminal_update, start_progress_watcher
 
+
+class _BotLike(Protocol):
+    async def send_message(self, chat_id: int, text: str) -> None: ...
+
+
+class _ApplicationLike(Protocol):
+    bot: _BotLike
+    bot_data: dict[str, object]
+
+    def create_task(self, coro) -> asyncio.Task[None]: ...
+
+
+class _RunLike(Protocol):
+    chat_id: int
+    run_id: str
+    plan_text: str | None
+    estimate_seconds: int
+    status: RunStatus | str
+    current_stage: str
+    review_iterations: int
+    latest_tool_event: dict[str, str] | None
+    result_text: str | None
+    error_text: str | None
+
+
 logger = logging.getLogger(__name__)
 
 
 class TelegramRunLifecycleNotifier:
     def __init__(self, settings) -> None:
         self._settings = settings
-        self._application = None
+        self._application: _ApplicationLike | None = None
         self._runtime = None
 
-    def bind_application(self, application) -> None:
+    def bind_application(self, application: _ApplicationLike) -> None:
         self._application = application
 
     def bind_runtime(self, runtime) -> None:
         self._runtime = runtime
 
-    async def notify_plan_ready(self, run) -> bool:
+    async def notify_plan_ready(self, run: _RunLike) -> bool:
         application = self._application
         if application is None:
             return False
@@ -44,7 +71,7 @@ class TelegramRunLifecycleNotifier:
             return False
         return True
 
-    async def notify_auto_execution_started(self, run) -> bool:
+    async def notify_auto_execution_started(self, run: _RunLike) -> bool:
         application = self._application
         runtime = self._runtime
         if application is None or runtime is None:
@@ -69,7 +96,7 @@ class TelegramRunLifecycleNotifier:
 
         return True
 
-    async def notify_terminal(self, run) -> bool:
+    async def notify_terminal(self, run: _RunLike) -> bool:
         application = self._application
         if application is None:
             return False

@@ -1,6 +1,5 @@
 from mergemate.application.jobs.dispatcher import RunDispatcher
-from mergemate.domain.runs.value_objects import RunJobType
-from mergemate.domain.runs.value_objects import RunJobStatus
+from mergemate.domain.shared import RunJobStatus, RunJobType
 
 
 class QueueBackendStub:
