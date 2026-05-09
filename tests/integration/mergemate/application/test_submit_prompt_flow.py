@@ -7,7 +7,7 @@ from mergemate.application.use_cases.cancel_run import CancelRunUseCase
 from mergemate.application.services.context_service import ContextService
 from mergemate.application.use_cases.get_run_status import GetRunStatusUseCase
 from mergemate.application.use_cases.submit_prompt import SubmitPromptUseCase
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.shared import RunStatus
 from mergemate.infrastructure.persistence.sqlite import (
     SQLiteConversationRepository,
     SQLiteDatabase,

@@ -3,7 +3,7 @@
 import asyncio
 import logging
 
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.shared import RunStatus
 from mergemate.interfaces.telegram.message_utils import send_text_chunks
 from mergemate.interfaces.telegram.presenter import format_cancelled, format_completion, format_failure, format_progress_update
 

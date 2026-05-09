@@ -8,7 +8,8 @@ from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel, Field, model_validator
 
-from mergemate.domain.shared import WorkflowName, is_user_facing_workflow
+from mergemate.domain.policies import is_user_facing_workflow
+from mergemate.domain.shared import WorkflowName
 
 ParallelMode = Literal["single", "parallel"]
 CombineStrategy = Literal["sectioned", "first_success"]

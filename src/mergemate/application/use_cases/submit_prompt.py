@@ -7,7 +7,7 @@ from uuid import uuid4
 from mergemate.application.jobs.dispatcher import RunDispatcher
 from mergemate.application.jobs.estimator import estimate_duration
 from mergemate.domain.runs.entities import AgentRun
-from mergemate.domain.runs.value_objects import RunJobType, RunStage, RunStatus
+from mergemate.domain.shared import RunJobType, RunStage, RunStatus
 
 
 @dataclass(slots=True)

@@ -1,11 +1,24 @@
-"""Execution plan models for workflow delivery."""
+"""Execution plan models for workflow delivery.
+
+The execution plan is where stages are turned into actual work::
+
+    MultiStageExecutionPlan(agent_name, max_iterations)
+        .execute(runtime, execution)
+
+iterates over the stages defined by a ``WorkflowDefinition``, dispatching
+each stage to its registered handler.  Adding a new workflow means
+defining stages in ``domain/workflows/stage.py`` — no other file needs
+to change.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from mergemate.domain.runs.value_objects import RunStage, RunStatus
+from mergemate.domain.shared import RunStage, RunStatus
+from mergemate.domain.workflows.handlers import get_stage_handler
+from mergemate.domain.workflows.stage import WorkflowDefinition, WorkflowStage
 
 
 def _check_cancelled(
@@ -13,7 +26,7 @@ def _check_cancelled(
     run_id: str,
     run_repository: Any,
     is_cancelled: Callable[[str], bool],
-    stage: StageDescriptor | None = None,
+    stage: WorkflowStage | None = None,
 ) -> Any | None:
     """If the run has been cancelled, return the updated run; otherwise None."""
     if stage is not None and not stage.checks_cancellation_before:
@@ -28,7 +41,7 @@ def _check_after_cancelled(
     run_id: str,
     run_repository: Any,
     is_cancelled: Callable[[str], bool],
-    stage: StageDescriptor,
+    stage: WorkflowStage,
 ) -> Any | None:
     """Check if run was cancelled after a stage, return updated run if so."""
     if stage.checks_cancellation_after and is_cancelled(run_id):
@@ -38,6 +51,13 @@ def _check_after_cancelled(
 
 @dataclass(slots=True, frozen=True)
 class StageDescriptor:
+    """Legacy stage descriptor used by ``DirectExecutionPlan``.
+
+    ``MultiStageExecutionPlan`` now derives its stage data from
+    ``WorkflowStage`` objects.  This type is kept for backward
+    compatibility only.
+    """
+
     name: str
     current_stage: str | RunStage
     uses_tool_context: bool = False
@@ -45,11 +65,19 @@ class StageDescriptor:
     checks_cancellation_after: bool = False
 
 
-@dataclass(slots=True)
-class ExecutionContext:
-    run: Any
-    system_prompt: str
-    context_text: str
+@dataclass(slots=True, frozen=True)
+class OrchestratorDependencies:
+    """Bundled dependencies for AgentOrchestrator and ExecutionRuntime."""
+    run_repository: Any
+    context_service: Any
+    documentation_service: Any
+    learning_service: Any
+    planning_service: Any
+    prompt_service: Any
+    tool_service: Any
+    workflow_service: Any
+    llm_gateway: Any
+    settings: Any
 
 
 @dataclass(slots=True)
@@ -63,12 +91,38 @@ class ExecutionRuntime:
     settings: Any
     is_cancelled: Callable[[str], bool]
 
+    @classmethod
+    def from_deps(cls, deps: OrchestratorDependencies, *, is_cancelled: Callable[[str], bool]) -> ExecutionRuntime:
+        """Construct ExecutionRuntime from an OrchestratorDependencies object."""
+        return cls(
+            run_repository=deps.run_repository,
+            context_service=deps.context_service,
+            documentation_service=deps.documentation_service,
+            learning_service=deps.learning_service,
+            planning_service=deps.planning_service,
+            workflow_service=deps.workflow_service,
+            settings=deps.settings,
+            is_cancelled=is_cancelled,
+        )
+
+
+@dataclass(slots=True)
+class ExecutionContext:
+    run: Any
+    system_prompt: str
+    context_text: str
+
 
 class BaseExecutionPlan:
-    stages: tuple[StageDescriptor, ...] = ()
+    """Base execution plan — provides shared stage iteration logic."""
 
     def __init__(self, agent_name: str) -> None:
         self._agent_name = agent_name
+
+    @property
+    def stages(self) -> tuple[StageDescriptor, ...]:
+        """Return the stage descriptors for this plan."""
+        return ()
 
     @property
     def requires_tool_context(self) -> bool:
@@ -76,21 +130,26 @@ class BaseExecutionPlan:
 
 
 class DirectExecutionPlan(BaseExecutionPlan):
-    stages = (
-        StageDescriptor(
-            name="execution",
-            current_stage=RunStage.EXECUTION,
-            uses_tool_context=True,
-        ),
-    )
+    """Single-stage execution plan — one LLM call, no sub-stages."""
 
-    async def execute(self, runtime: ExecutionRuntime, execution: ExecutionContext):
+    @property
+    def stages(self) -> tuple[StageDescriptor, ...]:
+        return (
+            StageDescriptor(
+                name="execution",
+                current_stage=RunStage.EXECUTION,
+                uses_tool_context=True,
+            ),
+        )
+
+    async def execute(self, runtime: ExecutionRuntime, execution: ExecutionContext) -> Any:
         run = execution.run
         cancelled = _check_cancelled(
             run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
         )
         if cancelled is not None:
             return cancelled
+
         direct_result = await runtime.workflow_service.execute_direct(
             self._agent_name,
             execution.system_prompt,
@@ -101,6 +160,7 @@ class DirectExecutionPlan(BaseExecutionPlan):
         )
         if cancelled is not None:
             return cancelled
+
         runtime.run_repository.save_artifacts(
             run.run_id,
             current_stage=self.stages[0].current_stage,
@@ -124,189 +184,152 @@ class DirectExecutionPlan(BaseExecutionPlan):
 
 
 class MultiStageExecutionPlan(BaseExecutionPlan):
-    stages = (
-        StageDescriptor(
-            name="design",
-            current_stage=RunStage.DESIGN,
-            uses_tool_context=True,
-            checks_cancellation_before=True,
-            checks_cancellation_after=True,
-        ),
-        StageDescriptor(
-            name="implementation",
-            current_stage=RunStage.IMPLEMENTATION,
-            uses_tool_context=True,
-            checks_cancellation_after=True,
-        ),
-        StageDescriptor(
-            name="testing",
-            current_stage=RunStage.TESTING,
-            checks_cancellation_after=True,
-        ),
-        StageDescriptor(
-            name="review",
-            current_stage=RunStage.REVIEW,
-            checks_cancellation_after=True,
-        ),
-        StageDescriptor(
-            name="replanning",
-            current_stage=RunStage.INTERNAL_REPLANNING,
-            checks_cancellation_after=True,
-        ),
-    )
+    """Multi-stage execution plan driven by a ``WorkflowDefinition``.
 
-    def __init__(self, agent_name: str, max_iterations: int) -> None:
+    Stage instances are extracted from the ``workflow_definition`` and
+    executed in order via their registered handlers.  The review loop
+    condition (high-concerns check) is built into the iteration logic,
+    and the ``replanning`` stage is only entered when the review stage
+    determines that rework is needed.
+
+    The stage list within a single iteration constitutes the "core"
+    pipeline (e.g. design → implementation → testing → review).
+    Between iterations, a replanning handler runs if the review
+    identified concerns.
+    """
+
+    def __init__(
+        self,
+        agent_name: str,
+        max_iterations: int,
+        workflow_definition: WorkflowDefinition | None = None,
+    ) -> None:
         super().__init__(agent_name)
         if max_iterations < 1:
             raise ValueError("max_iterations must be at least 1")
         self._max_iterations = max_iterations
+        self._workflow_definition = workflow_definition
 
-    async def execute(self, runtime: ExecutionRuntime, execution: ExecutionContext):
+    @property
+    def stages(self) -> tuple[StageDescriptor, ...]:
+        """Derive legacy ``StageDescriptor`` tuples from the workflow definition."""
+        if self._workflow_definition is None:
+            return ()
+        return tuple(
+            StageDescriptor(
+                name=s.name,
+                current_stage=s.current_stage,
+                uses_tool_context=s.uses_tool_context,
+                checks_cancellation_before=s.checks_cancellation_before,
+                checks_cancellation_after=s.checks_cancellation_after,
+            )
+            for s in self._workflow_definition.stages
+        )
+
+    def _get_workflow_stages(self) -> tuple[WorkflowStage, ...]:
+        """Return the ``WorkflowStage`` instances to execute.
+
+        Raises ``ValueError`` if no workflow definition was provided.
+        """
+        if self._workflow_definition is None:
+            raise ValueError(
+                "MultiStageExecutionPlan requires a workflow_definition. "
+                "Pass it via the constructor or use WorkflowService.build_execution_plan()."
+            )
+        return self._workflow_definition.stages
+
+    async def execute(self, runtime: ExecutionRuntime, execution: ExecutionContext) -> Any:
         run = execution.run
-        current_plan = run.plan_text or "No approved plan available."
-        implementation_text = ""
-        test_text = ""
-        review_text = ""
-        design_document_path = ""
-        test_document_path = ""
-        review_document_path = ""
+        workflow_stages = self._get_workflow_stages()
 
-        design_stage, implementation_stage, testing_stage, review_stage, replanning_stage = self.stages
+        # Separate the "replanning" stage — it runs between iterations, not
+        # as part of the core pipeline within a single iteration.
+        core_stages = tuple(s for s in workflow_stages if s.handler != "replanning")
+        replan_stage = next((s for s in workflow_stages if s.handler == "replanning"), None)
+
+        # Shared artifacts dict that handlers read from and write to.
+        artifacts: dict[str, Any] = {
+            "run_id": run.run_id,
+            "run_prompt": run.prompt,
+            "plan_text": run.plan_text or "No approved plan available.",
+            "context_text": execution.context_text,
+            "system_prompt": execution.system_prompt,
+        }
 
         for iteration in range(1, self._max_iterations + 1):
-            cancelled = _check_cancelled(
-                run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
-                stage=design_stage,
-            )
-            if cancelled is not None:
-                return cancelled
+            artifacts["_iteration"] = iteration
 
-            design_text = await runtime.workflow_service.create_design(current_plan, execution.context_text)
-            design_document_path = str(
-                runtime.documentation_service.write_architecture_design(
+            # ── Execute core stages ──────────────────────────────────────
+            for stage in core_stages:
+                cancelled = _check_cancelled(
                     run_id=run.run_id,
-                    iteration=iteration,
-                    plan_text=current_plan,
-                    design_text=design_text,
+                    run_repository=runtime.run_repository,
+                    is_cancelled=runtime.is_cancelled,
+                    stage=stage,
                 )
-            )
-            runtime.run_repository.save_artifacts(
-                run.run_id,
-                current_stage=design_stage.current_stage,
-                design_text=design_text,
-                review_iterations=iteration,
-            )
-            cancelled = _check_after_cancelled(
-                run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
-                stage=design_stage,
-            )
-            if cancelled is not None:
-                return cancelled
+                if cancelled is not None:
+                    return cancelled
 
-            implementation_text = await runtime.workflow_service.generate_code(
-                current_plan,
-                design_text,
-                execution.context_text,
-                agent_name=self._agent_name,
-            )
-            runtime.run_repository.save_artifacts(
-                run.run_id,
-                current_stage=implementation_stage.current_stage,
-                result_text=implementation_text,
-                review_iterations=iteration,
-            )
-            cancelled = _check_after_cancelled(
-                run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
-                stage=implementation_stage,
-            )
-            if cancelled is not None:
-                return cancelled
+                handler = get_stage_handler(stage.handler)
+                if handler is None:
+                    raise ValueError(
+                        f"No handler registered for stage {stage.name!r} "
+                        f"(handler key: {stage.handler!r}). "
+                        f"Register a handler with @register_handler({stage.handler!r})."
+                    )
 
-            test_text = await runtime.workflow_service.generate_tests(current_plan, design_text, implementation_text)
-            test_document_path = str(
-                runtime.documentation_service.write_test_plan(
+                artifacts = await handler(
+                    runtime,
+                    artifacts,
+                    agent_name=self._agent_name,
+                )
+
+                cancelled = _check_after_cancelled(
                     run_id=run.run_id,
-                    iteration=iteration,
-                    plan_text=current_plan,
-                    design_text=design_text,
-                    test_text=test_text,
+                    run_repository=runtime.run_repository,
+                    is_cancelled=runtime.is_cancelled,
+                    stage=stage,
                 )
-            )
-            runtime.run_repository.save_artifacts(
-                run.run_id,
-                current_stage=testing_stage.current_stage,
-                test_text=test_text,
-                review_iterations=iteration,
-            )
-            cancelled = _check_after_cancelled(
-                run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
-                stage=testing_stage,
-            )
-            if cancelled is not None:
-                return cancelled
+                if cancelled is not None:
+                    return cancelled
 
-            review_text = await runtime.workflow_service.review(
-                current_plan,
-                design_text,
-                implementation_text,
-                test_text,
-            )
-            review_document_path = str(
-                runtime.documentation_service.write_review_report(
-                    run_id=run.run_id,
-                    iteration=iteration,
-                    plan_text=current_plan,
-                    design_text=design_text,
-                    implementation_text=implementation_text,
-                    test_text=test_text,
-                    review_text=review_text,
-                )
-            )
-            runtime.run_repository.save_artifacts(
-                run.run_id,
-                current_stage=review_stage.current_stage,
-                review_text=review_text,
-                review_iterations=iteration,
-            )
-            cancelled = _check_after_cancelled(
-                run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
-                stage=review_stage,
-            )
-            if cancelled is not None:
-                return cancelled
-
+            # ── Review gate ──────────────────────────────────────────────
+            review_text = artifacts.get("review_text", "")
             if not runtime.workflow_service.has_high_concerns(review_text):
                 break
             if iteration >= self._max_iterations:
                 break
 
-            current_plan = await runtime.planning_service.draft_plan(run.prompt, prior_feedback=review_text)
-            runtime.run_repository.update_plan(
-                run.run_id,
-                current_plan,
-                current_stage=replanning_stage.current_stage,
-            )
-            cancelled = _check_after_cancelled(
-                run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
-                stage=replanning_stage,
-            )
-            if cancelled is not None:
-                return cancelled
+            # ── Replan between iterations ────────────────────────────────
+            if replan_stage is not None:
+                handler = get_stage_handler(replan_stage.handler)
+                if handler is None:
+                    raise ValueError(
+                        f"No handler registered for replanning stage "
+                        f"(handler key: {replan_stage.handler!r})."
+                    )
+                artifacts = await handler(
+                    runtime,
+                    artifacts,
+                    agent_name=self._agent_name,
+                )
 
+                cancelled = _check_after_cancelled(
+                    run_id=run.run_id,
+                    run_repository=runtime.run_repository,
+                    is_cancelled=runtime.is_cancelled,
+                    stage=replan_stage,
+                )
+                if cancelled is not None:
+                    return cancelled
+
+        # After the loop, check for cancellation one last time.
         latest_run = runtime.run_repository.get(run.run_id)
         if latest_run is not None and latest_run.status == RunStatus.CANCELLED:
             return latest_run
 
-        final_result = (
-            f"Approved plan:\n{current_plan}\n\n"
-            f"Design document:\n{design_document_path}\n\n"
-            f"Test plan document:\n{test_document_path}\n\n"
-            f"Review report:\n{review_document_path}\n\n"
-            f"Design:\n{latest_run.design_text if latest_run and latest_run.design_text else ''}\n\n"
-            f"Implementation:\n{implementation_text}\n\n"
-            f"Tests:\n{test_text}\n\n"
-            f"Review:\n{review_text}"
-        ).strip()
+        # Build final result from accumulated artifacts.
+        final_result = self._build_final_result(artifacts, latest_run)
 
         runtime.context_service.append_message(run.chat_id, "assistant", final_result)
         runtime.learning_service.remember_success(
@@ -323,3 +346,29 @@ class MultiStageExecutionPlan(BaseExecutionPlan):
         )
         assert completed_run is not None
         return completed_run
+
+    @staticmethod
+    def _build_final_result(
+        artifacts: dict[str, Any],
+        latest_run: Any,
+    ) -> str:
+        """Assemble the user-facing result string from accumulated artifacts."""
+        plan_text = artifacts.get("plan_text", "")
+        design_text = artifacts.get("design_text", "")
+        implementation_text = artifacts.get("implementation_text", "")
+        test_text = artifacts.get("test_text", "")
+        review_text = artifacts.get("review_text", "")
+        design_doc = artifacts.get("_design_document_path", "")
+        test_doc = artifacts.get("_test_document_path", "")
+        review_doc = artifacts.get("_review_document_path", "")
+
+        return (
+            f"Approved plan:\n{plan_text}\n\n"
+            f"Design document:\n{design_doc}\n\n"
+            f"Test plan document:\n{test_doc}\n\n"
+            f"Review report:\n{review_doc}\n\n"
+            f"Design:\n{design_text}\n\n"
+            f"Implementation:\n{implementation_text}\n\n"
+            f"Tests:\n{test_text}\n\n"
+            f"Review:\n{review_text}"
+        ).strip()

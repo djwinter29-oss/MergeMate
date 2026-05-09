@@ -7,7 +7,7 @@ import pytest
 
 from mergemate.application.use_cases.submit_prompt import ApproveRunResult, SubmitPromptResult
 from mergemate.domain.runs.entities import AgentRun
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.shared import RunStatus
 from mergemate.interfaces.telegram import handlers
 
 

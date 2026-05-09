@@ -2,7 +2,7 @@
 
 import logging
 
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.shared import RunStatus
 from mergemate.interfaces.telegram import message_utils
 from mergemate.interfaces.telegram.presenter import (
     format_auto_execution_started,

@@ -1,4 +1,10 @@
-"""Run-related value objects."""
+"""Shared domain value objects — enums and helpers used across the codebase.
+
+These were historically in domain/runs/value_objects.py but are truly shared
+types referenced by infrastructure, interfaces, application, and domain layers.
+Moving them here breaks the circular dependency risk and makes their shared
+nature explicit.
+"""
 
 from enum import StrEnum
 

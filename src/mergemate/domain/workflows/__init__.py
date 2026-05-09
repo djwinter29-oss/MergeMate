@@ -1,0 +1,1 @@
+"""Workflow definitions — stage types and workflow configuration."""

@@ -4,10 +4,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from mergemate.application.execution_plan import DirectExecutionPlan, MultiStageExecutionPlan
+from mergemate.application.execution_plan import DirectExecutionPlan, MultiStageExecutionPlan, OrchestratorDependencies
 from mergemate.application.orchestrator import AgentOrchestrator
 from mergemate.domain.runs.entities import AgentRun
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.shared import RunStatus
+from mergemate.domain.shared import WorkflowName
+from mergemate.domain.workflows.stage import get_workflow_definitions
 
 
 @dataclass(slots=True)
@@ -247,6 +249,7 @@ class WorkflowServiceStub:
         self.design_calls = []
         self.test_calls = []
         self.review_calls = []
+        self._generate_code_def = get_workflow_definitions()[WorkflowName.GENERATE_CODE]
 
     @staticmethod
     def uses_multi_stage_delivery(workflow: str) -> bool:
@@ -254,7 +257,11 @@ class WorkflowServiceStub:
 
     def build_execution_plan(self, workflow: str, *, agent_name: str):
         if workflow == "generate_code":
-            return MultiStageExecutionPlan(agent_name=agent_name, max_iterations=self.max_iterations)
+            return MultiStageExecutionPlan(
+                agent_name=agent_name,
+                max_iterations=self.max_iterations,
+                workflow_definition=self._generate_code_def,
+            )
         return DirectExecutionPlan(agent_name=agent_name)
 
     async def create_design(self, plan_text: str, context_text: str) -> str:
@@ -298,6 +305,34 @@ class PlanningServiceStub:
         return "replanned"
 
 
+def _make_deps(
+    *,
+    repository=None,
+    context_service=None,
+    documentation_service=None,
+    learning_service=None,
+    planning_service=None,
+    prompt_service=None,
+    tool_service=None,
+    workflow_service=None,
+    llm_gateway=None,
+    settings=None,
+) -> OrchestratorDependencies:
+    """Build an OrchestratorDependencies with sensible defaults for tests."""
+    return OrchestratorDependencies(
+        run_repository=repository or RunRepositoryStub(_build_run()),
+        context_service=context_service or ContextServiceStub(),
+        documentation_service=documentation_service or DocumentationServiceStub(),
+        learning_service=learning_service or LearningServiceStub(),
+        planning_service=planning_service or PlanningServiceStub(),
+        prompt_service=prompt_service or PromptServiceStub(),
+        tool_service=tool_service or ToolServiceStub(),
+        workflow_service=workflow_service or WorkflowServiceStub(),
+        llm_gateway=llm_gateway,
+        settings=settings or SettingsStub(),
+    )
+
+
 def _build_run(*, workflow: str = "generate_code", agent_name: str = "coder") -> AgentRun:
     now = datetime.now(UTC)
     return AgentRun(
@@ -331,16 +366,18 @@ async def test_process_run_stops_after_cancellation_between_steps() -> None:
     learning_service = LearningServiceStub()
     workflow_service = WorkflowServiceStub()
     orchestrator = AgentOrchestrator(
-        run_repository=repository,
-        context_service=context_service,
-        documentation_service=documentation_service,
-        learning_service=learning_service,
-        planning_service=PlanningServiceStub(),
-        prompt_service=PromptServiceStub(),
-        tool_service=ToolServiceStub(),
-        workflow_service=workflow_service,
-        llm_gateway=None,
-        settings=SettingsStub(),
+        deps=_make_deps(
+            repository=repository,
+            context_service=context_service,
+            documentation_service=documentation_service,
+            learning_service=learning_service,
+            planning_service=PlanningServiceStub(),
+            prompt_service=PromptServiceStub(),
+            tool_service=ToolServiceStub(),
+            workflow_service=workflow_service,
+            llm_gateway=None,
+            settings=SettingsStub(),
+        ),
     )
 
     run = await orchestrator.process_run("run-1")
@@ -363,16 +400,18 @@ async def test_process_run_writes_all_document_artifacts() -> None:
     learning_service = LearningServiceStub()
     workflow_service = WorkflowServiceStub()
     orchestrator = AgentOrchestrator(
-        run_repository=repository,
-        context_service=context_service,
-        documentation_service=documentation_service,
-        learning_service=learning_service,
-        planning_service=PlanningServiceStub(),
-        prompt_service=PromptServiceStub(),
-        tool_service=ToolServiceStub(),
-        workflow_service=workflow_service,
-        llm_gateway=None,
-        settings=SettingsStub(),
+        deps=_make_deps(
+            repository=repository,
+            context_service=context_service,
+            documentation_service=documentation_service,
+            learning_service=learning_service,
+            planning_service=PlanningServiceStub(),
+            prompt_service=PromptServiceStub(),
+            tool_service=ToolServiceStub(),
+            workflow_service=workflow_service,
+            llm_gateway=None,
+            settings=SettingsStub(),
+        ),
     )
 
     run = await orchestrator.process_run("run-1")
@@ -396,16 +435,18 @@ async def test_process_run_executes_non_generate_workflow_directly() -> None:
     learning_service = LearningServiceStub()
     workflow_service = WorkflowServiceStub()
     orchestrator = AgentOrchestrator(
-        run_repository=repository,
-        context_service=context_service,
-        documentation_service=documentation_service,
-        learning_service=learning_service,
-        planning_service=PlanningServiceStub(),
-        prompt_service=PromptServiceStub(),
-        tool_service=ToolServiceStub(),
-        workflow_service=workflow_service,
-        llm_gateway=None,
-        settings=SettingsStub(),
+        deps=_make_deps(
+            repository=repository,
+            context_service=context_service,
+            documentation_service=documentation_service,
+            learning_service=learning_service,
+            planning_service=PlanningServiceStub(),
+            prompt_service=PromptServiceStub(),
+            tool_service=ToolServiceStub(),
+            workflow_service=workflow_service,
+            llm_gateway=None,
+            settings=SettingsStub(),
+        ),
     )
 
     run = await orchestrator.process_run("run-1")
@@ -426,16 +467,18 @@ async def test_process_run_returns_cancelled_direct_run_without_persisting_succe
     learning_service = LearningServiceStub()
     workflow_service = WorkflowServiceStub()
     orchestrator = AgentOrchestrator(
-        run_repository=repository,
-        context_service=context_service,
-        documentation_service=DocumentationServiceStub(),
-        learning_service=learning_service,
-        planning_service=PlanningServiceStub(),
-        prompt_service=PromptServiceStub(),
-        tool_service=ToolServiceStub(),
-        workflow_service=workflow_service,
-        llm_gateway=None,
-        settings=SettingsStub(),
+        deps=_make_deps(
+            repository=repository,
+            context_service=context_service,
+            documentation_service=DocumentationServiceStub(),
+            learning_service=learning_service,
+            planning_service=PlanningServiceStub(),
+            prompt_service=PromptServiceStub(),
+            tool_service=ToolServiceStub(),
+            workflow_service=workflow_service,
+            llm_gateway=None,
+            settings=SettingsStub(),
+        ),
     )
 
     sequence = iter([False, True])
@@ -453,16 +496,11 @@ async def test_process_run_returns_cancelled_direct_run_without_persisting_succe
 @pytest.mark.asyncio
 async def test_process_run_raises_when_run_is_missing() -> None:
     orchestrator = AgentOrchestrator(
-        run_repository=RunRepositoryStub(_build_run()),
-        context_service=ContextServiceStub(),
-        documentation_service=DocumentationServiceStub(),
-        learning_service=LearningServiceStub(),
-        planning_service=PlanningServiceStub(),
-        prompt_service=PromptServiceStub(),
-        tool_service=ToolServiceStub(),
-        workflow_service=WorkflowServiceStub(),
-        llm_gateway=None,
-        settings=SettingsStub(),
+        deps=_make_deps(
+            repository=RunRepositoryStub(_build_run()),
+            planning_service=PlanningServiceStub(),
+            llm_gateway=None,
+        ),
     )
 
     with pytest.raises(ValueError, match="was not found"):
@@ -475,32 +513,22 @@ async def test_process_run_returns_early_for_cancelled_or_unapproved_runs() -> N
     cancelled_run.status = RunStatus.CANCELLED
     cancelled_repository = RunRepositoryStub(cancelled_run)
     cancelled = await AgentOrchestrator(
-        run_repository=cancelled_repository,
-        context_service=ContextServiceStub(),
-        documentation_service=DocumentationServiceStub(),
-        learning_service=LearningServiceStub(),
-        planning_service=PlanningServiceStub(),
-        prompt_service=PromptServiceStub(),
-        tool_service=ToolServiceStub(),
-        workflow_service=WorkflowServiceStub(),
-        llm_gateway=None,
-        settings=SettingsStub(),
+        deps=_make_deps(
+            repository=cancelled_repository,
+            planning_service=PlanningServiceStub(),
+            llm_gateway=None,
+        ),
     ).process_run("run-1")
     assert cancelled.status == RunStatus.CANCELLED
 
     unapproved_run = _build_run()
     unapproved_run.approved = False
     unapproved = await AgentOrchestrator(
-        run_repository=RunRepositoryStub(unapproved_run),
-        context_service=ContextServiceStub(),
-        documentation_service=DocumentationServiceStub(),
-        learning_service=LearningServiceStub(),
-        planning_service=PlanningServiceStub(),
-        prompt_service=PromptServiceStub(),
-        tool_service=ToolServiceStub(),
-        workflow_service=WorkflowServiceStub(),
-        llm_gateway=None,
-        settings=SettingsStub(),
+        deps=_make_deps(
+            repository=RunRepositoryStub(unapproved_run),
+            planning_service=PlanningServiceStub(),
+            llm_gateway=None,
+        ),
     ).process_run("run-1")
     assert unapproved.approved is False
 
@@ -517,16 +545,18 @@ async def test_process_run_returns_early_for_terminal_or_active_runs(status) -> 
     workflow_service = WorkflowServiceStub()
 
     result = await AgentOrchestrator(
-        run_repository=repository,
-        context_service=context_service,
-        documentation_service=DocumentationServiceStub(),
-        learning_service=learning_service,
-        planning_service=PlanningServiceStub(),
-        prompt_service=PromptServiceStub(),
-        tool_service=tool_service,
-        workflow_service=workflow_service,
-        llm_gateway=None,
-        settings=SettingsStub(),
+        deps=_make_deps(
+            repository=repository,
+            context_service=context_service,
+            documentation_service=DocumentationServiceStub(),
+            learning_service=learning_service,
+            planning_service=PlanningServiceStub(),
+            prompt_service=PromptServiceStub(),
+            tool_service=tool_service,
+            workflow_service=workflow_service,
+            llm_gateway=None,
+            settings=SettingsStub(),
+        ),
     ).process_run("run-1")
 
     assert result.status == status
@@ -549,16 +579,18 @@ async def test_process_run_trims_latest_duplicate_prompt_and_replans_on_review_c
     workflow_service = WorkflowServiceStub(high_concerns=True, max_iterations=2)
     planning_service = PlanningServiceStub()
     orchestrator = AgentOrchestrator(
-        run_repository=repository,
-        context_service=context_service,
-        documentation_service=DocumentationServiceStub(),
-        learning_service=LearningServiceStub(),
-        planning_service=planning_service,
-        prompt_service=PromptServiceStub(),
-        tool_service=ToolServiceStub(),
-        workflow_service=workflow_service,
-        llm_gateway=None,
-        settings=SettingsStub(WorkflowControlStub(max_review_iterations=2)),
+        deps=_make_deps(
+            repository=repository,
+            context_service=context_service,
+            documentation_service=DocumentationServiceStub(),
+            learning_service=LearningServiceStub(),
+            planning_service=planning_service,
+            prompt_service=PromptServiceStub(),
+            tool_service=ToolServiceStub(),
+            workflow_service=workflow_service,
+            llm_gateway=None,
+            settings=SettingsStub(WorkflowControlStub(max_review_iterations=2)),
+        ),
     )
 
     run = await orchestrator.process_run("run-1")
@@ -577,16 +609,15 @@ async def test_process_run_includes_runtime_tool_context_for_direct_plans() -> N
     tool_service = ToolServiceStub(runtime_context="tool output")
     workflow_service = WorkflowServiceStub()
     orchestrator = AgentOrchestrator(
-        run_repository=repository,
-        context_service=ContextServiceStub(),
-        documentation_service=DocumentationServiceStub(),
-        learning_service=LearningServiceStub(),
-        planning_service=PlanningServiceStub(),
-        prompt_service=PromptServiceStub(),
-        tool_service=tool_service,
-        workflow_service=workflow_service,
-        llm_gateway=None,
-        settings=SettingsStub(),
+        deps=_make_deps(
+            repository=repository,
+            documentation_service=DocumentationServiceStub(),
+            planning_service=PlanningServiceStub(),
+            prompt_service=PromptServiceStub(),
+            tool_service=tool_service,
+            workflow_service=workflow_service,
+            llm_gateway=None,
+        ),
     )
 
     run = await orchestrator.process_run("run-1")
@@ -610,16 +641,11 @@ async def test_process_run_includes_runtime_tool_context_for_direct_plans() -> N
 async def test_process_run_returns_when_cancelled_at_intermediate_checkpoints(cancel_sequence, expected_stage) -> None:
     repository = RunRepositoryStub(_build_run())
     orchestrator = AgentOrchestrator(
-        run_repository=repository,
-        context_service=ContextServiceStub(),
-        documentation_service=DocumentationServiceStub(),
-        learning_service=LearningServiceStub(),
-        planning_service=PlanningServiceStub(),
-        prompt_service=PromptServiceStub(),
-        tool_service=ToolServiceStub(),
-        workflow_service=WorkflowServiceStub(),
-        llm_gateway=None,
-        settings=SettingsStub(),
+        deps=_make_deps(
+            repository=repository,
+            planning_service=PlanningServiceStub(),
+            llm_gateway=None,
+        ),
     )
 
     sequence = iter(cancel_sequence)
@@ -635,16 +661,13 @@ async def test_process_run_returns_when_cancelled_at_intermediate_checkpoints(ca
 async def test_process_run_returns_when_cancelled_after_replanning() -> None:
     repository = RunRepositoryStub(_build_run())
     orchestrator = AgentOrchestrator(
-        run_repository=repository,
-        context_service=ContextServiceStub(),
-        documentation_service=DocumentationServiceStub(),
-        learning_service=LearningServiceStub(),
-        planning_service=PlanningServiceStub(),
-        prompt_service=PromptServiceStub(),
-        tool_service=ToolServiceStub(),
-        workflow_service=WorkflowServiceStub(high_concerns=True, max_iterations=2),
-        llm_gateway=None,
-        settings=SettingsStub(WorkflowControlStub(max_review_iterations=2)),
+        deps=_make_deps(
+            repository=repository,
+            planning_service=PlanningServiceStub(),
+            workflow_service=WorkflowServiceStub(high_concerns=True, max_iterations=2),
+            settings=SettingsStub(WorkflowControlStub(max_review_iterations=2)),
+            llm_gateway=None,
+        ),
     )
 
     sequence = iter([False, False, False, False, False, True])
@@ -666,16 +689,12 @@ async def test_process_run_returns_latest_cancelled_run_after_loop() -> None:
             return await super().review(plan_text, design_text, implementation_text, test_text)
 
     orchestrator = AgentOrchestrator(
-        run_repository=repository,
-        context_service=ContextServiceStub(),
-        documentation_service=DocumentationServiceStub(),
-        learning_service=LearningServiceStub(),
-        planning_service=PlanningServiceStub(),
-        prompt_service=PromptServiceStub(),
-        tool_service=ToolServiceStub(),
-        workflow_service=CancellingWorkflowService(),
-        llm_gateway=None,
-        settings=SettingsStub(),
+        deps=_make_deps(
+            repository=repository,
+            planning_service=PlanningServiceStub(),
+            workflow_service=CancellingWorkflowService(),
+            llm_gateway=None,
+        ),
     )
     orchestrator._is_cancelled = lambda _run_id: False
 
@@ -691,16 +710,14 @@ async def test_process_run_appends_runtime_tool_context_to_execution_context() -
     tool_service = ToolServiceStub("Enabled runtime tools:\n- git_repository\n\ngit_repository (ok):\nmain")
     workflow_service = WorkflowServiceStub()
     orchestrator = AgentOrchestrator(
-        run_repository=repository,
-        context_service=ContextServiceStub(),
-        documentation_service=DocumentationServiceStub(),
-        learning_service=LearningServiceStub(),
-        planning_service=PlanningServiceStub(),
-        prompt_service=PromptServiceStub(),
-        tool_service=tool_service,
-        workflow_service=workflow_service,
-        llm_gateway=None,
-        settings=SettingsStub(),
+        deps=_make_deps(
+            repository=repository,
+            planning_service=PlanningServiceStub(),
+            prompt_service=PromptServiceStub(),
+            tool_service=tool_service,
+            workflow_service=workflow_service,
+            llm_gateway=None,
+        ),
     )
 
     run = await orchestrator.process_run("run-1")

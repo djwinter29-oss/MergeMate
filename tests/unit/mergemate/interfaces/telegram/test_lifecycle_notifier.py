@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.shared import RunStatus
 from mergemate.interfaces.telegram.lifecycle_notifier import TelegramRunLifecycleNotifier
 
 

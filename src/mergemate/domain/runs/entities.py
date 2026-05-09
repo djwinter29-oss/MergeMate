@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from mergemate.domain.runs.value_objects import RunJobStatus, RunJobType, RunStage, RunStatus
+from mergemate.domain.shared import RunJobStatus, RunJobType, RunStage, RunStatus
 
 
 @dataclass(slots=True)

@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 
-from mergemate.domain.runs.value_objects import RunStatus
+from mergemate.domain.shared import RunStatus
 
 
 def _remaining_seconds(run) -> int | None:

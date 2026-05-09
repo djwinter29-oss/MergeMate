@@ -4,7 +4,7 @@ import pytest
 
 from mergemate.application.use_cases.submit_prompt import PromptSubmissionError, SubmitPromptUseCase
 from mergemate.domain.runs.repository import ApprovalDecision
-from mergemate.domain.runs.value_objects import RunJobType, RunStatus
+from mergemate.domain.shared import RunJobType, RunStatus
 
 
 class InMemoryRunRepository:
