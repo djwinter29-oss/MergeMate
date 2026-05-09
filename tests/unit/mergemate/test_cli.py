@@ -6,7 +6,6 @@ import pytest
 from typer.testing import CliRunner
 
 from mergemate import cli
-from mergemate import bootstrap as _bootstrap_module
 
 
 runner = CliRunner()
@@ -46,7 +45,6 @@ def test_run_bot_prints_config_and_runs(monkeypatch: pytest.MonkeyPatch) -> None
         def run(self) -> None:
             observed["ran"] = True
 
-    # Patch cli.bootstrap directly since cli.py does `from ... import bootstrap`
     monkeypatch.setattr(cli, "bootstrap", lambda _config: _runtime())
     monkeypatch.setattr(cli, "TelegramBotRuntime", BotRuntimeStub)
 
@@ -68,7 +66,7 @@ def test_validate_config_prints_resolved_paths(monkeypatch: pytest.MonkeyPatch) 
         preview_database_path=lambda _resolved: Path("/tmp/runtime.db"),
     )
     monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
-    monkeypatch.setattr(_bootstrap_module, "bootstrap", lambda _config: (_ for _ in ()).throw(AssertionError("bootstrap should not be called")))
+    monkeypatch.setattr(cli, "bootstrap", lambda _config: (_ for _ in ()).throw(AssertionError("bootstrap should not be called")))
 
     result = runner.invoke(cli.app, ["validate-config"])
 

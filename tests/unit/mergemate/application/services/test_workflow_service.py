@@ -7,6 +7,7 @@ from mergemate.application.execution_plan import DirectExecutionPlan, MultiStage
 from mergemate.application.services.workflow_service import WorkflowService
 from mergemate.domain.shared import WorkflowName
 from mergemate.domain.policies import uses_multi_stage_delivery
+from mergemate.domain.workflows.stage import get_workflow_definitions
 
 
 class GatewayStub:
@@ -141,19 +142,11 @@ def test_build_execution_plan_accepts_workflow_enum() -> None:
 
 
 def test_execution_plans_report_tool_context_requirement_from_shared_base() -> None:
-    from mergemate.domain.workflows.stage import WorkflowStage, WorkflowDefinition
-
     direct_plan = DirectExecutionPlan(agent_name="debugger")
-    # Multi-stage plan needs a workflow definition with stages that use tool context
     multi_stage_plan = MultiStageExecutionPlan(
         agent_name="coder",
         max_iterations=2,
-        workflow_definition=WorkflowDefinition(
-            name="generate_code",
-            stages=(
-                WorkflowStage(name="design", current_stage="design", uses_tool_context=True),
-            ),
-        ),
+        workflow_definition=get_workflow_definitions()[WorkflowName.GENERATE_CODE],
     )
 
     assert direct_plan.requires_tool_context is True
