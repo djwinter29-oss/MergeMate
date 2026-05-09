@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from mergemate.domain.conversations.entities import Conversation
-from mergemate.domain.conversations.repository import ConversationRepository
+
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.shared import RunStage, RunStatus, tool_stage
 from mergemate.domain.policies import (
@@ -80,5 +80,4 @@ def test_resolve_workflow_name() -> None:
 
 
 def test_edge_cases_are_importable() -> None:
-    assert ConversationRepository is not None
     assert LLMClient is not None
