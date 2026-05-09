@@ -557,6 +557,19 @@ def test_telegram_config_host_conflict_detection(first: str, second: str, expect
     assert TelegramConfig._hosts_may_conflict(first, second) is expected
 
 
+def test_config_model_returns_none_when_webhook_secret_token_env_is_none() -> None:
+    """resolve_telegram_webhook_secret_token returns None when webhook_secret_token_env is not configured."""
+    payload = _build_config().model_dump()
+    payload["telegram"] = {
+        "bot_token_env": "TELEGRAM_TOKEN",
+        "mode": "polling",
+        "webhook_secret_token_env": None,
+    }
+    config = AppConfig.model_validate(payload)
+
+    assert config.resolve_telegram_webhook_secret_token() is None
+
+
 def test_config_model_raises_when_webhook_secret_token_env_var_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     """resolve_telegram_webhook_secret_token raises when the env var is not set."""
     payload = _build_config().model_dump()
