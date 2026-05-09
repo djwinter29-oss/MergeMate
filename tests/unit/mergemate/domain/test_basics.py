@@ -1,7 +1,5 @@
 from datetime import UTC, datetime
 
-from mergemate.domain.conversations.entities import Conversation
-
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.shared import RunStage, RunStatus, tool_stage
 from mergemate.domain.policies import (
@@ -16,7 +14,6 @@ from mergemate.infrastructure.llm.base import LLMClient
 
 def test_domain_dataclasses_and_enums_are_constructible() -> None:
     now = datetime.now(UTC)
-    conversation = Conversation(chat_id=7, messages=["hello"])
     tool = ToolDefinition(name="formatter", description="formats code")
     run = AgentRun(
         run_id="run-1",
@@ -40,7 +37,6 @@ def test_domain_dataclasses_and_enums_are_constructible() -> None:
         updated_at=now,
     )
 
-    assert conversation.messages == ["hello"]
     assert tool.description == "formats code"
     assert run.status == RunStatus.QUEUED
     assert tool_stage("git_repository") == "tool:git_repository"
