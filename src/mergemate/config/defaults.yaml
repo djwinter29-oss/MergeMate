@@ -1,49 +1,24 @@
 default_agent: coder
-default_provider: openai_coder
+default_provider: primary
 
 providers:
-  openai_planner:
-    api_key_env: OPENAI_API_KEY
+  primary:
+    api_key_env: PRIMARY_KEY
     model: gpt-5.4
-    timeout_seconds: 90
     provider_url: https://api.openai.com/v1/chat/completions
-  openai_architect:
-    api_key_env: OPENAI_API_KEY
-    model: gpt-5.4
-    timeout_seconds: 120
-    provider_url: https://api.openai.com/v1/chat/completions
-  openai_coder:
-    api_key_env: OPENAI_API_KEY
-    model: gpt-5.4
-    timeout_seconds: 120
-    provider_url: https://api.openai.com/v1/chat/completions
-  openai_tester:
-    api_key_env: OPENAI_API_KEY
-    model: gpt-5.4
-    timeout_seconds: 120
-    provider_url: https://api.openai.com/v1/chat/completions
-  openai_reviewer:
-    api_key_env: OPENAI_API_KEY
-    model: gpt-5.4
-    timeout_seconds: 120
+  secondary:
+    api_key_env: SECONDARY_KEY
+    model: gpt-4.1
     provider_url: https://api.openai.com/v1/chat/completions
 
 telegram:
-  bot_token_env: TELEGRAM_BOT_TOKEN
+  bot_token_env: TELEGRAM_TOKEN
   mode: polling
-  webhook_listen_host: 0.0.0.0
-  webhook_listen_port: 8080
-  webhook_public_base_url:
-  webhook_path: /telegram/webhook
-  webhook_secret_token_env: TELEGRAM_WEBHOOK_SECRET
-  webhook_healthcheck_enabled: true
-  webhook_healthcheck_listen_host: 127.0.0.1
-  webhook_healthcheck_listen_port: 8081
-  webhook_healthcheck_path: /healthz
 
 storage:
-  workspace_root: ./workspace
-  database_path: .state/mergemate.db
+  workspace_root: workspace
+  database_path: .state/runtime.db
+  docs_root: docs
 
 learning:
   enabled: true
@@ -56,7 +31,7 @@ tools:
   pip_executable: python3
 
 source_control:
-  working_directory: .
+  working_directory: repo
   default_platform: github
   enable_git: true
   enable_github: true
@@ -79,45 +54,56 @@ workflow_control:
 agents:
   planner:
     workflow: planning
-    tools: []
-    provider_names:
-      - openai_planner
-    parallel_mode: single
-    combine_strategy: first_success
-
   architect:
     workflow: design
-    tools: []
-    provider_names:
-      - openai_architect
-    parallel_mode: single
-    combine_strategy: first_success
-
   coder:
     workflow: generate_code
-    tools:
-      - syntax_checker
-      - code_formatter
-    provider_names:
-      - openai_coder
-    parallel_mode: single
-    combine_strategy: first_success
-
+    provider_names: [secondary]
   tester:
     workflow: testing
-    tools: []
-    provider_names:
-      - openai_tester
-    parallel_mode: single
-    combine_strategy: first_success
-
   reviewer:
     workflow: review
-    tools: []
-    provider_names:
-      - openai_reviewer
-    parallel_mode: single
-    combine_strategy: first_success
+  explainer:
+    workflow: explain_code
+
+roles:
+  planner:
+    soul: planner
+    workflow: planning
+    workers:
+      - name: planner-alpha
+  architect:
+    soul: architect
+    workflow: design
+    workers:
+      - name: architect-alpha
+  coder:
+    soul: coder
+    workflow: generate_code
+    workers:
+      - name: coder-alpha
+        provider_names: [secondary]
+  tester:
+    soul: tester
+    workflow: testing
+    workers:
+      - name: tester-alpha
+  reviewer:
+    soul: reviewer
+    workflow: review
+    workers:
+      - name: reviewer-alpha
+  chronicler:
+    soul: chronicler
+    workflow: learning
+    workers:
+      - name: chronicler-alpha
+        provider_names: [primary]
+  explainer:
+    soul: explainer
+    workflow: explain_code
+    workers:
+      - name: explainer-alpha
 
 logging:
   level: INFO

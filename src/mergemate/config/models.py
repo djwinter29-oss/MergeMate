@@ -3,7 +3,7 @@
 from collections import Counter
 import os
 from pathlib import Path
-from typing import ClassVar, Literal, Self
+from typing import Any, ClassVar, Literal, Self
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel, Field, model_validator
@@ -197,6 +197,27 @@ class WorkflowControlConfig(BaseModel):
     max_review_iterations: int = Field(default=5, ge=1)
 
 
+class WorkerConfig(BaseModel):
+    """A single worker instance within a role.
+
+    Multiple workers means parallel LLM invocations for the same role.
+    """
+    name: str
+    provider_names: list[str] = Field(default_factory=list)
+    tools: list[str] = Field(default_factory=list)
+
+
+class RoleConfig(BaseModel):
+    """Configuration for a role with its Soul, workflow, and parallel workers."""
+    soul: str = ""
+    workflow: WorkflowName
+    workers: list[WorkerConfig] = Field(default_factory=list)
+    provider_names: list[str] = Field(default_factory=list)
+    tools: list[str] = Field(default_factory=list)
+    parallel_mode: ParallelMode = "single"
+    combine_strategy: CombineStrategy = "sectioned"
+
+
 class AgentConfig(BaseModel):
     workflow: WorkflowName
     tools: list[str] = Field(default_factory=list)
@@ -217,7 +238,28 @@ class AppConfig(BaseModel):
     runtime: RuntimeConfig
     workflow_control: WorkflowControlConfig = Field(default_factory=WorkflowControlConfig)
     agents: dict[str, AgentConfig]
+    roles: dict[str, RoleConfig] = Field(default_factory=dict)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _populate_roles_from_agents(cls, data: dict[str, Any]) -> dict[str, Any]:
+        """Backward compat: if roles is empty but agents exist, populate roles from agents."""
+        agents = data.get("agents", {})
+        roles = data.get("roles", {})
+        if not roles and agents:
+            data["roles"] = {
+                name: {
+                    "soul": name,
+                    "workflow": cfg["workflow"] if isinstance(cfg, dict) else cfg.workflow,
+                    "provider_names": cfg.get("provider_names", []) if isinstance(cfg, dict) else cfg.provider_names,
+                    "tools": cfg.get("tools", []) if isinstance(cfg, dict) else cfg.tools,
+                    "parallel_mode": cfg.get("parallel_mode", "single") if isinstance(cfg, dict) else cfg.parallel_mode,
+                    "combine_strategy": cfg.get("combine_strategy", "sectioned") if isinstance(cfg, dict) else cfg.combine_strategy,
+                }
+                for name, cfg in agents.items()
+            }
+        return data
 
     @model_validator(mode="after")
     def validate_provider_references(self) -> Self:
@@ -255,7 +297,7 @@ class AppConfig(BaseModel):
 
         available_workflows = set(workflow_counts)
         if WorkflowName.PLANNING not in available_workflows:
-            raise ValueError("A planning agent must be configured")
+            raise ValueError("A planning role must be configured")
 
         if WorkflowName.GENERATE_CODE in available_workflows:
             required_multi_stage_workflows = {
@@ -281,6 +323,10 @@ class AppConfig(BaseModel):
         return os.getenv(provider.api_key_env)
 
     def resolve_agent_provider_names(self, agent_name: str) -> list[str]:
+        # First check roles, then agents
+        role = self.roles.get(agent_name)
+        if role and role.provider_names:
+            return list(role.provider_names)
         agent = self.agents.get(agent_name)
         if agent is None or not agent.provider_names:
             return [self.default_provider]
@@ -293,6 +339,13 @@ class AppConfig(BaseModel):
         preferred_agent_name: str | None = None,
     ) -> str:
         resolved_workflow = WorkflowName(workflow)
+
+        # Check roles first (new-style config)
+        for role_name, role in self.roles.items():
+            if role.workflow == resolved_workflow:
+                if preferred_agent_name is not None and role_name == preferred_agent_name:
+                    return preferred_agent_name
+                return role_name
 
         if preferred_agent_name is not None:
             preferred_agent = self.agents.get(preferred_agent_name)

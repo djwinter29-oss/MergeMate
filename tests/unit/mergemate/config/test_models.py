@@ -466,7 +466,7 @@ def test_config_model_requires_planning_agent() -> None:
     payload = _build_config().model_dump()
     payload["agents"].pop("planner")
 
-    with pytest.raises(ValidationError, match="A planning agent must be configured"):
+    with pytest.raises(ValidationError, match="A planning role must be configured"):
         AppConfig.model_validate(payload)
 
 

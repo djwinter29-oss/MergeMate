@@ -6,8 +6,42 @@ from pathlib import Path
 
 
 class DocumentationService:
+    """Persist workflow documents under the docs folder.
+
+    Each role writes to its own section of the ``docs/`` tree:
+
+        docs/
+        ├── planning/
+        ├── architecture/
+        ├── implementation/
+        ├── testing/
+        ├── review/
+        ├── lessons/
+        ├── requirements/
+        └── shared/
+
+    The directory tree is created automatically on first use.
+    """
+
+    _SECTION_NAMES = (
+        "planning",
+        "architecture",
+        "implementation",
+        "testing",
+        "review",
+        "lessons",
+        "requirements",
+        "shared",
+    )
+
     def __init__(self, docs_root: Path) -> None:
         self._docs_root = docs_root
+        self._ensure_dirs()
+
+    def _ensure_dirs(self) -> None:
+        """Create all standard docs subdirectories on init."""
+        for name in self._SECTION_NAMES:
+            (self._docs_root / name).mkdir(parents=True, exist_ok=True)
 
     def write_architecture_design(
         self,
@@ -77,6 +111,50 @@ class DocumentationService:
                 ("Implementation", implementation_text),
                 ("Test Plan", test_text),
                 ("Review Report", review_text),
+            ),
+        )
+
+    def write_lesson(
+        self,
+        *,
+        run_id: str,
+        iteration: int,
+        plan_text: str,
+        lesson_text: str,
+    ) -> Path:
+        """Write a lessons-learned document under docs/lessons/."""
+        return self._write_document(
+            run_id=run_id,
+            iteration=iteration,
+            plan_text=plan_text,
+            section_name="lessons",
+            document_suffix="lessons",
+            title_prefix="Lessons Learned",
+            sections=(
+                ("Approved Plan", plan_text),
+                ("Lessons Learned", lesson_text),
+            ),
+        )
+
+    def write_requirement(
+        self,
+        *,
+        run_id: str,
+        iteration: int,
+        plan_text: str,
+        requirement_text: str,
+    ) -> Path:
+        """Write a requirement document under docs/requirements/."""
+        return self._write_document(
+            run_id=run_id,
+            iteration=iteration,
+            plan_text=plan_text,
+            section_name="requirements",
+            document_suffix="requirement",
+            title_prefix="Requirement",
+            sections=(
+                ("Approved Plan", plan_text),
+                ("Requirement", requirement_text),
             ),
         )
 

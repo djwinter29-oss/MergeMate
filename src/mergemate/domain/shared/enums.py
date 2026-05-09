@@ -11,6 +11,7 @@ class WorkflowName(StrEnum):
     EXPLAIN_CODE = "explain_code"
     TESTING = "testing"
     REVIEW = "review"
+    LEARNING = "learning"
 
 
 USER_FACING_WORKFLOWS = frozenset(

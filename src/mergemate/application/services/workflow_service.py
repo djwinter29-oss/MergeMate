@@ -90,6 +90,54 @@ class WorkflowService:
         )
         return await self._generate_stage_output("review", system_prompt, user_prompt)
 
+    async def record_lesson(
+        self,
+        *,
+        plan_text: str = "",
+        design_text: str = "",
+        implementation_text: str = "",
+        test_text: str = "",
+        review_text: str = "",
+        result_text: str = "",
+        error_text: str = "",
+        agent_name: str = "",
+    ) -> str:
+        """Record a lesson-learned entry for the current workflow run.
+
+        This is the chronicler role — it reflects on what happened and
+        extracts experiences, pitfalls, and best practices to persist.
+        """
+        parts = []
+        for label, text in [
+            ("Plan", plan_text),
+            ("Design", design_text),
+            ("Implementation", implementation_text),
+            ("Tests", test_text),
+            ("Review", review_text),
+            ("Result", result_text),
+        ]:
+            if text:
+                parts.append(f"## {label}\n{text.strip()}")
+        if error_text:
+            parts.append(f"## Error\n{error_text.strip()}")
+
+        user_prompt = (
+            "Review the following workflow artifacts and produce a brief "
+            "lessons-learned summary. Include:\n\n"
+            "**Lessons Learned** — what went well, what could be improved\n"
+            "**Pitfalls to Avoid** — mistakes, gotchas, anti-patterns\n"
+            "**Best Practices** — conventions and patterns to reuse\n\n"
+            "Be concise and concrete.\n\n"
+            + "\n\n".join(parts)
+        )
+        return await self._generate_stage_output(
+            "learning",
+            "You are an experience recordist. Extract lessons, pitfalls, and best practices "
+            "from the artifacts below.",
+            user_prompt,
+            preferred_agent_name=agent_name or None,
+        )
+
     @staticmethod
     def has_high_concerns(review_text: str) -> bool:
         lines = review_text.strip().splitlines()

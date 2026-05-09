@@ -114,6 +114,18 @@ class DocumentationServiceStub:
         })
         return f"docs/reviews/{plan_text[:10].replace(' ', '-')}-review-report.md"
 
+    def write_lesson(
+        self, *, run_id: str, iteration: int, plan_text: str, lesson_text: str
+    ) -> str:
+        self.calls.append({
+            "kind": "lessons",
+            "run_id": run_id,
+            "iteration": iteration,
+            "plan_text": plan_text,
+            "lesson_text": lesson_text,
+        })
+        return f"docs/lessons/{plan_text[:10].replace(' ', '-')}.md"
+
 
 class PlanningServiceStub:
     def __init__(self) -> None:
@@ -176,6 +188,7 @@ class SettingsStub:
             "architect": SimpleNamespace(workflow="design", parallel_mode="single", combine_strategy="sectioned"),
             "tester": SimpleNamespace(workflow="testing", parallel_mode="single", combine_strategy="sectioned"),
             "reviewer": SimpleNamespace(workflow="review", parallel_mode="single", combine_strategy="sectioned"),
+            "chronicler": SimpleNamespace(workflow="learning", parallel_mode="single", combine_strategy="sectioned"),
         }
     )
 
@@ -315,11 +328,11 @@ class TestOrchestratorFullPipeline:
         assert result.status == RunStatus.COMPLETED
         assert result.current_stage == RunStage.COMPLETED
 
-        # LLM calls: design + code + test + review = 4
-        assert len(mock_llm.calls) == 4
+        # LLM calls: design + code + test + review + chronicle = 5
+        assert len(mock_llm.calls) == 5
 
         # All doc artifacts written
-        assert len(docs.calls) == 3
+        assert len(docs.calls) == 4
 
         # Context appended (final result sent to conversation)
         messages = sqlite_orchestrator["context_service"].load_recent_messages(2001)

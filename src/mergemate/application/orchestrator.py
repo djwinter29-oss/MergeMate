@@ -1,6 +1,7 @@
 """Workflow orchestration entrypoint."""
 
 from mergemate.application.execution_plan import ExecutionContext, ExecutionRuntime, OrchestratorDependencies
+from mergemate.domain.agents import get_soul
 from mergemate.domain.shared import RunStage, RunStatus
 
 
@@ -60,6 +61,9 @@ class AgentOrchestrator:
             learned_items,
             run.prompt,
         )
+
+        # Inject role Soul definition for boundary enforcement
+        system_prompt = self._inject_soul_to_prompt(system_prompt, run.agent_name)
         execution_plan = self._workflow_service.build_execution_plan(
             run.workflow,
             agent_name=run.agent_name,
@@ -79,3 +83,12 @@ class AgentOrchestrator:
         )
         execution = ExecutionContext(run=run, system_prompt=system_prompt, context_text=context_text)
         return await execution_plan.execute(runtime, execution)
+
+    @staticmethod
+    def _inject_soul_to_prompt(system_prompt: str, agent_name: str) -> str:
+        """Append the agent's Soul definition (role identity + boundaries)
+        to the system prompt if a matching Soul is found."""
+        soul = get_soul(agent_name)
+        if soul is not None:
+            return system_prompt + "\n\n" + soul.to_system_prompt()
+        return system_prompt

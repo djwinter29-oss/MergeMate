@@ -95,6 +95,19 @@ def _stage(
 # here without touching any other file.
 
 _BUILTIN_WORKFLOWS: dict[WorkflowName, WorkflowDefinition] = {
+    WorkflowName.LEARNING: WorkflowDefinition(
+        name=WorkflowName.LEARNING.value,
+        stages=(
+            _stage(
+                name="chronicle",
+                current_stage="chronicle",
+                handler="chronicle",
+                checks_cancellation_before=False,
+                checks_cancellation_after=False,
+                produces=("lesson_text",),
+            ),
+        ),
+    ),
     WorkflowName.GENERATE_CODE: WorkflowDefinition(
         name=WorkflowName.GENERATE_CODE.value,
         stages=(
@@ -124,6 +137,13 @@ _BUILTIN_WORKFLOWS: dict[WorkflowName, WorkflowDefinition] = {
                 current_stage="review",
                 checks_cancellation_after=True,
                 produces=("review_text",),
+            ),
+            _stage(
+                name="chronicle",
+                current_stage="chronicle",
+                handler="chronicle",
+                checks_cancellation_after=True,
+                produces=("lesson_text",),
             ),
             _stage(
                 name="replanning",

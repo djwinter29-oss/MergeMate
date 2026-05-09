@@ -1,7 +1,7 @@
 """Run repository contract."""
 
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
 from mergemate.domain.runs.entities import AgentRun, RunJob
 from mergemate.domain.shared import RunJobType, RunStage, RunStatus
@@ -69,12 +69,13 @@ class AgentRunRepository(Protocol):
         self,
         run_id: str,
         *,
-        current_stage: str | RunStage | None = None,
+        current_stage: str | None = None,
         design_text: str | None = None,
         test_text: str | None = None,
         review_text: str | None = None,
         result_text: str | None = None,
         review_iterations: int | None = None,
+        **extra: Any,
     ) -> AgentRun | None: ...
 
 

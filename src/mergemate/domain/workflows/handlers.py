@@ -178,6 +178,34 @@ async def _handle_replanning(
     return artifacts
 
 
+@register_handler("chronicle")
+async def _handle_chronicle(
+    runtime: ExecutionRuntime,
+    artifacts: dict[str, Any],
+    *,
+    agent_name: str,
+) -> dict[str, Any]:
+    """Chronicle stage: record lessons learned from the workflow run."""
+    lesson_text = await runtime.workflow_service.record_lesson(
+        plan_text=artifacts.get("plan_text", ""),
+        design_text=artifacts.get("design_text", ""),
+        implementation_text=artifacts.get("implementation_text", ""),
+        test_text=artifacts.get("test_text", ""),
+        review_text=artifacts.get("review_text", ""),
+        result_text=artifacts.get("result_text", ""),
+        agent_name=agent_name,
+    )
+    _save_document(runtime, artifacts, "lessons", lesson_text=lesson_text)
+    _persist_artifacts(
+        runtime, artifacts,
+        current_stage="chronicle",
+        lesson_text=lesson_text,
+        review_iterations=artifacts.get("_iteration", 0),
+    )
+    artifacts["lesson_text"] = lesson_text
+    return artifacts
+
+
 @register_handler("direct")
 async def _handle_direct(
     runtime: ExecutionRuntime,
@@ -262,3 +290,13 @@ def _save_document(
             )
         )
         artifacts["_review_document_path"] = path
+    elif kind == "lessons":
+        path = str(
+            runtime.documentation_service.write_lesson(
+                run_id=run_id,
+                iteration=iteration,
+                plan_text=plan_text,
+                lesson_text=extra.get("lesson_text", ""),
+            )
+        )
+        artifacts["_lesson_document_path"] = path

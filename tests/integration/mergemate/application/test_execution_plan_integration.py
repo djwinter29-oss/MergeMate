@@ -100,6 +100,7 @@ class RunRepositorySpy:
         review_text: str | None = None,
         result_text: str | None = None,
         review_iterations: int | None = None,
+        lesson_text: str | None = None,
     ) -> AgentRun | None:
         self.save_artifacts_calls.append({
             "run_id": run_id,
@@ -109,6 +110,7 @@ class RunRepositorySpy:
             "review_text": review_text,
             "result_text": result_text,
             "review_iterations": review_iterations,
+            "lesson_text": lesson_text,
         })
         if current_stage is not None:
             self.run.current_stage = current_stage
@@ -240,6 +242,23 @@ class DocumentationServiceSpy:
             "review_text": review_text,
         })
         return Path(f"/tmp/docs/reviews/{plan_text[:10].replace(' ', '-')}-review-report.md")
+
+    def write_lesson(
+        self,
+        *,
+        run_id: str,
+        iteration: int,
+        plan_text: str,
+        lesson_text: str,
+    ) -> Path:
+        self.calls.append({
+            "kind": "lessons",
+            "run_id": run_id,
+            "iteration": iteration,
+            "plan_text": plan_text,
+            "lesson_text": lesson_text,
+        })
+        return Path(f"/tmp/docs/lessons/{plan_text[:10].replace(' ', '-')}.md")
 
 
 class LearningServiceSpy:
@@ -420,17 +439,18 @@ class TestMultiStageExecutionPlanIntegration:
         assert result.status == RunStatus.COMPLETED
         assert result.current_stage == RunStage.COMPLETED
 
-        # All 5 stages should have been called: design, impl, test, review
+        # All 5 stages should have been called: design, impl, test, review, chronicle
         # (no replanning since review says "no high concerns")
-        assert len(mock_llm.calls) == 4, (
-            f"Expected 4 LLM calls (design, code, test, review), got {len(mock_llm.calls)}"
+        assert len(mock_llm.calls) == 5, (
+            f"Expected 5 LLM calls (design, code, test, review, chronicle), got {len(mock_llm.calls)}"
         )
 
-        # All 3 document artifacts should be written
-        assert len(docs.calls) == 3
+        # All 4 document artifacts should be written
+        assert len(docs.calls) == 4
         assert docs.calls[0]["kind"] == "architecture"
         assert docs.calls[1]["kind"] == "testing"
         assert docs.calls[2]["kind"] == "review"
+        assert docs.calls[3]["kind"] == "lessons"
 
         # Context message should have been appended
         assert len(context.appended) == 1
@@ -491,10 +511,10 @@ class TestMultiStageExecutionPlanIntegration:
         assert result.status == RunStatus.COMPLETED
 
         # 2 iterations: one with HIGH_CONCERNS, one without
-        # Per iteration: design + code + test + review = 4 LLM calls
-        # So 8 calls for 2 iterations
-        assert len(mock_llm.calls) == 8, (
-            f"Expected 8 LLM calls (2 iterations x 4 stages), got {len(mock_llm.calls)}"
+        # Per iteration: design + code + test + review + chronicle = 5 LLM calls
+        # So 10 calls for 2 iterations
+        assert len(mock_llm.calls) == 10, (
+            f"Expected 10 LLM calls (2 iterations x 5 stages), got {len(mock_llm.calls)}"
         )
 
         # Planning service should have been called once for replanning
@@ -505,8 +525,8 @@ class TestMultiStageExecutionPlanIntegration:
         assert len(repo.update_plan_calls) == 1
 
         # 2 iterations of artifacts per stage should be written
-        # (iteration 1: architecture, testing, review; iteration 2: same)
-        assert len(docs.calls) == 6
+        # (iteration 1: architecture, testing, review, lessons; iteration 2: same)
+        assert len(docs.calls) == 8
 
     @pytest.mark.asyncio
     async def test_execute_limited_iterations(self) -> None:
@@ -545,8 +565,8 @@ class TestMultiStageExecutionPlanIntegration:
         assert result is not None
         assert result.status == RunStatus.COMPLETED
 
-        # Only 1 iteration: 4 LLM calls
-        assert len(mock_llm.calls) == 4
+        # Only 1 iteration: 5 LLM calls
+        assert len(mock_llm.calls) == 5
 
         # No replanning occurred
         assert len(planning.calls) == 0

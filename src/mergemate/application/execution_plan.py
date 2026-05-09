@@ -361,12 +361,14 @@ class MultiStageExecutionPlan(BaseExecutionPlan):
         design_doc = artifacts.get("_design_document_path", "")
         test_doc = artifacts.get("_test_document_path", "")
         review_doc = artifacts.get("_review_document_path", "")
+        lesson_doc = artifacts.get("_lesson_document_path", "")
 
         return (
             f"Approved plan:\n{plan_text}\n\n"
             f"Design document:\n{design_doc}\n\n"
             f"Test plan document:\n{test_doc}\n\n"
             f"Review report:\n{review_doc}\n\n"
+            f"Lesson document:\n{lesson_doc}\n\n"
             f"Design:\n{design_text}\n\n"
             f"Implementation:\n{implementation_text}\n\n"
             f"Tests:\n{test_text}\n\n"

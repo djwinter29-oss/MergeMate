@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 import sqlite3
 from uuid import uuid4
+from typing import Any
 
 from mergemate.domain.runs.entities import AgentRun, RunJob
 from mergemate.domain.runs.repository import ApprovalDecision, QueuedRunJobDecision, StatusUpdateDecision
@@ -331,6 +332,7 @@ class SQLiteRunRepository:
         review_text: str | None = None,
         result_text: str | None = None,
         review_iterations: int | None = None,
+        **extra: Any,
     ) -> AgentRun | None:
         existing = self.get(run_id)
         if existing is None:
