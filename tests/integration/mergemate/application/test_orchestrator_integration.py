@@ -362,8 +362,21 @@ class TestOrchestratorFullPipeline:
             SimpleNamespace(generate=HighConcernsLLM().generate),
             SettingsStub(workflow_control=WorkflowControlStub(max_review_iterations=3)),
         )
-        # Also update the deps so ExecutionRuntime.from_deps picks up the change
-        orchestrator._deps.workflow_service = orchestrator._workflow_service
+        # Also update the deps (OrchestratorDependencies is frozen so replace the whole object)
+        from mergemate.application.execution_plan import OrchestratorDependencies
+
+        orchestrator._deps = OrchestratorDependencies(
+            run_repository=orchestrator._deps.run_repository,
+            context_service=orchestrator._deps.context_service,
+            documentation_service=orchestrator._deps.documentation_service,
+            learning_service=orchestrator._deps.learning_service,
+            planning_service=orchestrator._deps.planning_service,
+            prompt_service=orchestrator._deps.prompt_service,
+            tool_service=orchestrator._deps.tool_service,
+            workflow_service=orchestrator._workflow_service,
+            llm_gateway=orchestrator._deps.llm_gateway,
+            settings=orchestrator._deps.settings,
+        )
 
         result = await orchestrator.process_run("orch-run-1")
 
@@ -460,7 +473,7 @@ class TestOrchestratorFullPipeline:
         assert len(learning.saved) == 1
 
         # Context appended
-        messages = sqlite_orchestrator["context_service"].list_messages(2001)
+        messages = sqlite_orchestrator["context_service"].load_recent_messages(2001)
         assert len(messages) >= 1
         assert messages[-1]["role"] == "assistant"
 
