@@ -68,3 +68,39 @@ def test_health_server_returns_not_found_for_other_paths() -> None:
         assert status == 404
     finally:
         server.stop()
+
+
+def test_health_head_returns_service_unavailable_when_not_ready() -> None:
+    state = WebhookReadinessState()
+    server = WebhookHealthServer(
+        listen_host="127.0.0.1",
+        listen_port=0,
+        path="/healthz",
+        state=state,
+    )
+    server.start()
+
+    try:
+        url = f"http://127.0.0.1:{server.listen_port}/healthz"
+        status, body = _request("HEAD", url)
+        assert status == 503
+        assert body == b""
+    finally:
+        server.stop()
+
+
+def test_health_head_returns_not_found_for_other_paths() -> None:
+    state = WebhookReadinessState()
+    server = WebhookHealthServer(
+        listen_host="127.0.0.1",
+        listen_port=0,
+        path="/healthz",
+        state=state,
+    )
+    server.start()
+
+    try:
+        status, _ = _request("HEAD", f"http://127.0.0.1:{server.listen_port}/wrong")
+        assert status == 404
+    finally:
+        server.stop()
