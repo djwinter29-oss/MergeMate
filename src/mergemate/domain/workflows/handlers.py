@@ -72,7 +72,7 @@ async def _handle_design(
         artifacts["plan_text"],
         artifacts["context_text"],
     )
-    _save_document(runtime, artifacts, "architecture", design_text=design_text)
+    _save_document(runtime, artifacts, "architecture", design_text=design_text, agent_name=agent_name)
     _persist_artifacts(
         runtime, artifacts,
         current_stage="design",
@@ -120,7 +120,7 @@ async def _handle_testing(
         artifacts.get("design_text", ""),
         artifacts.get("implementation_text", ""),
     )
-    _save_document(runtime, artifacts, "testing", test_text=test_text)
+    _save_document(runtime, artifacts, "testing", test_text=test_text, agent_name=agent_name)
     _persist_artifacts(
         runtime, artifacts,
         current_stage="testing",
@@ -145,7 +145,7 @@ async def _handle_review(
         artifacts.get("implementation_text", ""),
         artifacts.get("test_text", ""),
     )
-    _save_document(runtime, artifacts, "review", review_text=review_text)
+    _save_document(runtime, artifacts, "review", review_text=review_text, agent_name=agent_name)
     _persist_artifacts(
         runtime, artifacts,
         current_stage="review",
@@ -195,7 +195,7 @@ async def _handle_chronicle(
         result_text=artifacts.get("result_text", ""),
         agent_name=agent_name,
     )
-    _save_document(runtime, artifacts, "lessons", lesson_text=lesson_text)
+    _save_document(runtime, artifacts, "lessons", lesson_text=lesson_text, agent_name=agent_name)
     _persist_artifacts(
         runtime, artifacts,
         current_stage="chronicle",
@@ -248,6 +248,7 @@ def _save_document(
     runtime: ExecutionRuntime,
     artifacts: dict[str, Any],
     kind: str,
+    agent_name: str | None = None,
     **extra: Any,
 ) -> None:
     """Write a documentation artifact and store its path in ``artifacts``."""
@@ -263,6 +264,7 @@ def _save_document(
                 iteration=iteration,
                 plan_text=plan_text,
                 design_text=extra.get("design_text", ""),
+                role_name=agent_name,
             )
         )
         artifacts["_design_document_path"] = path
@@ -274,6 +276,7 @@ def _save_document(
                 plan_text=plan_text,
                 design_text=extra.get("design_text", ""),
                 test_text=extra.get("test_text", ""),
+                role_name=agent_name,
             )
         )
         artifacts["_test_document_path"] = path
@@ -287,6 +290,7 @@ def _save_document(
                 implementation_text=extra.get("implementation_text", ""),
                 test_text=extra.get("test_text", ""),
                 review_text=extra.get("review_text", ""),
+                role_name=agent_name,
             )
         )
         artifacts["_review_document_path"] = path
@@ -297,6 +301,7 @@ def _save_document(
                 iteration=iteration,
                 plan_text=plan_text,
                 lesson_text=extra.get("lesson_text", ""),
+                role_name=agent_name,
             )
         )
         artifacts["_lesson_document_path"] = path

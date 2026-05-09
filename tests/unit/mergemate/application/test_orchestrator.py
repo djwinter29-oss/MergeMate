@@ -196,7 +196,7 @@ class DocumentationServiceStub:
     def __init__(self) -> None:
         self.calls = []
 
-    def write_architecture_design(self, *, run_id: str, iteration: int, plan_text: str, design_text: str):
+    def write_architecture_design(self, *, run_id: str, iteration: int, plan_text: str, design_text: str, role_name: str | None = None):
         self.calls.append({
             "kind": "architecture",
             "run_id": run_id,
@@ -206,7 +206,7 @@ class DocumentationServiceStub:
         })
         return f"docs/architecture/{plan_text.replace(' ', '-').lower()}.md"
 
-    def write_test_plan(self, *, run_id: str, iteration: int, plan_text: str, design_text: str, test_text: str):
+    def write_test_plan(self, *, run_id: str, iteration: int, plan_text: str, design_text: str, test_text: str, role_name: str | None = None):
         self.calls.append({
             "kind": "testing",
             "run_id": run_id,
@@ -227,6 +227,7 @@ class DocumentationServiceStub:
         implementation_text: str,
         test_text: str,
         review_text: str,
+        role_name: str | None = None,
     ):
         self.calls.append({
             "kind": "review",
@@ -247,6 +248,7 @@ class DocumentationServiceStub:
         iteration: int,
         plan_text: str,
         lesson_text: str,
+        role_name: str | None = None,
     ) -> str:
         self.calls.append({
             "kind": "lessons",

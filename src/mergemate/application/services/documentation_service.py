@@ -4,6 +4,8 @@ import re
 import unicodedata
 from pathlib import Path
 
+from mergemate.domain.agents import get_soul
+
 
 class DocumentationService:
     """Persist workflow documents under the docs folder.
@@ -43,6 +45,20 @@ class DocumentationService:
         for name in self._SECTION_NAMES:
             (self._docs_root / name).mkdir(parents=True, exist_ok=True)
 
+    def _check_write_permission(self, section: str, role_name: str | None) -> None:
+        """Raise PermissionError if *role_name*'s Soul lacks write access to *section*."""
+        if role_name is None:
+            return  # no role → enforcement disabled
+        soul = get_soul(role_name)
+        if soul is None:
+            return  # unknown role → allow (backward compat)
+        if section not in soul.doc_permissions.write:
+            allowed = ", ".join(sorted(soul.doc_permissions.write)) if soul.doc_permissions.write else "(none)"
+            raise PermissionError(
+                f"Soul {soul.name!r} does not have write permission for docs/{section}/. "
+                f"Allowed write sections: {allowed}"
+            )
+
     def write_architecture_design(
         self,
         *,
@@ -50,7 +66,9 @@ class DocumentationService:
         iteration: int,
         plan_text: str,
         design_text: str,
+        role_name: str | None = None,
     ) -> Path:
+        self._check_write_permission("architecture", role_name)
         return self._write_document(
             run_id=run_id,
             iteration=iteration,
@@ -72,7 +90,9 @@ class DocumentationService:
         plan_text: str,
         design_text: str,
         test_text: str,
+        role_name: str | None = None,
     ) -> Path:
+        self._check_write_permission("testing", role_name)
         return self._write_document(
             run_id=run_id,
             iteration=iteration,
@@ -97,7 +117,9 @@ class DocumentationService:
         implementation_text: str,
         test_text: str,
         review_text: str,
+        role_name: str | None = None,
     ) -> Path:
+        self._check_write_permission("review", role_name)
         return self._write_document(
             run_id=run_id,
             iteration=iteration,
@@ -121,8 +143,10 @@ class DocumentationService:
         iteration: int,
         plan_text: str,
         lesson_text: str,
+        role_name: str | None = None,
     ) -> Path:
         """Write a lessons-learned document under docs/lessons/."""
+        self._check_write_permission("lessons", role_name)
         return self._write_document(
             run_id=run_id,
             iteration=iteration,
@@ -143,8 +167,10 @@ class DocumentationService:
         iteration: int,
         plan_text: str,
         requirement_text: str,
+        role_name: str | None = None,
     ) -> Path:
         """Write a requirement document under docs/requirements/."""
+        self._check_write_permission("requirements", role_name)
         return self._write_document(
             run_id=run_id,
             iteration=iteration,

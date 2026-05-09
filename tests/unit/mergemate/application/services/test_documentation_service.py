@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from mergemate.application.services.documentation_service import DocumentationService
 
 
@@ -111,3 +113,107 @@ def test_write_document_skips_blank_lines_when_extracting_summary(tmp_path: Path
     )
 
     assert result.name == "build-dashboard.md"
+
+
+def test_write_architecture_permission_allowed_for_architect(tmp_path: Path) -> None:
+    """Architect has write permission for architecture/ -- should succeed."""
+    service = DocumentationService(tmp_path / "docs")
+    result = service.write_architecture_design(
+        run_id="run-1",
+        iteration=1,
+        plan_text="# Approved Plan\n1. Build login flow",
+        design_text="design content",
+        role_name="architect",
+    )
+    assert result.exists()
+
+
+def test_write_architecture_permission_denied_for_coder(tmp_path: Path) -> None:
+    """Coder has NO write permission for architecture/ -- should raise."""
+    service = DocumentationService(tmp_path / "docs")
+    with pytest.raises(PermissionError, match="does not have write permission"):
+        service.write_architecture_design(
+            run_id="run-1",
+            iteration=1,
+            plan_text="# Approved Plan\n1. Build login flow",
+            design_text="design content",
+            role_name="coder",
+        )
+
+
+def test_write_test_plan_permission_allowed_for_tester(tmp_path: Path) -> None:
+    """Tester has write permission for testing/ -- should succeed."""
+    service = DocumentationService(tmp_path / "docs")
+    result = service.write_test_plan(
+        run_id="run-1",
+        iteration=1,
+        plan_text="# Approved Plan\n1. Build login flow",
+        design_text="design",
+        test_text="tests",
+        role_name="tester",
+    )
+    assert result.exists()
+
+
+def test_write_lesson_permission_allowed_for_chronicler(tmp_path: Path) -> None:
+    """Chronicler has write permission for lessons/ -- should succeed."""
+    service = DocumentationService(tmp_path / "docs")
+    result = service.write_lesson(
+        run_id="run-1",
+        iteration=1,
+        plan_text="# Approved Plan\n1. Build login flow",
+        lesson_text="lessons learned",
+        role_name="chronicler",
+    )
+    assert result.exists()
+
+
+def test_write_lesson_permission_denied_for_planner(tmp_path: Path) -> None:
+    """Planner has NO write permission for lessons/ -- should raise."""
+    service = DocumentationService(tmp_path / "docs")
+    with pytest.raises(PermissionError, match="does not have write permission"):
+        service.write_lesson(
+            run_id="run-1",
+            iteration=1,
+            plan_text="# Approved Plan\n1. Build login flow",
+            lesson_text="lessons learned",
+            role_name="planner",
+        )
+
+
+def test_write_requirement_permission_allowed_for_planner(tmp_path: Path) -> None:
+    """Planner has write permission for requirements/ -- should succeed."""
+    service = DocumentationService(tmp_path / "docs")
+    result = service.write_requirement(
+        run_id="run-1",
+        iteration=1,
+        plan_text="# Approved Plan\n1. Add auth",
+        requirement_text="auth requirement",
+        role_name="planner",
+    )
+    assert result.exists()
+
+
+def test_write_document_without_role_name_backward_compat(tmp_path: Path) -> None:
+    """Omitting role_name should work (backward compat)."""
+    service = DocumentationService(tmp_path / "docs")
+    result = service.write_architecture_design(
+        run_id="run-1",
+        iteration=1,
+        plan_text="# Approved Plan\n1. Do something",
+        design_text="design",
+    )
+    assert result.exists()
+
+
+def test_write_document_with_unknown_role_backward_compat(tmp_path: Path) -> None:
+    """An unknown role name should be allowed (backward compat)."""
+    service = DocumentationService(tmp_path / "docs")
+    result = service.write_architecture_design(
+        run_id="run-1",
+        iteration=1,
+        plan_text="# Approved Plan\n1. Do something",
+        design_text="design",
+        role_name="unknown-role",
+    )
+    assert result.exists()

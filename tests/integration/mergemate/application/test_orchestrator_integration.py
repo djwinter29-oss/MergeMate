@@ -67,7 +67,7 @@ class DocumentationServiceStub:
         self.calls: list[dict[str, Any]] = []
 
     def write_architecture_design(
-        self, *, run_id: str, iteration: int, plan_text: str, design_text: str
+        self, *, run_id: str, iteration: int, plan_text: str, design_text: str, role_name: str | None = None
     ) -> str:
         self.calls.append({
             "kind": "architecture",
@@ -79,7 +79,7 @@ class DocumentationServiceStub:
         return f"docs/architecture/{plan_text[:10].replace(' ', '-')}.md"
 
     def write_test_plan(
-        self, *, run_id: str, iteration: int, plan_text: str, design_text: str, test_text: str
+        self, *, run_id: str, iteration: int, plan_text: str, design_text: str, test_text: str, role_name: str | None = None
     ) -> str:
         self.calls.append({
             "kind": "testing",
@@ -101,6 +101,7 @@ class DocumentationServiceStub:
         implementation_text: str,
         test_text: str,
         review_text: str,
+        role_name: str | None = None,
     ) -> str:
         self.calls.append({
             "kind": "review",
@@ -115,7 +116,7 @@ class DocumentationServiceStub:
         return f"docs/reviews/{plan_text[:10].replace(' ', '-')}-review-report.md"
 
     def write_lesson(
-        self, *, run_id: str, iteration: int, plan_text: str, lesson_text: str
+        self, *, run_id: str, iteration: int, plan_text: str, lesson_text: str, role_name: str | None = None
     ) -> str:
         self.calls.append({
             "kind": "lessons",

@@ -191,6 +191,7 @@ class DocumentationServiceSpy:
         iteration: int,
         plan_text: str,
         design_text: str,
+        role_name: str | None = None,
     ) -> Path:
         self.calls.append({
             "kind": "architecture",
@@ -209,6 +210,7 @@ class DocumentationServiceSpy:
         plan_text: str,
         design_text: str,
         test_text: str,
+        role_name: str | None = None,
     ) -> Path:
         self.calls.append({
             "kind": "testing",
@@ -230,6 +232,7 @@ class DocumentationServiceSpy:
         implementation_text: str,
         test_text: str,
         review_text: str,
+        role_name: str | None = None,
     ) -> Path:
         self.calls.append({
             "kind": "review",
@@ -250,6 +253,7 @@ class DocumentationServiceSpy:
         iteration: int,
         plan_text: str,
         lesson_text: str,
+        role_name: str | None = None,
     ) -> Path:
         self.calls.append({
             "kind": "lessons",
