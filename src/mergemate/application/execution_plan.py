@@ -363,7 +363,7 @@ class MultiStageExecutionPlan(BaseExecutionPlan):
         review_doc = artifacts.get("_review_document_path", "")
         lesson_doc = artifacts.get("_lesson_document_path", "")
 
-        return (
+        base = (
             f"Approved plan:\n{plan_text}\n\n"
             f"Design document:\n{design_doc}\n\n"
             f"Test plan document:\n{test_doc}\n\n"
@@ -374,3 +374,24 @@ class MultiStageExecutionPlan(BaseExecutionPlan):
             f"Tests:\n{test_text}\n\n"
             f"Review:\n{review_text}"
         ).strip()
+
+        # ── Progress summary from task breakdown ──────────────────────
+        from mergemate.application.services.planning_service import PlanningService
+
+        tasks = PlanningService.extract_tasks(plan_text)
+        if tasks:
+            completed_roles: list[str] = []
+            if artifacts.get("design_text"):
+                completed_roles.append("architect")
+            if artifacts.get("implementation_text"):
+                completed_roles.append("coder")
+            if artifacts.get("test_text"):
+                completed_roles.append("tester")
+            if artifacts.get("review_text"):
+                completed_roles.append("reviewer")
+            if artifacts.get("lesson_text"):
+                completed_roles.append("chronicler")
+            progress = PlanningService.build_progress_summary(tasks, completed_roles)
+            return base + "\n\n" + progress
+
+        return base
