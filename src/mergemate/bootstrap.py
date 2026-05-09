@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from mergemate.application.execution_plan import OrchestratorDependencies
 from mergemate.application.jobs.dispatcher import RunDispatcher
 from mergemate.application.jobs.worker import BackgroundRunWorker
 from mergemate.application.orchestrator import AgentOrchestrator
@@ -174,16 +175,18 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
     )
 
     orchestrator = AgentOrchestrator(
-        run_repository=run_repository,
-        context_service=context_service,
-        documentation_service=documentation_service,
-        learning_service=learning_service,
-        planning_service=planning_service,
-        prompt_service=prompt_service,
-        tool_service=tool_service,
-        workflow_service=workflow_service,
-        llm_gateway=llm_gateway,
-        settings=settings,
+        deps=OrchestratorDependencies(
+            run_repository=run_repository,
+            context_service=context_service,
+            documentation_service=documentation_service,
+            learning_service=learning_service,
+            planning_service=planning_service,
+            prompt_service=prompt_service,
+            tool_service=tool_service,
+            workflow_service=workflow_service,
+            llm_gateway=llm_gateway,
+            settings=settings,
+        ),
     )
     worker = BackgroundRunWorker(
         orchestrator=orchestrator,
