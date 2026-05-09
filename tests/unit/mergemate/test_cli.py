@@ -46,7 +46,8 @@ def test_run_bot_prints_config_and_runs(monkeypatch: pytest.MonkeyPatch) -> None
         def run(self) -> None:
             observed["ran"] = True
 
-    monkeypatch.setattr(_bootstrap_module, "bootstrap", lambda _config: _runtime())
+    # Patch cli.bootstrap directly since cli.py does `from ... import bootstrap`
+    monkeypatch.setattr(cli, "bootstrap", lambda _config: _runtime())
     monkeypatch.setattr(cli, "TelegramBotRuntime", BotRuntimeStub)
 
     result = runner.invoke(cli.app, ["run-bot"])
@@ -421,7 +422,7 @@ def test_probe_readiness_wait_retries_connection_failures(monkeypatch: pytest.Mo
 
 def test_install_package_exits_nonzero_for_error(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        _bootstrap_module,
+        cli,
         "bootstrap",
         lambda _config: _runtime(ToolServiceStub(install_result={"status": "error", "detail": "failed"})),
     )
@@ -434,7 +435,7 @@ def test_install_package_exits_nonzero_for_error(monkeypatch: pytest.MonkeyPatch
 
 def test_install_package_allows_blocked_result(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        _bootstrap_module,
+        cli,
         "bootstrap",
         lambda _config: _runtime(ToolServiceStub(install_result={"status": "blocked", "detail": "blocked"})),
     )
@@ -447,7 +448,7 @@ def test_install_package_allows_blocked_result(monkeypatch: pytest.MonkeyPatch) 
 
 def test_repo_context_prints_each_tool_result(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        _bootstrap_module,
+        cli,
         "bootstrap",
         lambda _config: _runtime(
             ToolServiceStub(context_result={"git": {"status": "ok", "detail": "git detail"}, "github": {"status": "error", "detail": "gh detail"}})
@@ -465,7 +466,7 @@ def test_repo_context_prints_each_tool_result(monkeypatch: pytest.MonkeyPatch) -
 
 def test_platform_auth_exits_nonzero_for_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        _bootstrap_module,
+        cli,
         "bootstrap",
         lambda _config: _runtime(ToolServiceStub(auth_result={"status": "error", "detail": "no auth"})),
     )
@@ -477,7 +478,7 @@ def test_platform_auth_exits_nonzero_for_failure(monkeypatch: pytest.MonkeyPatch
 
 
 def test_platform_auth_prints_success(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(_bootstrap_module, "bootstrap", lambda _config: _runtime())
+    monkeypatch.setattr(cli, "bootstrap", lambda _config: _runtime())
 
     result = runner.invoke(cli.app, ["platform-auth", "github"])
 

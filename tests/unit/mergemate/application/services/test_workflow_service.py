@@ -141,8 +141,20 @@ def test_build_execution_plan_accepts_workflow_enum() -> None:
 
 
 def test_execution_plans_report_tool_context_requirement_from_shared_base() -> None:
+    from mergemate.domain.workflows.stage import WorkflowStage, WorkflowDefinition
+
     direct_plan = DirectExecutionPlan(agent_name="debugger")
-    multi_stage_plan = MultiStageExecutionPlan(agent_name="coder", max_iterations=2)
+    # Multi-stage plan needs a workflow definition with stages that use tool context
+    multi_stage_plan = MultiStageExecutionPlan(
+        agent_name="coder",
+        max_iterations=2,
+        workflow_definition=WorkflowDefinition(
+            name="generate_code",
+            stages=(
+                WorkflowStage(name="design", current_stage="design", uses_tool_context=True),
+            ),
+        ),
+    )
 
     assert direct_plan.requires_tool_context is True
     assert multi_stage_plan.requires_tool_context is True
