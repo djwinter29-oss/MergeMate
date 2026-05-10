@@ -35,6 +35,9 @@ class WorkflowStage:
         prompt_template: Optional path or identifier for the stage-level
             system prompt template.  When empty the parent workflow's
             prompt is used.
+        validation_hook_key: Optional key used to look up post-stage
+            validation hooks from the validation hook registry. When
+            empty, no validation hooks are run for this stage.
         uses_tool_context: If ``True``, runtime tool context is gathered
             and injected into the prompt before this stage runs.
         checks_cancellation_before: If ``True``, the run is checked for
@@ -53,6 +56,7 @@ class WorkflowStage:
     current_stage: str
     handler: str = ""
     prompt_template: str = ""
+    validation_hook_key: str = ""
     uses_tool_context: bool = False
     checks_cancellation_before: bool = False
     checks_cancellation_after: bool = False
@@ -162,10 +166,26 @@ def _register_builtin_workflows() -> None:
         register_workflow(_wf_name.value, _wf_def)
 
 
-def get_workflow_definitions() -> dict[WorkflowName, WorkflowDefinition]:
-    """Return the map of known workflow definitions.
+def _register_builtin_workflows() -> None:
+    """Register built-in workflow definitions with the string-keyed registry.
 
-    Currently contains the built-in ``generate_code`` multi-stage workflow.
-    Additional definitions can be registered at startup or loaded from config.
+    Called from ``mergemate.domain.workflows.__init__`` after all
+    submodules have been initialised, avoiding the circular dependency
+    between this module and ``registry.py``.
     """
-    return dict(_BUILTIN_WORKFLOWS)
+    from mergemate.domain.workflows.registry import register_workflow
+
+    for _wf_name, _wf_def in _BUILTIN_WORKFLOWS.items():
+        register_workflow(_wf_name.value, _wf_def)
+
+
+def get_workflow_definitions() -> dict[WorkflowName, WorkflowDefinition]:
+    """Return the map of known workflow definitions keyed by ``WorkflowName``.
+
+    Delegates to the ``WorkflowRegistry`` module which aggregates
+    built-in definitions and any third-party plugin registrations.
+    """
+    from mergemate.domain.workflows.registry import get_all_workflows
+
+    raw: dict[str, WorkflowDefinition] = get_all_workflows()
+    return {WorkflowName(k): v for k, v in raw.items() if k in WorkflowName._value2member_map_}
