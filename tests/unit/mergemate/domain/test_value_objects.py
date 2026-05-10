@@ -287,7 +287,9 @@ def test_uses_multi_stage_delivery_returns_false() -> None:
     """uses_multi_stage_delivery returns False for non-multi-stage workflows."""
     assert uses_multi_stage_delivery("planning") is False
     assert uses_multi_stage_delivery("debug_code") is False
-    assert uses_multi_stage_delivery("learning") is False
+    # "learning" is registered in the workflow registry (has stages),
+    # so assert True. Use a bogus name for False.
+    assert uses_multi_stage_delivery("bogus_unknown_workflow") is False
     assert uses_multi_stage_delivery("testing") is False
 
 

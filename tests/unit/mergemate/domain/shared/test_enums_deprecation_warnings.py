@@ -27,12 +27,11 @@ def _patch_metadata():
 def import_fresh() -> object:
     """Import the enums module afresh so import-time warnings re-fire.
 
-    Pops all ``mergemate``-related modules from ``sys.modules`` first
-    to guarantee a clean import.
+    Only pops ``mergemate.domain.shared.enums`` from ``sys.modules`` to
+    avoid invalidating other cached modules (e.g. soul, workflows).
     """
-    for name in list(sys.modules):
-        if name == MODULE_NAME or name.startswith("mergemate.") or name == "mergemate":
-            sys.modules.pop(name, None)
+    sys.modules.pop(MODULE_NAME, None)
+    sys.modules.pop("mergemate.domain.shared", None)
     with patch("importlib.metadata.version", return_value="0.1.0"):
         return importlib.import_module(MODULE_NAME)
 

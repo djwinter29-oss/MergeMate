@@ -45,13 +45,12 @@ from .value_objects import (
 # mergemate.domain.policies.  The imports below provide a grace period for
 # any code that hasn't been updated yet.  New code should import directly
 # from mergemate.domain.policies.
+#
+# Use lazy imports to avoid circular imports (policies → shared.enums → shared).
 
-from mergemate.domain.policies import (
-    is_user_facing_workflow as _is_user_facing_workflow,
-    resolve_workflow_name as _resolve_workflow_name,
-    uses_multi_stage_delivery as _uses_multi_stage_delivery,
-    workflow_prompt_file as _workflow_prompt_file,
-)
+def _get_policies() -> object:
+    import importlib
+    return importlib.import_module("mergemate.domain.policies")
 
 
 def is_user_facing_workflow(*args: object, **kwargs: object) -> bool:
@@ -61,7 +60,7 @@ def is_user_facing_workflow(*args: object, **kwargs: object) -> bool:
         DeprecationWarning,
         stacklevel=2,
     )
-    return _is_user_facing_workflow(*args, **kwargs)  # type: ignore[arg-type]
+    return _get_policies().is_user_facing_workflow(*args, **kwargs)  # type: ignore[arg-type]
 
 
 def resolve_workflow_name(*args: object, **kwargs: object) -> object:
@@ -71,7 +70,7 @@ def resolve_workflow_name(*args: object, **kwargs: object) -> object:
         DeprecationWarning,
         stacklevel=2,
     )
-    return _resolve_workflow_name(*args, **kwargs)  # type: ignore[arg-type]
+    return _get_policies().resolve_workflow_name(*args, **kwargs)  # type: ignore[arg-type]
 
 
 def uses_multi_stage_delivery(*args: object, **kwargs: object) -> bool:
@@ -81,7 +80,7 @@ def uses_multi_stage_delivery(*args: object, **kwargs: object) -> bool:
         DeprecationWarning,
         stacklevel=2,
     )
-    return _uses_multi_stage_delivery(*args, **kwargs)  # type: ignore[arg-type]
+    return _get_policies().uses_multi_stage_delivery(*args, **kwargs)  # type: ignore[arg-type]
 
 
 def workflow_prompt_file(*args: object, **kwargs: object) -> str:
@@ -91,7 +90,7 @@ def workflow_prompt_file(*args: object, **kwargs: object) -> str:
         DeprecationWarning,
         stacklevel=2,
     )
-    return _workflow_prompt_file(*args, **kwargs)  # type: ignore[arg-type]
+    return _get_policies().workflow_prompt_file(*args, **kwargs)  # type: ignore[arg-type]
 
 
 __all__ = [
