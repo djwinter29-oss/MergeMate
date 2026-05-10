@@ -8,9 +8,9 @@ generically — no hardcoded stage chains.
 Handler function signature::
 
     async def handler_fn(
-        runtime: ExecutionRuntime,
-        stage: WorkflowStage,
+        runtime: HandlerContext,
         artifacts: dict[str, Any],
+        *,
         agent_name: str,
     ) -> dict[str, Any]:
         ...
@@ -23,16 +23,39 @@ The handler mutates it and returns it.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
-
-if TYPE_CHECKING:
-    from mergemate.application.execution_plan import ExecutionRuntime
+from typing import Any, Protocol, runtime_checkable
 
 
-# ── Type alias ─────────────────────────────────────────────────────────────
+# ── Handler Context Protocol ────────────────────────────────────────────────
 
-StageHandler = Any  # typing: Callable[[ExecutionRuntime, dict[str, Any]], dict[str, Any]]
-"""Signature: ``async def fn(runtime, stage, artifacts, agent_name) -> artifacts``."""
+@runtime_checkable
+class HandlerContext(Protocol):
+    """Minimal protocol satisfied by ``ExecutionRuntime``.
+
+    Domain-layer handlers depend on this protocol rather than on the
+    concrete ``ExecutionRuntime`` type, keeping the ``domain`` package
+    free of ``application`` imports.
+    """
+
+    @property
+    def deps(self) -> Any:
+        """Dependency container (``OrchestratorDependencies``)."""
+        ...
+
+
+# ── Handler Protocol ───────────────────────────────────────────────────────
+
+class StageHandler(Protocol):
+    """Protocol for async stage handler functions."""
+
+    async def __call__(
+        self,
+        runtime: HandlerContext,
+        artifacts: dict[str, Any],
+        *,
+        agent_name: str,
+    ) -> dict[str, Any]:
+        ...
 
 
 # ── Handler registry ───────────────────────────────────────────────────────
@@ -62,7 +85,7 @@ def get_stage_handler(key: str) -> StageHandler | None:
 
 @register_handler("design")
 async def _handle_design(
-    runtime: ExecutionRuntime,
+    runtime: HandlerContext,
     artifacts: dict[str, Any],
     *,
     agent_name: str,
@@ -85,7 +108,7 @@ async def _handle_design(
 
 @register_handler("implementation")
 async def _handle_implementation(
-    runtime: ExecutionRuntime,
+    runtime: HandlerContext,
     artifacts: dict[str, Any],
     *,
     agent_name: str,
@@ -109,7 +132,7 @@ async def _handle_implementation(
 
 @register_handler("testing")
 async def _handle_testing(
-    runtime: ExecutionRuntime,
+    runtime: HandlerContext,
     artifacts: dict[str, Any],
     *,
     agent_name: str,
@@ -133,7 +156,7 @@ async def _handle_testing(
 
 @register_handler("review")
 async def _handle_review(
-    runtime: ExecutionRuntime,
+    runtime: HandlerContext,
     artifacts: dict[str, Any],
     *,
     agent_name: str,
@@ -158,7 +181,7 @@ async def _handle_review(
 
 @register_handler("replanning")
 async def _handle_replanning(
-    runtime: ExecutionRuntime,
+    runtime: HandlerContext,
     artifacts: dict[str, Any],
     *,
     agent_name: str,
@@ -180,7 +203,7 @@ async def _handle_replanning(
 
 @register_handler("chronicle")
 async def _handle_chronicle(
-    runtime: ExecutionRuntime,
+    runtime: HandlerContext,
     artifacts: dict[str, Any],
     *,
     agent_name: str,
@@ -208,7 +231,7 @@ async def _handle_chronicle(
 
 @register_handler("direct")
 async def _handle_direct(
-    runtime: ExecutionRuntime,
+    runtime: HandlerContext,
     artifacts: dict[str, Any],
     *,
     agent_name: str,
@@ -233,7 +256,7 @@ async def _handle_direct(
 
 
 def _persist_artifacts(
-    runtime: ExecutionRuntime,
+    runtime: HandlerContext,
     artifacts: dict[str, Any],
     **kwargs: Any,
 ) -> None:
@@ -245,7 +268,7 @@ def _persist_artifacts(
 
 
 def _save_document(
-    runtime: ExecutionRuntime,
+    runtime: HandlerContext,
     artifacts: dict[str, Any],
     kind: str,
     agent_name: str | None = None,
