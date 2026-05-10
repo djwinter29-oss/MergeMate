@@ -52,3 +52,11 @@ __all__ = [
     "register_handler",
     "get_stage_handler",
 ]
+
+# ── Register built-in workflows ────────────────────────────────────────────
+# Deferred to after all submodules are imported to avoid circular imports
+# between stage.py (defines WorkflowDefinition) and registry.py (imports it).
+
+from mergemate.domain.workflows.stage import _register_builtin_workflows  # type: ignore[attr-defined]  # noqa: E402
+
+_register_builtin_workflows()
