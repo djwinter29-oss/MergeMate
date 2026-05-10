@@ -33,15 +33,7 @@ from mergemate.infrastructure.queue import JobQueueBackend
 from mergemate.infrastructure.queue.local_queue import LocalQueue
 from mergemate.infrastructure.telemetry.logger import configure_logging, log_startup_configuration
 from mergemate.interfaces.telegram.lifecycle_notifier import TelegramRunLifecycleNotifier
-from mergemate.infrastructure.tools.builtin.code_formatter import CodeFormatterTool
-from mergemate.infrastructure.tools.builtin.package_installer import PackageInstallerTool
-from mergemate.infrastructure.tools.builtin.source_control import (
-    GitHubCliTool,
-    GitLabCliTool,
-    GitRepositoryTool,
-)
-from mergemate.infrastructure.tools.builtin.syntax_checker import SyntaxCheckerTool
-from mergemate.infrastructure.tools.registry import ToolRegistry
+from mergemate.infrastructure.tools.registry import ToolRegistryBuilder
 
 # ── Workflow plugin discovery ───────────────────────────────────────────────
 
@@ -112,23 +104,38 @@ def _load_workflow_config_plugins(settings: AppConfig) -> None:
 
 
 @dataclass(slots=True)
-class MergeMateRuntime:
-    settings: AppConfig
-    config_path: Path
+class PersistenceContext:
+    """Persistence-related sub-context for MergeMateRuntime — groups all DB-backed repositories."""
     database: SQLiteDatabase
     run_repository: SQLiteRunRepository
     run_job_repository: SQLiteRunJobRepository
     conversation_repository: SQLiteConversationRepository
     learning_repository: SQLiteLearningRepository
     tool_event_repository: SQLiteToolEventRepository
-    queue_backend: JobQueueBackend
+
+
+@dataclass(slots=True)
+class ServiceContext:
+    """Service-layer sub-context for MergeMateRuntime — groups logical services and use cases."""
     learning_service: LearningService
     tool_service: ToolService
     planning_service: PlanningService
     workflow_service: WorkflowService
+    context_service: ContextService
+    documentation_service: DocumentationService
+    prompt_service: PromptService
     submit_prompt: SubmitPromptUseCase
     get_run_status: GetRunStatusUseCase
     cancel_run: CancelRunUseCase
+
+
+@dataclass
+class MergeMateRuntime:
+    settings: AppConfig
+    config_path: Path
+    persistence: PersistenceContext
+    services: ServiceContext
+    queue_backend: JobQueueBackend
     worker: BackgroundRunWorker
     lifecycle_notifier: TelegramRunLifecycleNotifier
 
@@ -181,51 +188,14 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
         )
     llm_gateway = ParallelLLMGateway(settings, llm_clients)
 
-    tool_registry = ToolRegistry(
-        {
-            "code_formatter": CodeFormatterTool(),
-            "package_installer": PackageInstallerTool(
-                allow_package_install=settings.tools.allow_package_install,
-                allowed_packages=settings.tools.allowed_packages,
-                pip_executable=settings.tools.pip_executable,
-                timeout_seconds=settings.runtime.default_request_timeout_seconds,
-            ),
-            "syntax_checker": SyntaxCheckerTool(),
-            **(
-                {
-                    "git_repository": GitRepositoryTool(
-                        settings.source_control.git_executable,
-                        working_directory,
-                        settings.runtime.default_request_timeout_seconds,
-                    )
-                }
-                if settings.source_control.enable_git
-                else {}
-            ),
-            **(
-                {
-                    "github_cli": GitHubCliTool(
-                        settings.source_control.github_executable,
-                        working_directory,
-                        settings.runtime.default_request_timeout_seconds,
-                    )
-                }
-                if settings.source_control.enable_github
-                else {}
-            ),
-            **(
-                {
-                    "gitlab_cli": GitLabCliTool(
-                        settings.source_control.gitlab_executable,
-                        working_directory,
-                        settings.runtime.default_request_timeout_seconds,
-                    )
-                }
-                if settings.source_control.enable_gitlab
-                else {}
-            ),
-        }
-    )
+    tool_registry_builder = ToolRegistryBuilder(settings, working_directory=working_directory)
+    if settings.source_control.enable_git:
+        tool_registry_builder.with_git()
+    if settings.source_control.enable_github:
+        tool_registry_builder.with_github_cli()
+    if settings.source_control.enable_gitlab:
+        tool_registry_builder.with_gitlab_cli()
+    tool_registry = tool_registry_builder.build()
     tool_service = ToolService(
         tool_registry,
         settings,
@@ -275,20 +245,27 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
     runtime = MergeMateRuntime(
         settings=settings,
         config_path=resolved_config_path,
-        database=database,
-        run_repository=run_repository,
-        run_job_repository=run_job_repository,
-        conversation_repository=conversation_repository,
-        learning_repository=learning_repository,
-        tool_event_repository=tool_event_repository,
+        persistence=PersistenceContext(
+            database=database,
+            run_repository=run_repository,
+            run_job_repository=run_job_repository,
+            conversation_repository=conversation_repository,
+            learning_repository=learning_repository,
+            tool_event_repository=tool_event_repository,
+        ),
+        services=ServiceContext(
+            learning_service=learning_service,
+            tool_service=tool_service,
+            planning_service=planning_service,
+            workflow_service=workflow_service,
+            context_service=context_service,
+            documentation_service=documentation_service,
+            prompt_service=prompt_service,
+            submit_prompt=submit_prompt_use_case,
+            get_run_status=GetRunStatusUseCase(run_repository, tool_event_repository),
+            cancel_run=CancelRunUseCase(run_repository),
+        ),
         queue_backend=queue_backend,
-        learning_service=learning_service,
-        tool_service=tool_service,
-        planning_service=planning_service,
-        workflow_service=workflow_service,
-        submit_prompt=submit_prompt_use_case,
-        get_run_status=GetRunStatusUseCase(run_repository, tool_event_repository),
-        cancel_run=CancelRunUseCase(run_repository),
         worker=worker,
         lifecycle_notifier=lifecycle_notifier,
     )

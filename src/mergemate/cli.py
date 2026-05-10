@@ -146,7 +146,7 @@ def install_package(
 ) -> None:
     """Install an additional Python package when explicitly allowed by config."""
     runtime = bootstrap(config)
-    result = runtime.tool_service.install_package(package_name)
+    result = runtime.services.tool_service.install_package(package_name)
     if result["status"] not in {"installed", "blocked"}:
         typer.echo(result["detail"], err=True)
         raise typer.Exit(code=1)
@@ -160,7 +160,7 @@ def repo_context(
 ) -> None:
     """Print local repository context using git and an authenticated platform CLI."""
     runtime = bootstrap(config)
-    context = runtime.tool_service.get_repository_context(platform)
+    context = runtime.services.tool_service.get_repository_context(platform)
     for name, result in context.items():
         typer.echo(f"[{name}] {result['status']}")
         typer.echo(result["detail"])
@@ -173,7 +173,7 @@ def platform_auth(
 ) -> None:
     """Check whether a logged-in platform CLI is available for GitHub or GitLab."""
     runtime = bootstrap(config)
-    result = runtime.tool_service.get_platform_auth_status(platform)
+    result = runtime.services.tool_service.get_platform_auth_status(platform)
     if result["status"] != "ok":
         typer.echo(result["detail"], err=True)
         raise typer.Exit(code=1)

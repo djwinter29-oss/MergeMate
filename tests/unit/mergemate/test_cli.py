@@ -30,8 +30,12 @@ class ToolServiceStub:
 def _runtime(tool_service=None):
     return SimpleNamespace(
         settings=SimpleNamespace(default_provider="openai", default_agent="coder"),
-        database=SimpleNamespace(path=Path("/tmp/runtime.db")),
-        tool_service=tool_service or ToolServiceStub(),
+        persistence=SimpleNamespace(
+            database=SimpleNamespace(path=Path("/tmp/runtime.db")),
+        ),
+        services=SimpleNamespace(
+            tool_service=tool_service or ToolServiceStub(),
+        ),
     )
 
 

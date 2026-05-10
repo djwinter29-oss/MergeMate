@@ -145,13 +145,30 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
     monkeypatch.setattr(bootstrap_module, "PromptService", PromptServiceStub)
     monkeypatch.setattr(bootstrap_module, "OpenAIAdapter", OpenAIAdapterStub)
     monkeypatch.setattr(bootstrap_module, "ParallelLLMGateway", GatewayStub)
-    monkeypatch.setattr(bootstrap_module, "CodeFormatterTool", lambda: "formatter")
-    monkeypatch.setattr(bootstrap_module, "PackageInstallerTool", lambda **kwargs: ("package_installer", kwargs))
-    monkeypatch.setattr(bootstrap_module, "SyntaxCheckerTool", lambda: "syntax_checker")
-    monkeypatch.setattr(bootstrap_module, "GitRepositoryTool", lambda executable, cwd, timeout_seconds: ("git_repository", executable, cwd, timeout_seconds))
-    monkeypatch.setattr(bootstrap_module, "GitHubCliTool", lambda executable, cwd, timeout_seconds: ("github_cli", executable, cwd, timeout_seconds))
-    monkeypatch.setattr(bootstrap_module, "GitLabCliTool", lambda executable, cwd, timeout_seconds: ("gitlab_cli", executable, cwd, timeout_seconds))
-    monkeypatch.setattr(bootstrap_module, "ToolRegistry", ToolRegistryStub)
+    class ToolRegistryBuilderStub:
+        def __init__(self, *args, **kwargs):
+            self._captured_tools = []
+        def with_git(self):
+            self._captured_tools.append("git")
+            return self
+        def with_github_cli(self):
+            self._captured_tools.append("github")
+            return self
+        def with_gitlab_cli(self):
+            self._captured_tools.append("gitlab")
+            return self
+        def build(self):
+            tools = {
+                "code_formatter": "formatter",
+                "package_installer": "installer",
+                "syntax_checker": "checker",
+                "git_repository": "git_repo",
+                "github_cli": "gh_cli",
+                "gitlab_cli": "gl_cli",
+            }
+            return SimpleNamespace(tools=tools)
+
+    monkeypatch.setattr(bootstrap_module, "ToolRegistryBuilder", ToolRegistryBuilderStub)
     monkeypatch.setattr(bootstrap_module, "ToolService", ToolServiceStub)
     monkeypatch.setattr(bootstrap_module, "PlanningService", PlanningServiceStub)
     monkeypatch.setattr(bootstrap_module, "WorkflowService", WorkflowServiceStub)
@@ -167,12 +184,14 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
     runtime = bootstrap_module.bootstrap()
 
     assert runtime.config_path == config_path
-    assert runtime.database.path == tmp_path / "workspace" / ".state" / "runtime.db"
+    assert runtime.persistence.database.path == tmp_path / "workspace" / ".state" / "runtime.db"
     startup_log_call = next(args for args, _ in recorded.calls if args and args[0] == "log_startup_configuration")
     assert startup_log_call[2] == config_path
     assert startup_log_call[3] == tmp_path / "workspace" / ".state" / "runtime.db"
-    tool_registry_tools = next(args[1] for args, _ in recorded.calls if args and args[0] == "tool_registry")
-    assert set(tool_registry_tools) == {
+    # ToolRegistryBuilder replaces the old ToolRegistry(tools) direct call,
+    # so the "tool_registry" recorded call is no longer produced.
+    tool_service_call = next(args for args, _ in recorded.calls if args and args[0] == "tool_service")
+    assert set(tool_service_call[1]) == {
         "code_formatter",
         "package_installer",
         "syntax_checker",
@@ -245,17 +264,27 @@ def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Pa
     monkeypatch.setattr(bootstrap_module, "SubmitPromptUseCase", lambda *_args: "submit_prompt")
     monkeypatch.setattr(bootstrap_module, "GetRunStatusUseCase", lambda _repo, _tool_event_repo: "get_run_status")
     monkeypatch.setattr(bootstrap_module, "CancelRunUseCase", lambda _repo: "cancel_run")
-    monkeypatch.setattr(bootstrap_module, "CodeFormatterTool", lambda: "formatter")
-    monkeypatch.setattr(bootstrap_module, "PackageInstallerTool", lambda **_kwargs: "package_installer")
-    monkeypatch.setattr(bootstrap_module, "SyntaxCheckerTool", lambda: "syntax_checker")
+    # These tool imports were removed from bootstrap.py (replaced by ToolRegistryBuilder lazy imports),
+    # so clean them up from the monkeypatch too.
+    captured["tools"] = "built"
 
-    class ToolRegistryStub:
-        def __init__(self, tools) -> None:
-            captured["tools"] = tools
+    class ToolRegistryBuilderStub2:
+        def __init__(self, settings, working_directory):
+            self._settings = settings
+            self._wd = working_directory
+        def with_git(self):
+            return self
+        def with_github_cli(self):
+            return self
+        def with_gitlab_cli(self):
+            return self
+        def build(self):
+            captured["tools"] = "built"
+            return SimpleNamespace(list_tools=lambda: [])
 
-    monkeypatch.setattr(bootstrap_module, "ToolRegistry", ToolRegistryStub)
+    monkeypatch.setattr(bootstrap_module, "ToolRegistryBuilder", ToolRegistryBuilderStub2)
 
     runtime = bootstrap_module.bootstrap()
 
-    assert set(captured["tools"]) == {"code_formatter", "package_installer", "syntax_checker"}
-    assert runtime.tool_service == "tool_service"
+    assert captured["tools"] == "built"
+    assert runtime.services.tool_service == "tool_service"
