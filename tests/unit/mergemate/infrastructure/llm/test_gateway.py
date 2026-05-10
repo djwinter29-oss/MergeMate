@@ -4,7 +4,11 @@ import asyncio
 import pytest
 
 from mergemate.infrastructure.llm.gateway import ParallelLLMGateway
-from mergemate.domain.shared.exceptions import AllProvidersFailedError
+from mergemate.domain.shared.exceptions import AllProvidersFailedError, ProviderResponseError
+from unittest.mock import MagicMock
+
+
+import httpx
 
 
 class ClientStub:
@@ -54,6 +58,7 @@ class AgentStub:
 class SettingsStub:
     provider_names: list[str]
     agents: dict[str, AgentStub] = field(default_factory=dict)
+    runtime: object = None
 
     def resolve_agent_provider_names(self, agent_name: str) -> list[str]:
         return self.provider_names
@@ -63,7 +68,7 @@ class SettingsStub:
 async def test_generate_raises_when_no_providers_available() -> None:
     gateway = ParallelLLMGateway(SettingsStub(provider_names=["missing"]), {})
 
-    with pytest.raises(ValueError, match="No configured providers"):
+    with pytest.raises(AllProvidersFailedError, match="No configured providers"):
         await gateway.generate("coder", "system", "user")
 
 
@@ -216,3 +221,420 @@ async def test_generate_from_provider_raises_on_non_str_result() -> None:
     # first_success strategy: "bad" returns int (non-str), should be treated as failure
     # "good" should succeed and be returned
     assert result == "ok"
+
+
+# ── Retry / backoff tests ─────────────────────────────────────────────
+
+import time as time_module
+
+from mergemate.config.models import RetryConfig
+from mergemate.infrastructure.llm.gateway import (
+    _is_retryable,
+    _full_jitter_delay,
+    _RetryBudget,
+    with_retry,
+)
+
+
+class TestRetryableClassification:
+    """_is_retryable -- edge cases and contract."""
+
+    def test_cancelled_error_not_retryable(self) -> None:
+        assert _is_retryable(asyncio.CancelledError()) is False
+
+    def test_provider_response_error_not_retryable(self) -> None:
+        assert _is_retryable(ProviderResponseError("bad schema")) is False
+
+    def test_all_providers_failed_not_retryable(self) -> None:
+        assert _is_retryable(AllProvidersFailedError("all dead")) is False
+
+    def test_httpx_429_is_retryable(self) -> None:
+        response = MagicMock(spec=httpx.Response)
+        response.status_code = 429
+        exc = httpx.HTTPStatusError("rate limit", request=MagicMock(), response=response)
+        assert _is_retryable(exc) is True
+
+    def test_httpx_500_is_retryable(self) -> None:
+        response = MagicMock(spec=httpx.Response)
+        response.status_code = 500
+        exc = httpx.HTTPStatusError("internal", request=MagicMock(), response=response)
+        assert _is_retryable(exc) is True
+
+    def test_httpx_502_is_retryable(self) -> None:
+        response = MagicMock(spec=httpx.Response)
+        response.status_code = 502
+        exc = httpx.HTTPStatusError("bad gateway", request=MagicMock(), response=response)
+        assert _is_retryable(exc) is True
+
+    def test_httpx_503_is_retryable(self) -> None:
+        response = MagicMock(spec=httpx.Response)
+        response.status_code = 503
+        exc = httpx.HTTPStatusError("unavailable", request=MagicMock(), response=response)
+        assert _is_retryable(exc) is True
+
+    def test_httpx_400_not_retryable(self) -> None:
+        response = MagicMock(spec=httpx.Response)
+        response.status_code = 400
+        exc = httpx.HTTPStatusError("bad request", request=MagicMock(), response=response)
+        assert _is_retryable(exc) is False
+
+    def test_httpx_401_not_retryable(self) -> None:
+        response = MagicMock(spec=httpx.Response)
+        response.status_code = 401
+        exc = httpx.HTTPStatusError("unauthorized", request=MagicMock(), response=response)
+        assert _is_retryable(exc) is False
+
+    def test_connect_error_is_retryable(self) -> None:
+        exc = httpx.ConnectError("DNS failed")
+        assert _is_retryable(exc) is True
+
+    def test_timeout_is_retryable(self) -> None:
+        exc = httpx.TimeoutException("timed out")
+        assert _is_retryable(exc) is True
+
+    def test_ioerror_is_retryable(self) -> None:
+        assert _is_retryable(IOError("disk full")) is True
+
+    def test_runtime_error_not_retryable(self) -> None:
+        # Bare RuntimeError is not a recognized transient error
+        assert _is_retryable(RuntimeError("unexpected")) is False
+
+
+class TestFullJitterDelay:
+    """_full_jitter_delay -- distribution and bounds."""
+
+    def test_zero_delay_for_first_attempt(self) -> None:
+        delay = _full_jitter_delay(0, base_delay_seconds=2.0, max_delay_seconds=60.0)
+        assert 0 <= delay <= min(60.0, 2.0 * 1)  # base * 2^0 = 2.0
+
+    def test_delay_increases_exponentially_no_cap(self) -> None:
+        """Attempt 5 with base=1 and max=1000: cap = min(1000, 32) = 32."""
+        delays = [_full_jitter_delay(5, base_delay_seconds=1.0, max_delay_seconds=1000) for _ in range(100)]
+        for d in delays:
+            assert 0 <= d <= 32.0
+
+    def test_delay_respects_max_cap(self) -> None:
+        """Attempt 10 with base=1 and max=10: cap = min(10, 1024) = 10."""
+        delays = [_full_jitter_delay(10, base_delay_seconds=1.0, max_delay_seconds=10.0) for _ in range(100)]
+        for d in delays:
+            assert 0 <= d <= 10.0
+
+    def test_near_zero_base_delay(self) -> None:
+        delay = _full_jitter_delay(0, base_delay_seconds=0.001, max_delay_seconds=1.0)
+        assert 0 <= delay <= 0.1
+
+    def test_randomness(self) -> None:
+        """Verify we get varying delays (not all the same)."""
+        delays = {_full_jitter_delay(3, base_delay_seconds=10.0, max_delay_seconds=60.0) for _ in range(50)}
+        assert len(delays) > 5, f"Expected variety in jitter, got {len(delays)} unique values"
+
+
+class TestRetryBudget:
+    """_RetryBudget -- sliding-window circuit breaker."""
+
+    def test_can_retry_when_under_budget(self) -> None:
+        budget = _RetryBudget(window_seconds=60, max_retries=5)
+        assert budget.can_retry() is True
+
+    def test_cannot_retry_when_over_budget(self) -> None:
+        budget = _RetryBudget(window_seconds=60, max_retries=3)
+        for _ in range(3):
+            budget.record()
+        assert budget.can_retry() is False
+
+    def test_can_retry_after_budget_window_expires(self) -> None:
+        budget = _RetryBudget(window_seconds=60, max_retries=2)
+        budget.record()
+        budget.record()
+        assert budget.can_retry() is False
+
+        # Fast-forward timestamps by patching
+        now = time_module.monotonic()
+        budget._timestamps = [now - 120, now - 90]
+        assert budget.can_retry() is True
+
+    def test_retry_count_reflects_active_retries(self) -> None:
+        budget = _RetryBudget(window_seconds=60, max_retries=10)
+        assert budget.retry_count == 0
+        budget.record()
+        assert budget.retry_count == 1
+        budget.record()
+        assert budget.retry_count == 2
+
+    def test_record_does_not_exceed_max_retries(self) -> None:
+        budget = _RetryBudget(window_seconds=60, max_retries=2)
+        budget.record()
+        budget.record()
+        budget.record()  # third record pushes past max
+        assert budget.can_retry() is False
+
+
+class TestWithRetry:
+    """with_retry -- end-to-end retry behaviour."""
+
+    @pytest.mark.asyncio
+    async def test_success_first_attempt(self) -> None:
+        cfg = RetryConfig(max_retries=3, base_delay_seconds=0.001)
+
+        async def ok() -> str:
+            return "hello"
+
+        result = await with_retry(ok, cfg)
+        assert result == "hello"
+
+    @pytest.mark.asyncio
+    async def test_retry_then_succeed(self) -> None:
+        cfg = RetryConfig(max_retries=3, base_delay_seconds=0.001)
+        call_count = 0
+
+        async def fail_then_ok() -> str:
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise httpx.TimeoutException("timeout")
+            return "success"
+
+        result = await with_retry(fail_then_ok, cfg)
+        assert result == "success"
+        assert call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_exhaust_retries_raises_last_exception(self) -> None:
+        cfg = RetryConfig(max_retries=2, base_delay_seconds=0.001)
+        budget = _RetryBudget(window_seconds=60, max_retries=10)
+
+        async def always_fail() -> str:
+            raise httpx.TimeoutException("always timeout")
+
+        with pytest.raises(AllProvidersFailedError, match="retry attempts exhausted"):
+            await with_retry(always_fail, cfg, _budget_override=budget)
+
+    @pytest.mark.asyncio
+    async def test_cancelled_error_does_not_retry(self) -> None:
+        cfg = RetryConfig(max_retries=3, base_delay_seconds=0.001)
+
+        async def cancelled() -> str:
+            raise asyncio.CancelledError()
+
+        with pytest.raises(asyncio.CancelledError):
+            await with_retry(cancelled, cfg)
+
+    @pytest.mark.asyncio
+    async def test_provider_response_error_does_not_retry(self) -> None:
+        cfg = RetryConfig(max_retries=3, base_delay_seconds=0.001)
+
+        async def bad_response() -> str:
+            raise ProviderResponseError("bad data")
+
+        with pytest.raises(ProviderResponseError, match="bad data"):
+            await with_retry(bad_response, cfg)
+
+    @pytest.mark.asyncio
+    async def test_budget_exhausted_fails_fast(self) -> None:
+        cfg = RetryConfig(max_retries=5, base_delay_seconds=0.001)
+        budget = _RetryBudget(window_seconds=60, max_retries=2)
+        budget.record()
+        budget.record()  # budget is full
+
+        async def fails() -> str:
+            raise httpx.TimeoutException("nope")
+
+        with pytest.raises(AllProvidersFailedError, match="budget exhausted"):
+            await with_retry(fails, cfg, _budget_override=budget)
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_429_retry_after_respected(self) -> None:
+        """429 with Retry-After should delay and retry without consuming budget."""
+        cfg = RetryConfig(max_retries=3, base_delay_seconds=0.001)
+        budget = _RetryBudget(window_seconds=60, max_retries=10)
+        call_count = 0
+
+        response_429 = MagicMock(spec=httpx.Response)
+        response_429.status_code = 429
+        response_429.headers = {"Retry-After": "0.005"}
+
+        async def rate_limited_then_ok() -> str:
+            nonlocal call_count
+            call_count += 1
+            if call_count < 2:
+                raise httpx.HTTPStatusError(
+                    "rate limited", request=MagicMock(), response=response_429
+                )
+            return "ok"
+
+        start = time_module.monotonic()
+        result = await with_retry(rate_limited_then_ok, cfg, _budget_override=budget)
+        elapsed = time_module.monotonic() - start
+
+        assert result == "ok"
+        assert call_count == 2
+        assert elapsed >= 0.005  # at least the Retry-After delay
+        assert budget.retry_count == 0  # 429 does NOT consume budget
+
+    @pytest.mark.asyncio
+    async def test_retry_count_on_retryable_errors_increments_budget(self) -> None:
+        cfg = RetryConfig(max_retries=3, base_delay_seconds=0.001)
+        budget = _RetryBudget(window_seconds=60, max_retries=10)
+
+        async def fail_twice_then_ok() -> str:
+            nonlocal call_count
+            call_count += 1
+            if call_count < 3:
+                raise httpx.TimeoutException("timeout")
+            return "ok"
+
+        call_count = 0
+        result = await with_retry(fail_twice_then_ok, cfg, _budget_override=budget)
+        assert result == "ok"
+        # Two retries = 2 budget entries
+        assert budget.retry_count == 2
+
+    @pytest.mark.asyncio
+    async def test_zero_retries_no_retry(self) -> None:
+        cfg = RetryConfig(max_retries=0, base_delay_seconds=0.001)
+
+        async def fails() -> str:
+            raise httpx.TimeoutException("fail")
+
+        with pytest.raises(AllProvidersFailedError, match="retry attempts exhausted"):
+            await with_retry(fails, cfg)
+
+    @pytest.mark.asyncio
+    async def test_non_retryable_bare_runtime_error_no_retry(self) -> None:
+        cfg = RetryConfig(max_retries=3, base_delay_seconds=0.001)
+        call_count = 0
+
+        async def fails() -> str:
+            nonlocal call_count
+            call_count += 1
+            raise RuntimeError("some internal bug")
+
+        with pytest.raises(RuntimeError, match="some internal bug"):
+            await with_retry(fails, cfg)
+        assert call_count == 1  # no retry
+
+
+# ── Integration-style: ParallelLLMGateway._generate_from_provider ─────
+
+
+class TestParallelLLMGatewayWithRetry:
+    """End-to-end tests of retry behaviour through the gateway."""
+
+    @pytest.mark.asyncio
+    async def test_generate_from_provider_retries_on_retryable_error(self) -> None:
+        """_generate_from_provider should retry on transient errors (via parallel sectioned mode)."""
+        call_count = 0
+
+        class RetryableClientStub:
+            async def generate(self, system_prompt: str, user_prompt: str) -> str:
+                nonlocal call_count
+                call_count += 1
+                if call_count < 3:
+                    raise httpx.TimeoutException("transient timeout")
+                return "recovered"
+
+        settings = SettingsStub(
+            provider_names=["p1", "p2"],
+            agents={"coder": AgentStub(parallel_mode="parallel", combine_strategy="sectioned")},
+        )
+        from mergemate.config.models import RuntimeConfig
+        settings.runtime = RuntimeConfig(
+            llm_retry=RetryConfig(max_retries=5, base_delay_seconds=0.001),
+        )
+
+        steady = ClientStub("steady")
+        gateway = ParallelLLMGateway(settings, {"p1": RetryableClientStub(), "p2": steady})
+        result = await gateway.generate("coder", "system", "user")
+        assert "## p1\nrecovered" in result
+        assert call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_generate_from_provider_fails_fast_on_non_retryable(self) -> None:
+        """_generate_from_provider should NOT retry on non-retryable errors (via parallel sectioned mode)."""
+        call_count = 0
+
+        class NonRetryableClientStub:
+            async def generate(self, system_prompt: str, user_prompt: str) -> str:
+                nonlocal call_count
+                call_count += 1
+                raise ProviderResponseError("malformed response")
+
+        settings = SettingsStub(
+            provider_names=["p1", "p2"],
+            agents={"coder": AgentStub(parallel_mode="parallel", combine_strategy="sectioned")},
+        )
+        from mergemate.config.models import RuntimeConfig
+        settings.runtime = RuntimeConfig(
+            llm_retry=RetryConfig(max_retries=5, base_delay_seconds=0.001),
+        )
+
+        gateway = ParallelLLMGateway(
+            settings,
+            {"p1": NonRetryableClientStub(), "p2": ClientStub("backup")},
+        )
+        result = await gateway.generate("coder", "system", "user")
+        # "p1" raises ProviderResponseError (non-retryable, only called once)
+        # "p2" succeeds normally
+        assert "## p2\nbackup" in result
+        assert call_count == 1  # no retry
+
+    @pytest.mark.asyncio
+    async def test_parallel_retry_continues_across_providers(self) -> None:
+        """In parallel sectioned mode, failures with retries don't block other providers."""
+        class FlakyClient:
+            def __init__(self, fail_count: int) -> None:
+                self.calls = 0
+                self._fail_count = fail_count
+
+            async def generate(self, system_prompt: str, user_prompt: str) -> str:
+                self.calls += 1
+                if self.calls <= self._fail_count:
+                    raise httpx.TimeoutException("flaky")
+                return "ok"
+
+        settings = SettingsStub(
+            provider_names=["p1", "p2"],
+            agents={"coder": AgentStub(parallel_mode="parallel", combine_strategy="sectioned")},
+        )
+        from mergemate.config.models import RuntimeConfig
+        settings.runtime = RuntimeConfig(
+            llm_retry=RetryConfig(max_retries=3, base_delay_seconds=0.001),
+        )
+
+        flaky = FlakyClient(fail_count=2)
+        steady = ClientStub("steady_result")
+        gateway = ParallelLLMGateway(settings, {"p1": flaky, "p2": steady})
+
+        result = await gateway.generate("coder", "system", "user")
+        assert "## p1\nok" in result
+        assert "## p2\nsteady_result" in result
+
+    @pytest.mark.asyncio
+    async def test_generate_non_str_result_does_not_retry(self) -> None:
+        """A non-str result raises ProviderResponseError which is non-retryable (no retry)."""
+        call_count = 0
+
+        class IntClientStub:
+            async def generate(self, system_prompt: str, user_prompt: str) -> str:
+                nonlocal call_count
+                call_count += 1
+                return 42  # type: ignore[return-value]
+
+        settings = SettingsStub(
+            provider_names=["p1", "p2"],
+            agents={"coder": AgentStub(parallel_mode="parallel", combine_strategy="sectioned")},
+        )
+        from mergemate.config.models import RuntimeConfig
+        settings.runtime = RuntimeConfig(
+            llm_retry=RetryConfig(max_retries=3, base_delay_seconds=0.001),
+        )
+
+        gateway = ParallelLLMGateway(
+            settings,
+            {"p1": IntClientStub(), "p2": ClientStub("fallback")},
+        )
+        result = await gateway.generate("coder", "system", "user")
+        # IntClientStub returns non-str -> ProviderResponseError (no retry)
+        # fallback client succeeds
+        assert "## p2\nfallback" in result
+        assert call_count == 1
