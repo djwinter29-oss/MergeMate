@@ -1,10 +1,10 @@
-# mypy: allow-untyped-defs
 """Dispatch accepted work to the background worker."""
 
 from dataclasses import dataclass
 
 from mergemate.domain.shared import RunJobType
 from mergemate.domain.shared.exceptions import JobQueueError
+from mergemate.infrastructure.queue import JobQueueBackend
 
 
 @dataclass(slots=True)
@@ -16,9 +16,13 @@ class DispatchResult:
 
 
 class RunDispatcher:
-    def __init__(self, run_job_repository, queue_backend) -> None:
+    def __init__(
+        self,
+        run_job_repository,
+        queue_backend: JobQueueBackend,
+    ) -> None:
         self._run_job_repository = run_job_repository
-        self._queue_backend = queue_backend
+        self._queue_backend: JobQueueBackend = queue_backend
 
     def dispatch_run(
         self,

@@ -35,8 +35,9 @@ class QueueBackendStub:
     def __init__(self) -> None:
         self.calls: list[str] = []
 
-    def enqueue(self, job_id: str) -> None:
+    def enqueue(self, job_id: str) -> bool:
         self.calls.append(job_id)
+        return True
 
 
 class RunJobRepositoryWithMissingJob:

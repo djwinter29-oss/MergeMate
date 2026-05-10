@@ -71,6 +71,9 @@ class FakeQueueBackend:
     def __init__(self, items=None):
         self._items = list(items or ["job-1"])
 
+    def enqueue(self, job_id: str) -> bool:
+        return True
+
     async def dequeue(self):
         if self._items:
             return self._items.pop(0)

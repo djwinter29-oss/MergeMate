@@ -29,6 +29,7 @@ from mergemate.infrastructure.persistence.sqlite import (
     SQLiteRunRepository,
     SQLiteToolEventRepository,
 )
+from mergemate.infrastructure.queue import JobQueueBackend
 from mergemate.infrastructure.queue.local_queue import LocalQueue
 from mergemate.infrastructure.telemetry.logger import configure_logging, log_startup_configuration
 from mergemate.interfaces.telegram.lifecycle_notifier import TelegramRunLifecycleNotifier
@@ -53,7 +54,7 @@ class MergeMateRuntime:
     conversation_repository: SQLiteConversationRepository
     learning_repository: SQLiteLearningRepository
     tool_event_repository: SQLiteToolEventRepository
-    queue_backend: object
+    queue_backend: JobQueueBackend
     learning_service: LearningService
     tool_service: ToolService
     planning_service: PlanningService

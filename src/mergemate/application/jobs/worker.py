@@ -8,6 +8,7 @@ from uuid import uuid4
 from mergemate.application.use_cases.submit_prompt import PromptSubmissionError
 from mergemate.domain.shared import RunJobStatus, RunJobType, RunStatus
 from mergemate.domain.shared.exceptions import WorkerStoppedError
+from mergemate.infrastructure.queue import JobQueueBackend
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ class BackgroundRunWorker:
         orchestrator,
         run_repository,
         run_job_repository,
-        queue_backend,
+        queue_backend: JobQueueBackend,
         submit_prompt,
         lifecycle_notifier,
         *,
@@ -30,7 +31,7 @@ class BackgroundRunWorker:
         self._orchestrator = orchestrator
         self._run_repository = run_repository
         self._run_job_repository = run_job_repository
-        self._queue_backend = queue_backend
+        self._queue_backend: JobQueueBackend = queue_backend
         self._submit_prompt = submit_prompt
         self._lifecycle_notifier = lifecycle_notifier
         self._semaphore = asyncio.Semaphore(max_concurrent_runs)
