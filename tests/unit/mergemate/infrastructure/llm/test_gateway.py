@@ -161,6 +161,26 @@ async def test_generate_raises_when_all_parallel_calls_fail() -> None:
 
 
 @pytest.mark.asyncio
+async def test_generate_first_success_raises_when_all_providers_fail() -> None:
+    """Lines 92-93: _generate_first_success all providers fail -> AllProvidersFailedError."""
+    settings = SettingsStub(
+        provider_names=["one", "two"],
+        agents={"coder": AgentStub(parallel_mode="parallel", combine_strategy="first_success")},
+    )
+    gateway = ParallelLLMGateway(
+        settings,
+        {"one": ClientStub(RuntimeError("provider one failed")),
+         "two": ClientStub(RuntimeError("provider two failed"))},
+    )
+
+    with pytest.raises(
+        AllProvidersFailedError,
+        match="All parallel model calls failed",
+    ):
+        await gateway.generate("coder", "system", "user")
+
+
+@pytest.mark.asyncio
 async def test_generate_first_success_treats_missing_result_as_failure() -> None:
     class NoneReturningClientStub:
         async def generate(self, system_prompt: str, user_prompt: str) -> str:
