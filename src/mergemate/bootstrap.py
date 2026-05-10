@@ -85,7 +85,7 @@ def _load_workflow_config_plugins(settings: AppConfig) -> None:
     """
     import importlib
 
-    for entry in settings.workflow_plugins:
+    for entry in getattr(settings, "workflow_plugins", []):
         if isinstance(entry, dict):
             module_path = entry.get("module", "")
             plugin_config = {k: v for k, v in entry.items() if k != "module"}
