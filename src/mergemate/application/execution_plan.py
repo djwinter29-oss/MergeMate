@@ -16,6 +16,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from mergemate.application.protocols import (
+    ContextServiceProtocol,
+    DocumentationServiceProtocol,
+    LearningServiceProtocol,
+    LLMGatewayProtocol,
+    PlanningServiceProtocol,
+    PromptServiceProtocol,
+    ToolServiceProtocol,
+    WorkflowServiceProtocol,
+)
+from mergemate.domain.runs.entities import AgentRun
+from mergemate.domain.runs.repository import AgentRunRepository
 from mergemate.domain.shared import RunStage, RunStatus
 from mergemate.domain.shared.exceptions import StageExecutionError
 from mergemate.domain.workflows.handlers import get_stage_handler
@@ -28,7 +40,7 @@ def _check_cancelled(
     deps: OrchestratorDependencies,
     is_cancelled: Callable[[str], bool],
     stage: WorkflowStage | None = None,
-) -> Any | None:
+) -> AgentRun | None:
     """If the run has been cancelled, return the updated run; otherwise None."""
     if stage is not None and not stage.checks_cancellation_before:
         return None
@@ -43,7 +55,7 @@ def _check_after_cancelled(
     deps: OrchestratorDependencies,
     is_cancelled: Callable[[str], bool],
     stage: WorkflowStage,
-) -> Any | None:
+) -> AgentRun | None:
     """Check if run was cancelled after a stage, return updated run if so."""
     if stage.checks_cancellation_after and is_cancelled(run_id):
         return deps.run_repository.get(run_id)
@@ -69,15 +81,15 @@ class StageDescriptor:
 @dataclass(slots=True, frozen=True)
 class OrchestratorDependencies:
     """Bundled dependencies for AgentOrchestrator and ExecutionRuntime."""
-    run_repository: Any
-    context_service: Any
-    documentation_service: Any
-    learning_service: Any
-    planning_service: Any
-    prompt_service: Any
-    tool_service: Any
-    workflow_service: Any
-    llm_gateway: Any
+    run_repository: AgentRunRepository
+    context_service: ContextServiceProtocol
+    documentation_service: DocumentationServiceProtocol
+    learning_service: LearningServiceProtocol
+    planning_service: PlanningServiceProtocol
+    prompt_service: PromptServiceProtocol
+    tool_service: ToolServiceProtocol
+    workflow_service: WorkflowServiceProtocol
+    llm_gateway: LLMGatewayProtocol
     settings: Any
 
 
@@ -89,7 +101,7 @@ class ExecutionRuntime:
 
 @dataclass(slots=True)
 class ExecutionContext:
-    run: Any
+    run: AgentRun
     system_prompt: str
     context_text: str
 
@@ -148,7 +160,7 @@ class DirectExecutionPlan(BaseExecutionPlan):
             result_text=direct_result,
         )
         runtime.deps.context_service.append_message(run.chat_id, "assistant", direct_result)
-        runtime.deps.learning_service.remember_success(
+        await runtime.deps.learning_service.remember_success(
             chat_id=run.chat_id,
             workflow=run.workflow,
             prompt=run.prompt,
@@ -313,7 +325,7 @@ class MultiStageExecutionPlan(BaseExecutionPlan):
         final_result = self._build_final_result(artifacts, latest_run)
 
         runtime.deps.context_service.append_message(run.chat_id, "assistant", final_result)
-        runtime.deps.learning_service.remember_success(
+        await runtime.deps.learning_service.remember_success(
             chat_id=run.chat_id,
             workflow=run.workflow,
             prompt=run.prompt,

@@ -158,9 +158,11 @@ def _runtime(*, latest=None, submit=None, approve=None, cancel=None, default_age
         submit.approve_result = approve_result
     return SimpleNamespace(
         settings=settings,
-        get_run_status=latest or GetRunStatusStub(),
-        submit_prompt=submit or SubmitPromptStub(approve_result=approve_result),
-        cancel_run=cancel or CancelRunStub(None),
+        services=SimpleNamespace(
+            get_run_status=latest or GetRunStatusStub(),
+            submit_prompt=submit or SubmitPromptStub(approve_result=approve_result),
+            cancel_run=cancel or CancelRunStub(None),
+        ),
     )
 
 
@@ -203,7 +205,7 @@ async def test_status_command_handles_missing_and_existing_runs() -> None:
     status_message = MessageStub("/status run-1")
     await handlers.status_command(UpdateStub(status_message), ContextStub(application, args=["run-1"]))
     assert "Run run-1 is running." in status_message.replies[0]
-    assert runtime.get_run_status.calls == [(None, 5, 5), ("run-1", 5, 5)]
+    assert runtime.services.get_run_status.calls == [(None, 5, 5), ("run-1", 5, 5)]
 
 
 @pytest.mark.asyncio
@@ -270,7 +272,7 @@ async def test_tools_command_handles_missing_existing_and_latest_runs() -> None:
     latest_message = MessageStub("/tools")
     await handlers.tools_command(UpdateStub(latest_message), ContextStub(application))
     assert "Tool activity for run run-1:" in latest_message.replies[0]
-    assert runtime.get_run_status.calls == [(None, 5, 10), ("run-1", 5, 10), (None, 5, 10)]
+    assert runtime.services.get_run_status.calls == [(None, 5, 10), ("run-1", 5, 10), (None, 5, 10)]
 
 
 @pytest.mark.asyncio
@@ -323,7 +325,7 @@ async def test_tools_command_accepts_limit_with_or_without_run_id() -> None:
     explicit_message = MessageStub("/tools run-1 7")
     await handlers.tools_command(UpdateStub(explicit_message), ContextStub(application, args=["run-1", "7"]))
     assert "Tool activity for run run-1:" in explicit_message.replies[0]
-    assert runtime.get_run_status.calls == [(None, 5, 15), ("run-1", 5, 7)]
+    assert runtime.services.get_run_status.calls == [(None, 5, 15), ("run-1", 5, 7)]
 
 
 @pytest.mark.asyncio
@@ -382,7 +384,7 @@ async def test_tools_command_accepts_missing_context_args() -> None:
     await handlers.tools_command(UpdateStub(message), context)
 
     assert "Tool activity for run run-1:" in message.replies[0]
-    assert runtime.get_run_status.calls == [(None, 5, 10)]
+    assert runtime.services.get_run_status.calls == [(None, 5, 10)]
 
 
 @pytest.mark.asyncio
@@ -432,7 +434,7 @@ async def test_approve_command_starts_watcher_when_dispatched(monkeypatch: pytes
 
     assert "approved" in message.replies[0]
     assert started == [(5, "run-4")]
-    assert runtime.submit_prompt.approve_calls == [("run-4", 5)]
+    assert runtime.services.submit_prompt.approve_calls == [("run-4", 5)]
 
 
 @pytest.mark.asyncio
@@ -593,7 +595,7 @@ async def test_handle_prompt_revises_existing_plan_and_handles_failure() -> None
     await handlers.handle_prompt(UpdateStub(message), ContextStub(application))
 
     assert "Requirements captured for run run-6." in message.replies[0]
-    assert runtime.submit_prompt.revise_calls == [("run-6", "add tests", 5)]
+    assert runtime.services.submit_prompt.revise_calls == [("run-6", "add tests", 5)]
 
     failed_runtime = _runtime(
         latest=GetRunStatusStub([RunStub(run_id="run-7", status=RunStatus.AWAITING_CONFIRMATION)]),
@@ -637,7 +639,7 @@ async def test_handle_prompt_replies_with_error_when_plan_revision_fails() -> No
     async def failing_revise_plan_for_chat(run_id: str, feedback: str, *, chat_id: int | None = None):
         raise PromptSubmissionError(run_id, "planner unavailable")
 
-    runtime.submit_prompt.revise_plan_for_chat = failing_revise_plan_for_chat
+    runtime.services.submit_prompt.revise_plan_for_chat = failing_revise_plan_for_chat
     message = MessageStub("add logs")
 
     await handlers.handle_prompt(UpdateStub(message), ContextStub(ApplicationStub(runtime)))
@@ -660,7 +662,7 @@ async def test_handle_prompt_splits_oversized_revision_error() -> None:
     async def failing_revise_plan_for_chat(run_id: str, feedback: str, *, chat_id: int | None = None):
         raise PromptSubmissionError(run_id, long_error)
 
-    runtime.submit_prompt.revise_plan_for_chat = failing_revise_plan_for_chat
+    runtime.services.submit_prompt.revise_plan_for_chat = failing_revise_plan_for_chat
     message = MessageStub("add logs")
 
     await handlers.handle_prompt(UpdateStub(message), ContextStub(ApplicationStub(runtime)))

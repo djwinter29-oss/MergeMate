@@ -98,7 +98,7 @@ async def status_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     run_id = context.args[0] if context.args else None
-    run = runtime.get_run_status.execute(run_id, chat_id=chat.id)
+    run = runtime.services.get_run_status.execute(run_id, chat_id=chat.id)
     if run is None:
         await message.reply_text("No runs found for this chat.")
         return
@@ -116,7 +116,7 @@ async def tools_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if error_message is not None:
         await message.reply_text(error_message)
         return
-    run = runtime.get_run_status.execute(run_id, chat_id=chat.id, tool_event_limit=limit)
+    run = runtime.services.get_run_status.execute(run_id, chat_id=chat.id, tool_event_limit=limit)
     if run is None:
         await message.reply_text("No runs found for this chat.")
         return
@@ -132,13 +132,13 @@ async def approve_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     run_id = context.args[0] if context.args else None
     if run_id is None:
-        latest = runtime.get_run_status.execute(chat_id=chat.id)
+        latest = runtime.services.get_run_status.execute(chat_id=chat.id)
         run_id = latest.run_id if latest is not None else None
     if run_id is None:
         await message.reply_text("No run is available to approve.")
         return
 
-    run = runtime.submit_prompt.approve(
+    run = runtime.services.submit_prompt.approve(
         run_id,
         chat_id=chat.id,
     )
@@ -163,7 +163,7 @@ async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     run_id = context.args[0] if context.args else None
-    run = runtime.cancel_run.execute(run_id, chat_id=chat.id)
+    run = runtime.services.cancel_run.execute(run_id, chat_id=chat.id)
     if run is None:
         await message.reply_text("No run could be cancelled.")
         return
@@ -189,19 +189,19 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if not request.message_text.strip():
         return
 
-    latest_run = runtime.get_run_status.execute(chat_id=request.chat_id)
+    latest_run = runtime.services.get_run_status.execute(chat_id=request.chat_id)
     if latest_run is not None and latest_run.status.value == "awaiting_confirmation":
         if not latest_run.plan_text:
             await message.reply_text(format_planning_in_progress(latest_run.run_id))
             return
         try:
-            revised = await runtime.submit_prompt.revise_plan_for_chat(
+            revised = await runtime.services.submit_prompt.revise_plan_for_chat(
                 latest_run.run_id,
                 request.message_text,
                 chat_id=request.chat_id,
             )
         except PromptSubmissionError as exc:
-            failed_run = runtime.get_run_status.execute(exc.run_id, chat_id=request.chat_id)
+            failed_run = runtime.services.get_run_status.execute(exc.run_id, chat_id=request.chat_id)
             error_text = failed_run.error_text if failed_run is not None and failed_run.error_text else exc.error_text
             await message_utils.send_text_chunks(message.reply_text, error_text)
             return
@@ -222,7 +222,7 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     agent_config = runtime.settings.agents.get(request.agent_name)
     workflow = agent_config.workflow if agent_config is not None else "generate_code"
     try:
-        submit_result = await runtime.submit_prompt.execute(
+        submit_result = await runtime.services.submit_prompt.execute(
             chat_id=request.chat_id,
             user_id=request.user_id,
             agent_name=request.agent_name,
@@ -230,7 +230,7 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             prompt=request.message_text,
         )
     except PromptSubmissionError as exc:
-        failed_run = runtime.get_run_status.execute(exc.run_id, chat_id=request.chat_id)
+        failed_run = runtime.services.get_run_status.execute(exc.run_id, chat_id=request.chat_id)
         error_text = failed_run.error_text if failed_run is not None and failed_run.error_text else exc.error_text
         await message_utils.send_text_chunks(message.reply_text, error_text)
         return
@@ -246,7 +246,7 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     # Continue planning in background and notify when plan is ready.
     async def _continue_planning() -> None:
         try:
-            completed = await runtime.submit_prompt.complete_planning(
+            completed = await runtime.services.submit_prompt.complete_planning(
                 submit_result.run_id,
             )
         except PromptSubmissionError:

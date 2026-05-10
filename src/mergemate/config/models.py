@@ -172,6 +172,7 @@ class LearningConfig(BaseModel):
     enabled: bool = True
     max_context_items: int = Field(default=3, ge=1)
     max_result_chars: int = Field(default=1200, ge=1)
+    extraction_agent: str | None = None
 
 
 class ToolRuntimeConfig(BaseModel):
@@ -248,6 +249,7 @@ class AppConfig(BaseModel):
     roles: dict[str, RoleConfig] = Field(default_factory=dict)
     workflow_plugins: list[str | dict] = Field(default_factory=list)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    repo_name: str | None = Field(default=None, description="Current repo name for session-scoped knowledge")
 
     @model_validator(mode="before")
     @classmethod

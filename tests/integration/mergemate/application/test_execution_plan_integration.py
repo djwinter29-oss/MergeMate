@@ -272,7 +272,7 @@ class LearningServiceSpy:
     def load_recent_learnings(self, chat_id: int) -> list[dict[str, str]]:
         return []
 
-    def remember_success(self, **payload: Any) -> None:
+    async def remember_success(self, **payload: Any) -> None:
         self.saved.append(payload)
 
 

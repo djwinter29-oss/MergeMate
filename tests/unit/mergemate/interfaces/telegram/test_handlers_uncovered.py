@@ -105,8 +105,10 @@ def _runtime(*, submit=None, latest=None, default_agent="coder", workflow="gener
     )
     return SimpleNamespace(
         settings=settings,
-        submit_prompt=submit or SubmitPromptStub(),
-        get_run_status=latest or GetRunStatusStub(),
+        services=SimpleNamespace(
+            submit_prompt=submit or SubmitPromptStub(),
+            get_run_status=latest or GetRunStatusStub(),
+        ),
     )
 
 

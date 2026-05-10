@@ -675,8 +675,10 @@ async def test_handlers_send_confirmation_when_plan_text_is_present() -> None:
     submit = SubmitPromptStub(execute_result=run, complete_result=run)
     runtime = SimpleNamespace(
         settings=RuntimeSettingsStub(),
-        submit_prompt=submit,
-        get_run_status=GetRunStatusStub(),
+        services=SimpleNamespace(
+            submit_prompt=submit,
+            get_run_status=GetRunStatusStub(),
+        ),
     )
     application = ApplicationStub(runtime)
     update = UpdateStub(MessageStub("/ask build something"))
