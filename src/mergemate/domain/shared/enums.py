@@ -2,6 +2,8 @@
 
 from enum import StrEnum
 
+import warnings as _warnings
+
 
 class WorkflowName(StrEnum):
     PLANNING = "planning"
@@ -24,11 +26,25 @@ USER_FACING_WORKFLOWS = frozenset(
 
 MULTI_STAGE_WORKFLOWS = frozenset({WorkflowName.GENERATE_CODE})
 
+_warnings.warn(
+    "MULTI_STAGE_WORKFLOWS is deprecated. Use domain/workflows/registry "
+    "or domain/policies/uses_multi_stage_delivery() instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 PROMPT_FILE_BY_WORKFLOW = {
     WorkflowName.GENERATE_CODE: "code_generation.md",
     WorkflowName.DEBUG_CODE: "debugging.md",
     WorkflowName.EXPLAIN_CODE: "explanation.md",
 }
+
+_warnings.warn(
+    "PROMPT_FILE_BY_WORKFLOW is deprecated. Use domain/workflows/registry "
+    "to look up prompt files by workflow name instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 def resolve_workflow_name(workflow: str | WorkflowName) -> WorkflowName | None:
