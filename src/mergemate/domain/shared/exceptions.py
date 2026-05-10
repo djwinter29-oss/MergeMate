@@ -28,6 +28,10 @@ class WorkflowNotFoundError(ConfigurationError):
     """No agent found for the requested workflow."""
 
 
+class WorkflowRegistrationError(ConfigurationError):
+    """Raised when a workflow plugin registration fails (e.g., duplicate name)."""
+
+
 # ── Run / execution errors ───────────────────────────────────────────
 
 

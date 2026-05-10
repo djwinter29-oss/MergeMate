@@ -246,6 +246,7 @@ class AppConfig(BaseModel):
     workflow_control: WorkflowControlConfig = Field(default_factory=WorkflowControlConfig)
     agents: dict[str, AgentConfig]
     roles: dict[str, RoleConfig] = Field(default_factory=dict)
+    workflow_plugins: list[str | dict] = Field(default_factory=list)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
     @model_validator(mode="before")
