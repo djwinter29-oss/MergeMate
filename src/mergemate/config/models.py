@@ -244,7 +244,6 @@ class AppConfig(BaseModel):
     source_control: SourceControlConfig = Field(default_factory=SourceControlConfig)
     runtime: RuntimeConfig
     workflow_control: WorkflowControlConfig = Field(default_factory=WorkflowControlConfig)
-    workflow_plugins: list[str | dict] = Field(default_factory=list)
     agents: dict[str, AgentConfig]
     roles: dict[str, RoleConfig] = Field(default_factory=dict)
     workflow_plugins: list[str | dict] = Field(default_factory=list)
