@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import io
 import sqlite3
-from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -22,7 +21,7 @@ from mergemate.config import loader as loader_module
 from mergemate.config.loader import _discover_default_local_config_path
 from mergemate.config.models import AppConfig
 from mergemate.domain.runs.repository import ApprovalDecision
-from mergemate.domain.shared import RunJobType, RunStage, RunStatus, WorkflowName
+from mergemate.domain.shared import RunJobType, RunStage, RunStatus
 from mergemate.domain.shared.exceptions import JobQueueError
 from mergemate.domain.tools.entities import ToolMetadata
 from mergemate.infrastructure.persistence.sqlite import SQLiteRunJobRepository

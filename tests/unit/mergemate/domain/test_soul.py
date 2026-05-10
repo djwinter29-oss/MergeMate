@@ -1,6 +1,5 @@
 """Tests for Soul entity — permission checking, whitelist/blacklist."""
 
-import pytest
 
 from mergemate.domain.agents.soul import (
     DocPermission,
@@ -109,9 +108,9 @@ def test_soul_to_system_prompt_sorted_read_sections() -> None:
     # Extract the READ section lines
     lines = prompt.split("\n")
     read_idx = next(
-        i for i, l in enumerate(lines) if l.startswith("### Document sections you may READ")
+        i for i, line in enumerate(lines) if line.startswith("### Document sections you may READ")
     )
-    read_sections = [l.strip("- ").strip() for l in lines[read_idx + 1:] if l.startswith("- ")]
+    read_sections = [line.strip("- ").strip() for line in lines[read_idx + 1:] if line.startswith("- ")]
 
     # The READ lines should be docs/architecture/, docs/implementation/, docs/planning/, docs/testing/
     assert len(read_sections) == 4
@@ -142,7 +141,7 @@ def test_soul_to_system_prompt_empty_permissions() -> None:
     ]:
         idx = lines.index(section_header)
         next_lines = lines[idx + 1:]
-        next_content = next((l for l in next_lines if l.strip()), None)
+        next_content = next((line for line in next_lines if line.strip()), None)
         assert next_content is None or not next_content.startswith("- docs/")
 
 
