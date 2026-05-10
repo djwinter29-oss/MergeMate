@@ -10,7 +10,7 @@ Covers:
 7.  MultiStageExecutionPlan._build_final_result with progress summary [lines 394-408]
 8.  _check_after_cancelled when stage.checks_cancellation_after is True and cancelled [line 61]
 9.  _check_cancelled when stage.checks_cancellation_before is True and cancelled [line 48]
-10. ExecutionRuntime.from_deps [line 110]
+10. ExecutionRuntime(deps=..., is_cancelled=...) constructor [lines 84-87]
 11. DirectExecutionPlan.execute full path (lines 166-196)
 12. MultiStageExecutionPlan.execute replan handler runs (lines 324-328)
 13. MultiStageExecutionPlan.execute cancelled after replan handler (lines 330-337) [line 307 covered via same path]
