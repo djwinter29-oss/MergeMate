@@ -25,7 +25,7 @@ from mergemate.domain.workflows.stage import WorkflowDefinition, WorkflowStage
 def _check_cancelled(
     *,
     run_id: str,
-    run_repository: Any,
+    deps: OrchestratorDependencies,
     is_cancelled: Callable[[str], bool],
     stage: WorkflowStage | None = None,
 ) -> Any | None:
@@ -33,20 +33,20 @@ def _check_cancelled(
     if stage is not None and not stage.checks_cancellation_before:
         return None
     if is_cancelled(run_id):
-        return run_repository.get(run_id)
+        return deps.run_repository.get(run_id)
     return None
 
 
 def _check_after_cancelled(
     *,
     run_id: str,
-    run_repository: Any,
+    deps: OrchestratorDependencies,
     is_cancelled: Callable[[str], bool],
     stage: WorkflowStage,
 ) -> Any | None:
     """Check if run was cancelled after a stage, return updated run if so."""
     if stage.checks_cancellation_after and is_cancelled(run_id):
-        return run_repository.get(run_id)
+        return deps.run_repository.get(run_id)
     return None
 
 
@@ -83,28 +83,8 @@ class OrchestratorDependencies:
 
 @dataclass(slots=True)
 class ExecutionRuntime:
-    run_repository: Any
-    context_service: Any
-    documentation_service: Any
-    learning_service: Any
-    planning_service: Any
-    workflow_service: Any
-    settings: Any
+    deps: OrchestratorDependencies
     is_cancelled: Callable[[str], bool]
-
-    @classmethod
-    def from_deps(cls, deps: OrchestratorDependencies, *, is_cancelled: Callable[[str], bool]) -> ExecutionRuntime:
-        """Construct ExecutionRuntime from an OrchestratorDependencies object."""
-        return cls(
-            run_repository=deps.run_repository,
-            context_service=deps.context_service,
-            documentation_service=deps.documentation_service,
-            learning_service=deps.learning_service,
-            planning_service=deps.planning_service,
-            workflow_service=deps.workflow_service,
-            settings=deps.settings,
-            is_cancelled=is_cancelled,
-        )
 
 
 @dataclass(slots=True)
@@ -146,35 +126,35 @@ class DirectExecutionPlan(BaseExecutionPlan):
     async def execute(self, runtime: ExecutionRuntime, execution: ExecutionContext) -> Any:
         run = execution.run
         cancelled = _check_cancelled(
-            run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
+            run_id=run.run_id, deps=runtime.deps, is_cancelled=runtime.is_cancelled,
         )
         if cancelled is not None:
             return cancelled
 
-        direct_result = await runtime.workflow_service.execute_direct(
+        direct_result = await runtime.deps.workflow_service.execute_direct(
             self._agent_name,
             execution.system_prompt,
             execution.context_text,
         )
         cancelled = _check_cancelled(
-            run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled,
+            run_id=run.run_id, deps=runtime.deps, is_cancelled=runtime.is_cancelled,
         )
         if cancelled is not None:
             return cancelled
 
-        runtime.run_repository.save_artifacts(
+        runtime.deps.run_repository.save_artifacts(
             run.run_id,
             current_stage=self.stages[0].current_stage,
             result_text=direct_result,
         )
-        runtime.context_service.append_message(run.chat_id, "assistant", direct_result)
-        runtime.learning_service.remember_success(
+        runtime.deps.context_service.append_message(run.chat_id, "assistant", direct_result)
+        runtime.deps.learning_service.remember_success(
             chat_id=run.chat_id,
             workflow=run.workflow,
             prompt=run.prompt,
             result_text=direct_result,
         )
-        completed_run = runtime.run_repository.update_status(
+        completed_run = runtime.deps.run_repository.update_status(
             run.run_id,
             RunStatus.COMPLETED,
             current_stage=RunStage.COMPLETED,
@@ -264,7 +244,7 @@ class MultiStageExecutionPlan(BaseExecutionPlan):
             for stage in core_stages:
                 cancelled = _check_cancelled(
                     run_id=run.run_id,
-                    run_repository=runtime.run_repository,
+                    deps=runtime.deps,
                     is_cancelled=runtime.is_cancelled,
                     stage=stage,
                 )
@@ -287,7 +267,7 @@ class MultiStageExecutionPlan(BaseExecutionPlan):
 
                 cancelled = _check_after_cancelled(
                     run_id=run.run_id,
-                    run_repository=runtime.run_repository,
+                    deps=runtime.deps,
                     is_cancelled=runtime.is_cancelled,
                     stage=stage,
                 )
@@ -296,7 +276,7 @@ class MultiStageExecutionPlan(BaseExecutionPlan):
 
             # ── Review gate ──────────────────────────────────────────────
             review_text = artifacts.get("review_text", "")
-            if not runtime.workflow_service.has_high_concerns(review_text):
+            if not runtime.deps.workflow_service.has_high_concerns(review_text):
                 break
             if iteration >= self._max_iterations:
                 break
@@ -317,7 +297,7 @@ class MultiStageExecutionPlan(BaseExecutionPlan):
 
                 cancelled = _check_after_cancelled(
                     run_id=run.run_id,
-                    run_repository=runtime.run_repository,
+                    deps=runtime.deps,
                     is_cancelled=runtime.is_cancelled,
                     stage=replan_stage,
                 )
@@ -325,21 +305,21 @@ class MultiStageExecutionPlan(BaseExecutionPlan):
                     return cancelled
 
         # After the loop, check for cancellation one last time.
-        latest_run = runtime.run_repository.get(run.run_id)
+        latest_run = runtime.deps.run_repository.get(run.run_id)
         if latest_run is not None and latest_run.status == RunStatus.CANCELLED:
             return latest_run
 
         # Build final result from accumulated artifacts.
         final_result = self._build_final_result(artifacts, latest_run)
 
-        runtime.context_service.append_message(run.chat_id, "assistant", final_result)
-        runtime.learning_service.remember_success(
+        runtime.deps.context_service.append_message(run.chat_id, "assistant", final_result)
+        runtime.deps.learning_service.remember_success(
             chat_id=run.chat_id,
             workflow=run.workflow,
             prompt=run.prompt,
             result_text=final_result,
         )
-        completed_run = runtime.run_repository.update_status(
+        completed_run = runtime.deps.run_repository.update_status(
             run.run_id,
             RunStatus.COMPLETED,
             current_stage=RunStage.COMPLETED,

@@ -137,7 +137,7 @@ class RunRepositoryStub:
 
 def _make_runtime(run=None, run_repository=None, *, is_cancelled=None, workflow_service=None,
                   planning_service=None) -> ExecutionRuntime:
-    return ExecutionRuntime(
+    deps = OrchestratorDependencies(
         run_repository=run_repository or RunRepositoryStub(run or _make_run()),
         context_service=SimpleNamespace(append_message=lambda *a, **kw: None),
         documentation_service=SimpleNamespace(
@@ -148,8 +148,14 @@ def _make_runtime(run=None, run_repository=None, *, is_cancelled=None, workflow_
         ),
         learning_service=SimpleNamespace(remember_success=lambda *a, **kw: None),
         planning_service=planning_service or AsyncPlanningServiceStub(),
+        prompt_service=SimpleNamespace(),
+        tool_service=SimpleNamespace(),
         workflow_service=workflow_service or AsyncWorkflowServiceStub(),
+        llm_gateway=SimpleNamespace(),
         settings=SimpleNamespace(),
+    )
+    return ExecutionRuntime(
+        deps=deps,
         is_cancelled=is_cancelled or (lambda _: False),
     )
 
@@ -214,8 +220,20 @@ class TestCancelChecks:
         from mergemate.domain.workflows.stage import WorkflowStage
 
         stage = WorkflowStage(name="test", current_stage=RunStage.DESIGN, checks_cancellation_before=False)
+        deps = OrchestratorDependencies(
+            run_repository=SimpleNamespace(get=lambda _: None),
+            context_service=SimpleNamespace(),
+            documentation_service=SimpleNamespace(),
+            learning_service=SimpleNamespace(),
+            planning_service=SimpleNamespace(),
+            prompt_service=SimpleNamespace(),
+            tool_service=SimpleNamespace(),
+            workflow_service=SimpleNamespace(),
+            llm_gateway=SimpleNamespace(),
+            settings=SimpleNamespace(),
+        )
         result = _check_cancelled(
-            run_id="r1", run_repository=SimpleNamespace(get=lambda _: None),
+            run_id="r1", deps=deps,
             is_cancelled=lambda _: True, stage=stage,
         )
         assert result is None
@@ -227,8 +245,20 @@ class TestCancelChecks:
 
         run = _make_run()
         stage = WorkflowStage(name="test", current_stage=RunStage.DESIGN, checks_cancellation_before=True)
+        deps = OrchestratorDependencies(
+            run_repository=RunRepositoryStub(run),
+            context_service=SimpleNamespace(),
+            documentation_service=SimpleNamespace(),
+            learning_service=SimpleNamespace(),
+            planning_service=SimpleNamespace(),
+            prompt_service=SimpleNamespace(),
+            tool_service=SimpleNamespace(),
+            workflow_service=SimpleNamespace(),
+            llm_gateway=SimpleNamespace(),
+            settings=SimpleNamespace(),
+        )
         result = _check_cancelled(
-            run_id="r1", run_repository=RunRepositoryStub(run),
+            run_id="r1", deps=deps,
             is_cancelled=lambda _: True, stage=stage,
         )
         assert result is run
@@ -239,8 +269,20 @@ class TestCancelChecks:
         from mergemate.domain.workflows.stage import WorkflowStage
 
         stage = WorkflowStage(name="test", current_stage=RunStage.DESIGN, checks_cancellation_after=False)
+        deps = OrchestratorDependencies(
+            run_repository=SimpleNamespace(get=lambda _: None),
+            context_service=SimpleNamespace(),
+            documentation_service=SimpleNamespace(),
+            learning_service=SimpleNamespace(),
+            planning_service=SimpleNamespace(),
+            prompt_service=SimpleNamespace(),
+            tool_service=SimpleNamespace(),
+            workflow_service=SimpleNamespace(),
+            llm_gateway=SimpleNamespace(),
+            settings=SimpleNamespace(),
+        )
         result = _check_after_cancelled(
-            run_id="r1", run_repository=SimpleNamespace(get=lambda _: None),
+            run_id="r1", deps=deps,
             is_cancelled=lambda _: True, stage=stage,
         )
         assert result is None
@@ -252,8 +294,20 @@ class TestCancelChecks:
 
         run = _make_run()
         stage = WorkflowStage(name="test", current_stage=RunStage.DESIGN, checks_cancellation_after=True)
+        deps = OrchestratorDependencies(
+            run_repository=RunRepositoryStub(run),
+            context_service=SimpleNamespace(),
+            documentation_service=SimpleNamespace(),
+            learning_service=SimpleNamespace(),
+            planning_service=SimpleNamespace(),
+            prompt_service=SimpleNamespace(),
+            tool_service=SimpleNamespace(),
+            workflow_service=SimpleNamespace(),
+            llm_gateway=SimpleNamespace(),
+            settings=SimpleNamespace(),
+        )
         result = _check_after_cancelled(
-            run_id="r1", run_repository=RunRepositoryStub(run),
+            run_id="r1", deps=deps,
             is_cancelled=lambda _: True, stage=stage,
         )
         assert result is run
@@ -307,10 +361,10 @@ class TestDirectExecutionPlan:
 
 
 class TestOrchestratorDependencies:
-    """Cover ExecutionRuntime.from_deps [line 110]."""
+    """Cover ExecutionRuntime(deps=...) constructor."""
 
-    def test_from_deps_constructs_runtime(self) -> None:
-        """Cover line 110: ExecutionRuntime.from_deps factory."""
+    def test_constructor_uses_deps(self) -> None:
+        """Cover ExecutionRuntime(deps=deps, is_cancelled=...) constructor."""
         repo = SimpleNamespace()
         deps = OrchestratorDependencies(
             run_repository=repo,
@@ -324,8 +378,8 @@ class TestOrchestratorDependencies:
             llm_gateway=SimpleNamespace(),
             settings=SimpleNamespace(),
         )
-        runtime = ExecutionRuntime.from_deps(deps, is_cancelled=lambda _: False)
-        assert runtime.run_repository is repo
+        runtime = ExecutionRuntime(deps=deps, is_cancelled=lambda _: False)
+        assert runtime.deps.run_repository is repo
         assert callable(runtime.is_cancelled)
 
 
@@ -594,8 +648,7 @@ class TestDirectExecutionPlanCancelledAfterGather:
                 return self.run
 
         repo = SaveRepo()
-        plan = DirectExecutionPlan("debugger")
-        runtime = ExecutionRuntime(
+        deps = OrchestratorDependencies(
             run_repository=repo,
             context_service=SimpleNamespace(append_message=lambda *a, **kw: None),
             documentation_service=SimpleNamespace(
@@ -606,8 +659,15 @@ class TestDirectExecutionPlanCancelledAfterGather:
             ),
             learning_service=SimpleNamespace(remember_success=lambda *a, **kw: None),
             planning_service=SimpleNamespace(extract_tasks=lambda x: [], build_progress_summary=lambda x, y: ""),
+            prompt_service=SimpleNamespace(),
+            tool_service=SimpleNamespace(),
             workflow_service=SimpleNamespace(execute_direct=lambda *a, **kw: "result"),
+            llm_gateway=SimpleNamespace(),
             settings=SimpleNamespace(),
+        )
+        plan = DirectExecutionPlan("debugger")
+        runtime = ExecutionRuntime(
+            deps=deps,
             is_cancelled=lambda _: True,
         )
         execution = ExecutionContext(run=run, system_prompt="", context_text="")
