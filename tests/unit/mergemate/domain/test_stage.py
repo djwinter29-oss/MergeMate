@@ -6,6 +6,8 @@ from mergemate.domain.shared.enums import (
     MULTI_STAGE_WORKFLOWS,
     USER_FACING_WORKFLOWS,
     WorkflowName,
+)
+from mergemate.domain.policies import (
     resolve_workflow_name,
 )
 from mergemate.domain.workflows.stage import (

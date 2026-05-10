@@ -1,5 +1,9 @@
 """Shared domain helpers."""
 
+from __future__ import annotations
+
+import warnings as _warnings
+
 from .enums import (
     MULTI_STAGE_WORKFLOWS,
     PROMPT_FILE_BY_WORKFLOW,
@@ -14,14 +18,59 @@ from .value_objects import (
     tool_stage,
 )
 
-# NOTE: Business logic functions (is_user_facing_workflow, resolve_workflow_name,
-# uses_multi_stage_delivery, workflow_prompt_file) moved to domain/policies/.
-# Import from there instead: from mergemate.domain.policies import ...
-#
-# NOTE: MULTI_STAGE_WORKFLOWS is now derived from get_workflow_definitions()
-# in domain/policies/__init__.py.  The value re-exported here is kept for
-# backward compatibility but reflects the frozen state at import time.  New
-# code should use policies.uses_multi_stage_delivery() or policies imports.
+# ── Deprecated re-exports from domain/policies ────────────────────────────
+# These business-logic functions lived in enums.py and were migrated to
+# mergemate.domain.policies.  The imports below provide a grace period for
+# any code that hasn't been updated yet.  New code should import directly
+# from mergemate.domain.policies.
+
+from mergemate.domain.policies import (
+    is_user_facing_workflow as _is_user_facing_workflow,
+    resolve_workflow_name as _resolve_workflow_name,
+    uses_multi_stage_delivery as _uses_multi_stage_delivery,
+    workflow_prompt_file as _workflow_prompt_file,
+)
+
+
+def is_user_facing_workflow(*args: object, **kwargs: object) -> bool:
+    _warnings.warn(
+        "Import is_user_facing_workflow from mergemate.domain.policies instead of "
+        "mergemate.domain.shared",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return _is_user_facing_workflow(*args, **kwargs)  # type: ignore[arg-type]
+
+
+def resolve_workflow_name(*args: object, **kwargs: object) -> object:
+    _warnings.warn(
+        "Import resolve_workflow_name from mergemate.domain.policies instead of "
+        "mergemate.domain.shared",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return _resolve_workflow_name(*args, **kwargs)  # type: ignore[arg-type]
+
+
+def uses_multi_stage_delivery(*args: object, **kwargs: object) -> bool:
+    _warnings.warn(
+        "Import uses_multi_stage_delivery from mergemate.domain.policies instead of "
+        "mergemate.domain.shared",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return _uses_multi_stage_delivery(*args, **kwargs)  # type: ignore[arg-type]
+
+
+def workflow_prompt_file(*args: object, **kwargs: object) -> str:
+    _warnings.warn(
+        "Import workflow_prompt_file from mergemate.domain.policies instead of "
+        "mergemate.domain.shared",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return _workflow_prompt_file(*args, **kwargs)  # type: ignore[arg-type]
+
 
 __all__ = [
     "WorkflowName",
@@ -33,4 +82,8 @@ __all__ = [
     "RunStage",
     "RunStatus",
     "tool_stage",
+    "is_user_facing_workflow",
+    "resolve_workflow_name",
+    "uses_multi_stage_delivery",
+    "workflow_prompt_file",
 ]

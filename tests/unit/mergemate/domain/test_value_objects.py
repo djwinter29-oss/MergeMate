@@ -14,6 +14,8 @@ from mergemate.domain.shared.enums import (
     PROMPT_FILE_BY_WORKFLOW,
     USER_FACING_WORKFLOWS,
     WorkflowName,
+)
+from mergemate.domain.policies import (
     is_user_facing_workflow,
     resolve_workflow_name,
     uses_multi_stage_delivery,
@@ -38,9 +40,7 @@ def test_run_status_values() -> None:
 def test_run_status_terminal_statuses() -> None:
     """terminal_statuses are COMPLETED, FAILED, CANCELLED."""
     terminal = RunStatus.terminal_statuses()
-    assert terminal == frozenset(
-        {RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED}
-    )
+    assert terminal == frozenset({RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED})
 
 
 def test_run_status_skip_process_statuses() -> None:
