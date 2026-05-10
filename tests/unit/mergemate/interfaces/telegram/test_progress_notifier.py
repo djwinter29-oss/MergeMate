@@ -63,7 +63,9 @@ class SettingsStub:
 class RuntimeStub:
     def __init__(self, runs: list[AgentRun]) -> None:
         self.settings = SettingsStub()
-        self.get_run_status = GetRunStatusStub(runs)
+        self.services = SimpleNamespace(
+            get_run_status=GetRunStatusStub(runs),
+        )
 
 
 def _build_run(status: RunStatus, stage: str, review_iterations: int = 0) -> AgentRun:

@@ -22,7 +22,9 @@ The handler mutates it and returns it.
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
 
@@ -262,6 +264,118 @@ async def _handle_direct(
     return artifacts
 
 
+# ── Document kind registry ────────────────────────────────────────────
+
+DocumentSaver = Callable[..., None]
+_DOCUMENT_KINDS: dict[str, DocumentSaver] = {}
+
+
+def register_document_kind(kind: str) -> Callable[[DocumentSaver], DocumentSaver]:
+    """Decorator that registers a document-saver function under *kind*."""
+    def _decorator(fn: DocumentSaver) -> DocumentSaver:
+        if kind in _DOCUMENT_KINDS:
+            warnings.warn(
+                f"Document kind {kind!r} already registered by "
+                f"{_DOCUMENT_KINDS[kind].__module__}.{_DOCUMENT_KINDS[kind].__qualname__}; "
+                f"overwriting with {fn.__module__}.{fn.__qualname__}.",
+                stacklevel=2,
+            )
+        _DOCUMENT_KINDS[kind] = fn
+        return fn
+    return _decorator
+
+
+# ── Document kind savers ─────────────────────────────────────────────────
+
+
+@register_document_kind("architecture")
+def _save_architecture_document(
+    runtime: HandlerContext,
+    artifacts: dict[str, Any],
+    kind: str,
+    agent_name: str | None = None,
+    **extra: Any,
+) -> None:
+    _save_to_artifacts(
+        artifacts,
+        runtime.deps.documentation_service.write_architecture_design(
+            run_id=artifacts["run_id"],
+            iteration=artifacts.get("_iteration", 0),
+            plan_text=artifacts.get("plan_text", ""),
+            design_text=extra.get("design_text", ""),
+            role_name=agent_name,
+        ),
+        "_design_document_path",
+    )
+
+
+@register_document_kind("testing")
+def _save_testing_document(
+    runtime: HandlerContext,
+    artifacts: dict[str, Any],
+    kind: str,
+    agent_name: str | None = None,
+    **extra: Any,
+) -> None:
+    _save_to_artifacts(
+        artifacts,
+        runtime.deps.documentation_service.write_test_plan(
+            run_id=artifacts["run_id"],
+            iteration=artifacts.get("_iteration", 0),
+            plan_text=artifacts.get("plan_text", ""),
+            design_text=extra.get("design_text", ""),
+            test_text=extra.get("test_text", ""),
+            role_name=agent_name,
+        ),
+        "_test_document_path",
+    )
+
+
+@register_document_kind("review")
+def _save_review_document(
+    runtime: HandlerContext,
+    artifacts: dict[str, Any],
+    kind: str,
+    agent_name: str | None = None,
+    **extra: Any,
+) -> None:
+    _save_to_artifacts(
+        artifacts,
+        runtime.deps.documentation_service.write_review_report(
+            run_id=artifacts["run_id"],
+            iteration=artifacts.get("_iteration", 0),
+            plan_text=artifacts.get("plan_text", ""),
+            design_text=extra.get("design_text", ""),
+            implementation_text=extra.get("implementation_text", ""),
+            test_text=extra.get("test_text", ""),
+            review_text=extra.get("review_text", ""),
+            role_name=agent_name,
+        ),
+        "_review_document_path",
+    )
+
+
+@register_document_kind("lessons")
+def _save_lessons_document(
+    runtime: HandlerContext,
+    artifacts: dict[str, Any],
+    kind: str,
+    agent_name: str | None = None,
+    **extra: Any,
+) -> None:
+    _save_to_artifacts(
+        artifacts,
+        runtime.deps.documentation_service.write_lesson(
+            run_id=artifacts["run_id"],
+            iteration=artifacts.get("_iteration", 0),
+            plan_text=artifacts.get("plan_text", ""),
+            lesson_text=extra.get("lesson_text", ""),
+            role_name=agent_name,
+        ),
+        "_lesson_document_path",
+    )
+
+
 # ── Helpers ────────────────────────────────────────────────────────────────
 
 
@@ -277,6 +391,15 @@ def _persist_artifacts(
     )
 
 
+def _save_to_artifacts(
+    artifacts: dict[str, Any],
+    path: Path,
+    artifact_key: str,
+) -> None:
+    """Store a document path in artifacts under the appropriate key."""
+    artifacts[artifact_key] = str(path)
+
+
 def _save_document(
     runtime: HandlerContext,
     artifacts: dict[str, Any],
@@ -284,57 +407,16 @@ def _save_document(
     agent_name: str | None = None,
     **extra: Any,
 ) -> None:
-    """Write a documentation artifact and store its path in ``artifacts``."""
-    run_id = artifacts["run_id"]
-    iteration = artifacts.get("_iteration", 0)
-    plan_text = artifacts.get("plan_text", "")
+    """Write a documentation artifact and store its path in ``artifacts``.
 
-    path: str | None = None
-    if kind == "architecture":
-        path = str(
-            runtime.deps.documentation_service.write_architecture_design(
-                run_id=run_id,
-                iteration=iteration,
-                plan_text=plan_text,
-                design_text=extra.get("design_text", ""),
-                role_name=agent_name,
-            )
+    Dispatches to the registered saver via ``_DOCUMENT_KINDS``.
+    New document kinds register themselves with ``@register_document_kind``
+    instead of adding branches here.
+    """
+    saver = _DOCUMENT_KINDS.get(kind)
+    if saver is None:
+        raise ValueError(
+            f"Unknown document kind {kind!r}. "
+            f"Registered kinds: {sorted(_DOCUMENT_KINDS)}"
         )
-        artifacts["_design_document_path"] = path
-    elif kind == "testing":
-        path = str(
-            runtime.deps.documentation_service.write_test_plan(
-                run_id=run_id,
-                iteration=iteration,
-                plan_text=plan_text,
-                design_text=extra.get("design_text", ""),
-                test_text=extra.get("test_text", ""),
-                role_name=agent_name,
-            )
-        )
-        artifacts["_test_document_path"] = path
-    elif kind == "review":
-        path = str(
-            runtime.deps.documentation_service.write_review_report(
-                run_id=run_id,
-                iteration=iteration,
-                plan_text=plan_text,
-                design_text=extra.get("design_text", ""),
-                implementation_text=extra.get("implementation_text", ""),
-                test_text=extra.get("test_text", ""),
-                review_text=extra.get("review_text", ""),
-                role_name=agent_name,
-            )
-        )
-        artifacts["_review_document_path"] = path
-    elif kind == "lessons":
-        path = str(
-            runtime.deps.documentation_service.write_lesson(
-                run_id=run_id,
-                iteration=iteration,
-                plan_text=plan_text,
-                lesson_text=extra.get("lesson_text", ""),
-                role_name=agent_name,
-            )
-        )
-        artifacts["_lesson_document_path"] = path
+    saver(runtime, artifacts, kind, agent_name=agent_name, **extra)

@@ -110,6 +110,18 @@ class SQLiteDatabase:
 
                 CREATE INDEX IF NOT EXISTS idx_tool_events_run_id_created_at
                     ON tool_events(run_id, created_at DESC);
+
+                CREATE TABLE IF NOT EXISTS repo_knowledge (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    chat_id INTEGER NOT NULL,
+                    repo_name TEXT NOT NULL,
+                    topic TEXT NOT NULL,
+                    summary TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_repo_knowledge_chat_repo
+                    ON repo_knowledge(chat_id, repo_name, created_at DESC);
                 """
             )
             self._ensure_column(
@@ -127,7 +139,9 @@ class SQLiteDatabase:
             self._ensure_column(connection, "run_jobs", "attempt_count", "INTEGER NOT NULL DEFAULT 0")
             self._ensure_column(connection, "run_jobs", "lease_owner", "TEXT")
             self._ensure_column(connection, "run_jobs", "lease_expires_at", "TEXT")
+            self._ensure_column(connection, "learning_entries", "learning_lessons", "TEXT")
             self._ensure_column(connection, "run_jobs", "last_heartbeat_at", "TEXT")
+            self._ensure_column(connection, "agent_runs", "repo_name", "TEXT")
 
     @staticmethod
     def _ensure_column(connection: sqlite3.Connection, table_name: str, column_name: str, definition: str) -> None:
@@ -657,21 +671,21 @@ class SQLiteLearningRepository:
     def __init__(self, database: SQLiteDatabase) -> None:
         self._database = database
 
-    def record(self, chat_id: int, workflow: str, prompt: str, result_excerpt: str) -> None:
+    def record(self, chat_id: int, workflow: str, prompt: str, result_excerpt: str, learning_lessons: str | None = None) -> None:
         with self._database.connection() as connection:
             connection.execute(
                 """
-                INSERT INTO learning_entries (chat_id, workflow, prompt, result_excerpt, created_at)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO learning_entries (chat_id, workflow, prompt, result_excerpt, learning_lessons, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (chat_id, workflow, prompt, result_excerpt, datetime.now(UTC).isoformat()),
+                (chat_id, workflow, prompt, result_excerpt, learning_lessons, datetime.now(UTC).isoformat()),
             )
 
     def list_recent(self, chat_id: int, limit: int = 3) -> list[dict[str, str]]:
         with self._database.connection() as connection:
             rows = connection.execute(
                 """
-                SELECT workflow, prompt, result_excerpt
+                SELECT workflow, prompt, result_excerpt, learning_lessons
                 FROM learning_entries
                 WHERE chat_id = ?
                 ORDER BY created_at DESC
@@ -684,7 +698,91 @@ class SQLiteLearningRepository:
                 "workflow": row["workflow"],
                 "prompt": row["prompt"],
                 "result_excerpt": row["result_excerpt"],
+                "learning_lessons": row["learning_lessons"],
             }
+            for row in rows
+        ]
+
+    def list_grouped_by_workflow(
+        self, chat_id: int, current_workflow: str,
+        same_workflow_limit: int = 3,
+        other_workflow_limit: int = 1,
+    ) -> list[dict[str, str]]:
+        """Return learning entries grouped by workflow.
+
+        - same_workflow_limit: how many entries from current workflow.
+        - other_workflow_limit: how many entries from each *other* workflow.
+        """
+        with self._database.connection() as connection:
+            rows = connection.execute(
+                """SELECT workflow, prompt, result_excerpt, learning_lessons
+                   FROM learning_entries
+                   WHERE chat_id = ?
+                   ORDER BY workflow, created_at DESC""",
+                (chat_id,),
+            ).fetchall()
+
+        groups: dict[str, list[dict[str, str]]] = {}
+        for row in rows:
+            wf = row["workflow"]
+            if wf not in groups:
+                groups[wf] = []
+            groups[wf].append({
+                "workflow": wf,
+                "prompt": row["prompt"],
+                "result_excerpt": row["result_excerpt"],
+                "learning_lessons": row["learning_lessons"],
+            })
+
+        current_entries = groups.pop(current_workflow, [])[:same_workflow_limit]
+
+        other_entries: list[dict[str, str]] = []
+        for wf, entries in groups.items():
+            other_entries.extend(entries[:other_workflow_limit])
+
+        return current_entries + other_entries
+
+
+class SQLiteRepoKnowledgeRepository:
+    def __init__(self, database: SQLiteDatabase) -> None:
+        self._database = database
+
+    def record(self, chat_id: int, repo_name: str, topic: str, summary: str) -> None:
+        with self._database.connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO repo_knowledge (chat_id, repo_name, topic, summary, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (chat_id, repo_name, topic, summary, datetime.now(UTC).isoformat()),
+            )
+
+    def list_recent(self, chat_id: int, repo_name: str | None = None, limit: int = 5) -> list[dict[str, str]]:
+        with self._database.connection() as connection:
+            if repo_name is not None:
+                rows = connection.execute(
+                    """
+                    SELECT repo_name, topic, summary
+                    FROM repo_knowledge
+                    WHERE chat_id = ? AND repo_name = ?
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                    """,
+                    (chat_id, repo_name, limit),
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    """
+                    SELECT repo_name, topic, summary
+                    FROM repo_knowledge
+                    WHERE chat_id = ?
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                    """,
+                    (chat_id, limit),
+                ).fetchall()
+        return [
+            {"repo_name": row["repo_name"], "topic": row["topic"], "summary": row["summary"]}
             for row in rows
         ]
 

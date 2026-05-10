@@ -23,6 +23,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from unittest.mock import AsyncMock
 
 from mergemate.application.execution_plan import (
     BaseExecutionPlan,
@@ -146,7 +147,7 @@ def _make_runtime(run=None, run_repository=None, *, is_cancelled=None, workflow_
             write_review_report=lambda *a, **kw: Path("/tmp/doc.md"),
             write_lesson=lambda *a, **kw: Path("/tmp/doc.md"),
         ),
-        learning_service=SimpleNamespace(remember_success=lambda *a, **kw: None),
+        learning_service=SimpleNamespace(remember_success=AsyncMock()),
         planning_service=planning_service or AsyncPlanningServiceStub(),
         prompt_service=SimpleNamespace(),
         tool_service=SimpleNamespace(),
@@ -657,7 +658,7 @@ class TestDirectExecutionPlanCancelledAfterGather:
                 write_review_report=lambda *a, **kw: Path("/tmp/doc.md"),
                 write_lesson=lambda *a, **kw: Path("/tmp/doc.md"),
             ),
-            learning_service=SimpleNamespace(remember_success=lambda *a, **kw: None),
+            learning_service=SimpleNamespace(remember_success=AsyncMock()),
             planning_service=SimpleNamespace(extract_tasks=lambda x: [], build_progress_summary=lambda x, y: ""),
             prompt_service=SimpleNamespace(),
             tool_service=SimpleNamespace(),

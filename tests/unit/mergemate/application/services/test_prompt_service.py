@@ -74,3 +74,88 @@ def test_render_includes_learning_without_recent_messages(tmp_path: Path) -> Non
     assert system_prompt == "explain-system"
     assert user_prompt.startswith("Previously successful patterns:")
     assert user_prompt.endswith("Latest user request:\nlatest prompt")
+
+
+def test_render_includes_structured_learning_lessons(tmp_path) -> None:
+    """render() includes structured content when learning_lessons present
+    with technical_points, pitfalls, and conclusion keys."""
+    _write_prompt(tmp_path, "debugging.md", "debug-system")
+    service = PromptService(tmp_path)
+
+    system_prompt, user_prompt = service.render(
+        "debug_code",
+        [],
+        [
+            {
+                "workflow": "debug_code",
+                "prompt": "fix crash",
+                "result_excerpt": "excerpt",
+                "learning_lessons": '{"technical_points": ["use null check", "add try/except"], "pitfalls": ["missing edge case"], "conclusion": "always validate input"}',
+            }
+        ],
+        "latest prompt",
+    )
+
+    assert system_prompt == "debug-system"
+    assert "Previously successful patterns:" in user_prompt
+    assert "Key technical points: use null check, add try/except" in user_prompt
+    assert "Known pitfalls: missing edge case" in user_prompt
+    assert "Conclusion: always validate input" in user_prompt
+    assert "Prior result excerpt: excerpt" in user_prompt
+
+
+def test_render_handles_malformed_learning_lessons_json(tmp_path) -> None:
+    """render() handles malformed JSON gracefully (silently skips structured parts)."""
+    _write_prompt(tmp_path, "debugging.md", "debug-system")
+    service = PromptService(tmp_path)
+
+    system_prompt, user_prompt = service.render(
+        "debug_code",
+        [],
+        [
+            {
+                "workflow": "debug_code",
+                "prompt": "fix crash",
+                "result_excerpt": "excerpt",
+                "learning_lessons": "this is not valid json",
+            }
+        ],
+        "latest prompt",
+    )
+
+    assert system_prompt == "debug-system"
+    assert "Previously successful patterns:" in user_prompt
+    # Raw excerpt still shown
+    assert "Prior result excerpt: excerpt" in user_prompt
+    # Structured parts skipped silently — no crash, no malformed JSON error
+    assert "Key technical points:" not in user_prompt
+    assert "Known pitfalls:" not in user_prompt
+    assert "Conclusion:" not in user_prompt
+
+
+def test_render_handles_none_learning_lessons(tmp_path) -> None:
+    """render() handles learning_lessons is None gracefully."""
+    _write_prompt(tmp_path, "debugging.md", "debug-system")
+    service = PromptService(tmp_path)
+
+    system_prompt, user_prompt = service.render(
+        "debug_code",
+        [],
+        [
+            {
+                "workflow": "debug_code",
+                "prompt": "fix crash",
+                "result_excerpt": "excerpt",
+                "learning_lessons": None,
+            }
+        ],
+        "latest prompt",
+    )
+
+    assert system_prompt == "debug-system"
+    assert "Previously successful patterns:" in user_prompt
+    assert "Prior result excerpt: excerpt" in user_prompt
+    # No structured data since learning_lessons is None
+    assert "Key technical points:" not in user_prompt
+    assert "Known pitfalls:" not in user_prompt
+    assert "Conclusion:" not in user_prompt

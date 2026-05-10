@@ -45,13 +45,19 @@ class AgentOrchestrator:
         recent_messages = self._deps.context_service.load_recent_messages(run.chat_id)
         if recent_messages and recent_messages[-1]["role"] == "user" and recent_messages[-1]["content"] == run.prompt:
             recent_messages = recent_messages[:-1]
-        learned_items = self._deps.learning_service.load_recent_learnings(run.chat_id)
+        learned_items = self._deps.learning_service.load_grouped_learnings(
+            run.chat_id, current_workflow=run.workflow,
+        )
+        repo_knowledge = self._deps.learning_service.load_repo_knowledge(
+            run.chat_id, repo_name=self._deps.settings.repo_name,
+        )
 
         system_prompt, context_text = self._deps.prompt_service.render(
             run.workflow,
             recent_messages,
             learned_items,
             run.prompt,
+            repo_knowledge=repo_knowledge,
         )
 
         # Inject role Soul definition for boundary enforcement

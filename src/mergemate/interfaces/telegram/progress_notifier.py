@@ -90,7 +90,7 @@ async def watch_run_progress(application, runtime, chat_id: int, run_id: str) ->
 
     while True:
         await asyncio.sleep(interval_seconds)
-        run = runtime.get_run_status.execute(run_id)
+        run = runtime.services.get_run_status.execute(run_id)
         if run is None:
             return
         if run.status in terminal_statuses and run.run_id in terminal_deliveries:

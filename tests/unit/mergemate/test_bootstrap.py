@@ -17,7 +17,12 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
     config_path = tmp_path / "config.yaml"
     settings = SimpleNamespace(
         logging=SimpleNamespace(level="DEBUG"),
-        learning=SimpleNamespace(enabled=True, max_context_items=3, max_result_chars=1200),
+        learning=SimpleNamespace(
+            enabled=True,
+            max_context_items=3,
+            max_result_chars=1200,
+            extraction_agent="lesson-extractor",
+        ),
         tools=SimpleNamespace(allow_package_install=True, allowed_packages=["requests"], pip_executable="python3"),
         source_control=SimpleNamespace(
             enable_git=True,
@@ -138,6 +143,7 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
     monkeypatch.setattr(bootstrap_module, "SQLiteRunJobRepository", type("SQLiteRunJobRepositoryStub", (RepositoryStub,), {}))
     monkeypatch.setattr(bootstrap_module, "SQLiteConversationRepository", type("SQLiteConversationRepositoryStub", (RepositoryStub,), {}))
     monkeypatch.setattr(bootstrap_module, "SQLiteLearningRepository", type("SQLiteLearningRepositoryStub", (RepositoryStub,), {}))
+    monkeypatch.setattr(bootstrap_module, "SQLiteRepoKnowledgeRepository", type("SQLiteRepoKnowledgeRepositoryStub", (RepositoryStub,), {}))
     monkeypatch.setattr(bootstrap_module, "SQLiteToolEventRepository", type("SQLiteToolEventRepositoryStub", (RepositoryStub,), {}))
     monkeypatch.setattr(bootstrap_module, "ContextService", lambda repo: SimpleNamespace(repo=repo))
     monkeypatch.setattr(bootstrap_module, "LearningService", LearningServiceStub)
@@ -204,7 +210,12 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
 def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Path) -> None:
     settings = SimpleNamespace(
         logging=SimpleNamespace(level="INFO"),
-        learning=SimpleNamespace(enabled=False, max_context_items=1, max_result_chars=100),
+learning=SimpleNamespace(
+            enabled=False,
+            max_context_items=1,
+            max_result_chars=100,
+            extraction_agent=None,
+        ),
         tools=SimpleNamespace(allow_package_install=False, allowed_packages=[], pip_executable="python3"),
         source_control=SimpleNamespace(
             enable_git=False,
@@ -243,6 +254,7 @@ def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Pa
     monkeypatch.setattr(bootstrap_module, "SQLiteRunJobRepository", lambda _database: "run_job_repo")
     monkeypatch.setattr(bootstrap_module, "SQLiteConversationRepository", lambda _database: "conversation_repo")
     monkeypatch.setattr(bootstrap_module, "SQLiteLearningRepository", lambda _database: "learning_repo")
+    monkeypatch.setattr(bootstrap_module, "SQLiteRepoKnowledgeRepository", lambda _database: "repo_knowledge_repo")
     monkeypatch.setattr(bootstrap_module, "SQLiteToolEventRepository", lambda _database: "tool_event_repo")
     monkeypatch.setattr(bootstrap_module, "ContextService", lambda _repo: "context_service")
     monkeypatch.setattr(bootstrap_module, "LearningService", lambda *_args, **_kwargs: "learning_service")

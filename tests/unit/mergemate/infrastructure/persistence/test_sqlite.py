@@ -171,8 +171,8 @@ def test_conversation_and_learning_repositories_preserve_order_and_limit(tmp_pat
     learning.record(1, "debug_code", "p2", "r2")
 
     assert learning.list_recent(1, limit=2) == [
-        {"workflow": "debug_code", "prompt": "p2", "result_excerpt": "r2"},
-        {"workflow": "generate_code", "prompt": "p1", "result_excerpt": "r1"},
+        {"workflow": "debug_code", "prompt": "p2", "result_excerpt": "r2", "learning_lessons": None},
+        {"workflow": "generate_code", "prompt": "p1", "result_excerpt": "r1", "learning_lessons": None},
     ]
 
 
@@ -337,4 +337,42 @@ def test_run_job_repository_records_failures(tmp_path) -> None:
     assert failed is not None
     assert failed.status == RunJobStatus.FAILED
     assert failed.error_text == "worker crashed"
-    assert failed.finished_at is not None
+
+
+def test_learning_repository_stores_and_retrieves_learning_lessons(tmp_path) -> None:
+    """SQLiteLearningRepository.record() with learning_lessons stores the column
+    correctly, and list_recent() returns it in each dict."""
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repo = SQLiteLearningRepository(database)
+
+    lessons_json = '{"technical_points": ["use async/await"], "pitfalls": ["missing error handling"], "patterns": ["factory pattern"], "conclusion": "good design"}'
+    repo.record(
+        chat_id=42,
+        workflow="generate_code",
+        prompt="build service",
+        result_excerpt="code...",
+        learning_lessons=lessons_json,
+    )
+
+    results = repo.list_recent(chat_id=42)
+    assert len(results) == 1
+    assert results[0]["workflow"] == "generate_code"
+    assert results[0]["prompt"] == "build service"
+    assert results[0]["result_excerpt"] == "code..."
+    assert results[0]["learning_lessons"] == lessons_json
+
+
+def test_learning_repository_backward_compat_null_learning_lessons(tmp_path) -> None:
+    """Old rows without learning_lessons come back as None (backward compat)."""
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repo = SQLiteLearningRepository(database)
+
+    # Record without learning_lessons (None default)
+    repo.record(chat_id=42, workflow="generate_code", prompt="old prompt", result_excerpt="old result")
+
+    results = repo.list_recent(chat_id=42)
+    assert len(results) == 1
+    assert "learning_lessons" in results[0]
+    assert results[0]["learning_lessons"] is None

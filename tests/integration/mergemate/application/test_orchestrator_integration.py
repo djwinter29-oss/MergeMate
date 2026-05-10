@@ -59,7 +59,13 @@ class LearningServiceStub:
     def load_recent_learnings(self, chat_id: int) -> list[dict[str, str]]:
         return []
 
-    def remember_success(self, **payload: Any) -> None:
+    def load_grouped_learnings(self, chat_id: int, current_workflow: str) -> list[dict[str, str]]:
+        return []
+
+    def load_repo_knowledge(self, chat_id: int, repo_name: str) -> list[dict[str, str]]:
+        return []
+
+    async def remember_success(self, **payload: Any) -> None:
         self.saved.append(payload)
 
 
@@ -165,6 +171,7 @@ class PromptServiceStub:
         recent_messages: list[dict[str, str]],
         learned_items: list[dict[str, str]],
         prompt: str,
+        repo_knowledge: list[dict[str, str]] | None = None,
     ) -> tuple[str, str]:
         return ("system prompt", "rendered context")
 
@@ -180,6 +187,7 @@ class WorkflowControlStub:
 
 @dataclass(slots=True)
 class SettingsStub:
+    repo_name: str | None = "test-repo"
     workflow_control: WorkflowControlStub = field(default_factory=WorkflowControlStub)
     agents: dict[str, object] = field(
         default_factory=lambda: {
@@ -508,7 +516,7 @@ class TestOrchestratorFullPipeline:
         context.append_message(2001, "user", "build a login system")
 
         class CapturingPromptService:
-            def render(self, workflow, recent_messages, learned_items, prompt):
+            def render(self, workflow, recent_messages, learned_items, prompt, repo_knowledge=None):
                 self.captured_messages = list(recent_messages)
                 return ("system", "ctx")
 

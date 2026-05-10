@@ -21,6 +21,7 @@ class WorkflowControlStub:
 @dataclass(slots=True)
 class SettingsStub:
     workflow_control: WorkflowControlStub = field(default_factory=WorkflowControlStub)
+    repo_name: str | None = "test-repo"
     agents: dict[str, object] = field(
         default_factory=lambda: {
             "planner": SimpleNamespace(workflow="planning"),
@@ -161,16 +162,24 @@ class ContextServiceStub:
 class LearningServiceStub:
     def __init__(self) -> None:
         self.saved = []
+        self.grouped_calls = []
 
     def load_recent_learnings(self, chat_id: int):
         return []
 
-    def remember_success(self, **payload) -> None:
+    def load_grouped_learnings(self, chat_id: int, current_workflow: str) -> list[dict[str, str]]:
+        self.grouped_calls.append((chat_id, current_workflow))
+        return [{"workflow": current_workflow, "prompt": "test", "result_excerpt": "x", "learning_lessons": "{}"}]
+
+    def load_repo_knowledge(self, chat_id: int, repo_name: str | None = None) -> list[dict[str, str]]:
+        return []
+
+    async def remember_success(self, **payload) -> None:
         self.saved.append(payload)
 
 
 class PromptServiceStub:
-    def render(self, workflow: str, recent_messages, learned_items, prompt: str):
+    def render(self, workflow: str, recent_messages, learned_items, prompt: str, **kwargs):
         return ("system", "context")
 
 
@@ -766,3 +775,28 @@ async def test_process_run_appends_runtime_tool_context_to_execution_context() -
             "context\n\nRuntime tool context:\nEnabled runtime tools:\n- git_repository\n\ngit_repository (ok):\nmain",
         )
     ]
+
+
+@pytest.mark.asyncio
+async def test_process_run_calls_load_grouped_learnings_instead_of_load_recent_learnings() -> None:
+    """process_run() calls load_grouped_learnings() with correct params."""
+    repository = RunRepositoryStub(_build_run(workflow="generate_code", agent_name="coder"))
+    learning_service = LearningServiceStub()
+    orchestrator = AgentOrchestrator(
+        deps=_make_deps(
+            repository=repository,
+            learning_service=learning_service,
+            planning_service=PlanningServiceStub(),
+            prompt_service=PromptServiceStub(),
+            tool_service=ToolServiceStub(),
+            workflow_service=WorkflowServiceStub(),
+            llm_gateway=None,
+            settings=SettingsStub(),
+        ),
+    )
+
+    run = await orchestrator.process_run("run-1")
+
+    assert run is not None
+    assert run.status == RunStatus.COMPLETED
+    assert learning_service.grouped_calls == [(123, "generate_code")]
