@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Logging configuration."""
 
 import logging

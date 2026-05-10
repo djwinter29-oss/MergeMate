@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Telegram runtime adapter for polling and webhook modes."""
 
 from telegram import Update

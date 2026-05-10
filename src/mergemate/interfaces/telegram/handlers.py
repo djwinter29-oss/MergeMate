@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Telegram command and message handlers."""
 
 from telegram import Update

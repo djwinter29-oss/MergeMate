@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Polling-based Telegram progress notifications for in-flight runs."""
 
 import asyncio

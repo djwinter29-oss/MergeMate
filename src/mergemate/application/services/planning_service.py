@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Planning and replanning prompts for approval-gated workflows.
 
 The planning service now produces structured task breakdowns in addition

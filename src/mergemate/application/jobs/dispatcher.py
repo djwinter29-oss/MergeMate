@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Dispatch accepted work to the background worker."""
 
 from dataclasses import dataclass

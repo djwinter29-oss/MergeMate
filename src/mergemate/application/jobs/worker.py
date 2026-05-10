@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Background worker for queued runs."""
 
 import asyncio

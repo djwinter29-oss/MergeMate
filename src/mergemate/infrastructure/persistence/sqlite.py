@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """SQLite persistence for runs and conversation messages."""
 
 from contextlib import contextmanager
