@@ -26,6 +26,16 @@ from collections.abc import Callable
 from typing import Any, Protocol, runtime_checkable
 
 
+# ── Public API ─────────────────────────────────────────────────────────────
+
+__all__ = [
+    "StageHandler",
+    "HandlerContext",
+    "get_stage_handler",
+    "register_handler",
+]
+
+
 # ── Handler Context Protocol ────────────────────────────────────────────────
 
 @runtime_checkable
