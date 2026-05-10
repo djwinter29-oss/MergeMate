@@ -59,7 +59,7 @@ __all__ = [
 # bootstrap wiring.  Plugin workflows registered later via entry points or
 # config are appended on top.
 
-from mergemate.domain.workflows.stage import _BUILTIN_WORKFLOWS as _builtin_wfs
+from mergemate.domain.workflows.stage import _BUILTIN_WORKFLOWS as _builtin_wfs  # noqa: E402
 
 for _wf_name, _wf_def in _builtin_wfs.items():
     try:
