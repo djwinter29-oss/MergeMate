@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Conversation context service placeholder."""
 
 

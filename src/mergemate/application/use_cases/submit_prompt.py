@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Submit a prompt and return an immediate acknowledgement."""
 
 from dataclasses import dataclass

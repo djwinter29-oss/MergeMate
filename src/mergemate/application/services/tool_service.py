@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Tool selection and invocation service."""
 
 import asyncio

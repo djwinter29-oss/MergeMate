@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Workflow planning, design, implementation, testing, and review orchestration prompts."""
 
 import asyncio

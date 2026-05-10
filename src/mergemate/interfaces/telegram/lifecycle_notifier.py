@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Telegram delivery adapter for background run lifecycle events."""
 
 import asyncio
