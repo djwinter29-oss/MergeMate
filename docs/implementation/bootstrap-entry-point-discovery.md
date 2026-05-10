@@ -1,58 +1,61 @@
-# Bootstrap Entry-Point Discovery
+# Bootstrap: Entry-Point Discovery for Workflow Plugins
 
 ## Overview
 
-Adds two plugin discovery functions to `src/mergemate/bootstrap.py` that are
-called early during application startup, **before** any service instances are
-created.  This ensures that externally-defined workflows are registered in the
-`WorkflowRegistry` (via `register_workflow()`) before any service code tries to
-look them up.
+Two new functions added to `src/mergemate/bootstrap.py` that load workflow
+plugin registrations at startup, before any service is instantiated.
 
 ## Functions
 
 ### `discover_workflow_plugins()`
 
-- Scans the `mergemate.workflows` entry-point group using
-  `importlib.metadata.entry_points()`.
-- Calls each discovered entry-point's `load()` result — that function is
-  expected to invoke `register_workflow()` or `register_validation_hook()` at
-  call time.
-- Failures are caught and logged as warnings; a broken plugin does not block
-  startup.
+Uses `importlib.metadata.entry_points` to scan the `mergemate.workflows`
+entry point group. Each registered callable is invoked immediately.
+
+Plugin authors package their plugins via:
+
+```toml
+[project.entry-points."mergemate.workflows"]
+my_plugin = "my_plugin_package:register"
+```
+
+Errors from individual plugins are swallowed and logged as warnings — a
+single misbehaving plugin never blocks the bootstrap sequence.
 
 ### `_load_workflow_config_plugins(settings: AppConfig)`
 
-- Iterates `settings.workflow_plugins` (a `list[str | dict]`).
-- `str` entries are treated as Python package module names and imported via
-  `importlib.import_module()`.  The module's `register_workflow()` calls fire
-  at import time.
-- `dict` entries must have a `"path"` key pointing to a `.py` file.  The file
-  is read and executed via `exec()` with `__file__` and `__name__` set so that
-  relative imports inside the plugin work.
-- Failures for individual entries are logged as warnings.
+Reads the `workflow_plugins` field from `AppConfig` (a `list[str | dict]`).
+Each entry is either:
 
-## Bootstrap wiring
+- A **str**: treated as a Python module path; its `register()` function
+  is called with no arguments.
+- A **dict**: must contain a `module` key; all other keys are collected
+  into a `config` dict and passed to `register(config)`.
 
-Both calls are inserted in `bootstrap()` right after:
+Errors are logged as warnings (same resilience pattern).
 
-```python
-resolved_config_path = resolve_config_path(config_path)
-settings = load_runtime_settings(config_path)
-configure_logging(settings.logging.level)
-```
+## Config model change
 
-...and right before database initialisation.
+Added `workflow_plugins: list[str | dict] = Field(default_factory=list)`
+to the `AppConfig` class in `src/mergemate/config/models.py`.
+
+## Bootstrap execution order
+
+Both functions are called in `bootstrap()` immediately after
+`configure_logging()` and before `SQLiteDatabase(...)`:
+
+1. `resolve_config_path`
+2. `load_runtime_settings`
+3. `configure_logging`
+4. **`discover_workflow_plugins()`**
+5. **`_load_workflow_config_plugins(settings)`**
+6. database init, service wiring, etc.
+
+This ensures workflow definitions are in the `_WORKFLOW_REGISTRY` dict
+before any service (RunDispatcher, WorkflowService, AgentOrchestrator)
+tries to look them up.
 
 ## Files changed
 
-- `src/mergemate/bootstrap.py` — added `discover_workflow_plugins()`,
-  `_load_workflow_config_plugins()`, and two calls in `bootstrap()`.
-
-## Decisions
-
-| Decision | Rationale |
-|---|---|
-| Lazy imports inside functions | `importlib.metadata.entry_points` is a 3.9+ API; keeping it inside the function avoids module-level side effects.  Also keeps the import section short. |
-| Warning-level logging on failure | A broken third-party plugin should not take down the whole application. |
-| `exec()` for file-based plugins | Simple, no wrapper module needed.  The `__file__` and `__name__` globals give the executed code a reasonable context. |
-| Config plugins loaded **after** entry points | If entry-point plugins register the "framework" workflows first, file-based config plugins can use them (e.g. extend a framework workflow with additional stages). |
+- `src/mergemate/bootstrap.py` — added 2 functions + 2 callers (72 lines)
+- `src/mergemate/config/models.py` — added `workflow_plugins` field (1 line)
