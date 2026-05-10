@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import Any
 import warnings as _warnings
 
 from .enums import (
@@ -48,7 +49,7 @@ from .value_objects import (
 #
 # Use lazy imports to avoid circular imports (policies → shared.enums → shared).
 
-def _get_policies() -> object:
+def _get_policies() -> Any:
     import importlib
     return importlib.import_module("mergemate.domain.policies")
 
