@@ -5,10 +5,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from mergemate.infrastructure.tools.builtin.code_formatter import CodeFormatterTool
-from mergemate.infrastructure.tools.builtin.package_installer import PackageInstallerTool
-from mergemate.infrastructure.tools.builtin.syntax_checker import SyntaxCheckerTool
-
 if TYPE_CHECKING:
     from mergemate.config.models import AppConfig
     from pathlib import Path
@@ -46,6 +42,10 @@ class ToolRegistryBuilder:
     """
 
     def __init__(self, settings: AppConfig, working_directory: Path) -> None:
+        from mergemate.infrastructure.tools.builtin.code_formatter import CodeFormatterTool
+        from mergemate.infrastructure.tools.builtin.package_installer import PackageInstallerTool
+        from mergemate.infrastructure.tools.builtin.syntax_checker import SyntaxCheckerTool
+
         self._tools: dict[str, object] = {
             "code_formatter": CodeFormatterTool(),
             "package_installer": PackageInstallerTool(

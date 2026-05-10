@@ -25,6 +25,7 @@ from mergemate.infrastructure.persistence.sqlite import (
     SQLiteConversationRepository,
     SQLiteDatabase,
     SQLiteLearningRepository,
+    SQLiteRepoKnowledgeRepository,
     SQLiteRunJobRepository,
     SQLiteRunRepository,
     SQLiteToolEventRepository,
@@ -112,6 +113,7 @@ class PersistenceContext:
     conversation_repository: SQLiteConversationRepository
     learning_repository: SQLiteLearningRepository
     tool_event_repository: SQLiteToolEventRepository
+    repo_knowledge_repository: SQLiteRepoKnowledgeRepository
 
 
 @dataclass(slots=True)
@@ -164,12 +166,14 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
     conversation_repository = SQLiteConversationRepository(database)
     learning_repository = SQLiteLearningRepository(database)
     tool_event_repository = SQLiteToolEventRepository(database)
+    repo_knowledge_repository = SQLiteRepoKnowledgeRepository(database)
     context_service = ContextService(conversation_repository)
     learning_service = LearningService(
         learning_repository,
         enabled=settings.learning.enabled,
         max_context_items=settings.learning.max_context_items,
         max_result_chars=settings.learning.max_result_chars,
+        repo_knowledge_repository=repo_knowledge_repository,
     )
     documentation_service = DocumentationService(settings.resolve_docs_root(resolved_config_path))
     prompt_service = PromptService(Path(__file__).resolve().parent / "prompts")
@@ -252,6 +256,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
             conversation_repository=conversation_repository,
             learning_repository=learning_repository,
             tool_event_repository=tool_event_repository,
+            repo_knowledge_repository=repo_knowledge_repository,
         ),
         services=ServiceContext(
             learning_service=learning_service,

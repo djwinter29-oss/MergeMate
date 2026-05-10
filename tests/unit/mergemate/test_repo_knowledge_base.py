@@ -584,9 +584,15 @@ def test_bootstrap_wires_repo_knowledge_repository(monkeypatch, tmp_path: Path) 
     monkeypatch.setattr(bootstrap_module, "SubmitPromptUseCase", lambda *a: "submit")
     monkeypatch.setattr(bootstrap_module, "GetRunStatusUseCase", lambda *a: "status")
     monkeypatch.setattr(bootstrap_module, "CancelRunUseCase", lambda *a: "cancel")
-    monkeypatch.setattr(bootstrap_module, "CodeFormatterTool", lambda: "fmt")
-    monkeypatch.setattr(bootstrap_module, "PackageInstallerTool", lambda **kw: ("installer", kw))
-    monkeypatch.setattr(bootstrap_module, "SyntaxCheckerTool", lambda: "syntax")
+    # ToolRegistryBuilder replaces direct ToolRegistry construction in main; these
+    # no longer live on bootstrap_module so we mock the builder instead.
+    mock_builder = SimpleNamespace()
+    mock_builder.tools = {}
+    mock_builder.with_git = lambda: mock_builder
+    mock_builder.with_github_cli = lambda: mock_builder
+    mock_builder.with_gitlab_cli = lambda: mock_builder
+    mock_builder.build = lambda: SimpleNamespace(tools=mock_builder.tools)
+    monkeypatch.setattr(bootstrap_module, "ToolRegistryBuilder", lambda *_a, **_kw: mock_builder)
 
     bootstrap_module.bootstrap()
 
