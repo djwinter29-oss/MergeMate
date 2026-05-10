@@ -42,6 +42,73 @@ from mergemate.infrastructure.tools.builtin.source_control import (
 from mergemate.infrastructure.tools.builtin.syntax_checker import SyntaxCheckerTool
 from mergemate.infrastructure.tools.registry import ToolRegistry
 
+# ── Workflow plugin discovery ───────────────────────────────────────────────
+
+
+def discover_workflow_plugins() -> None:
+    """Discover and load workflow plugins registered via entry points.
+
+    Scans the ``mergemate.workflows`` entry point group and calls each
+    registered registration function.  Plugin authors package their
+    plugin as a Python package with::
+
+        [project.entry-points."mergemate.workflows"]
+        my_plugin = "my_plugin_package:register"
+
+    Errors from individual plugins are logged as warnings so that a
+    misbehaving plugin never blocks the rest of the bootstrap sequence.
+    """
+    from importlib.metadata import entry_points
+
+    discovered = entry_points(group="mergemate.workflows")
+    for ep in discovered:
+        try:
+            ep.load()()  # call the registration function
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "Failed to load workflow plugin: %s", ep.name, exc_info=True,
+            )
+
+
+def _load_workflow_config_plugins(settings: AppConfig) -> None:
+    """Load file-based workflow plugins from the ``workflow_plugins`` config list.
+
+    Each entry may be a ``str`` (module path) or a ``dict`` with keys
+    ``module`` (required) and optional ``config`` passed to the module's
+    ``register`` function.  Strings are treated as ``{"module": <str>}``.
+
+    Errors from individual plugins are logged as warnings so that a
+    misbehaving plugin never blocks the rest of the bootstrap sequence.
+    """
+    import importlib
+
+    for entry in settings.workflow_plugins:
+        if isinstance(entry, dict):
+            module_path = entry.get("module", "")
+            plugin_config = {k: v for k, v in entry.items() if k != "module"}
+        else:
+            module_path = str(entry)
+            plugin_config = {}
+
+        try:
+            module = importlib.import_module(module_path)
+            register_fn = getattr(module, "register", None)
+            if register_fn is not None:
+                if plugin_config:
+                    register_fn(plugin_config)
+                else:
+                    register_fn()
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "Failed to load config workflow plugin: %s",
+                module_path,
+                exc_info=True,
+            )
+
 
 @dataclass(slots=True)
 class MergeMateRuntime:
@@ -69,6 +136,10 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
     resolved_config_path = resolve_config_path(config_path)
     settings = load_runtime_settings(config_path)
     configure_logging(settings.logging.level)
+
+    # Discover and load workflow plugins before any service references them
+    discover_workflow_plugins()
+    _load_workflow_config_plugins(settings)
 
     resolved_database_path = settings.resolve_database_path(resolved_config_path)
     database = SQLiteDatabase(resolved_database_path)
