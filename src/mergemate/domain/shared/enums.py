@@ -1,4 +1,9 @@
-"""Shared enums and workflow helpers."""
+"""Shared enums — workflow names and workflow-related data constants only.
+
+Business logic functions (resolve_workflow_name, uses_multi_stage_delivery,
+is_user_facing_workflow, workflow_prompt_file) have been moved to
+``mergemate.domain.policies``. Import them from there instead.
+"""
 
 from enum import StrEnum
 
@@ -29,29 +34,3 @@ PROMPT_FILE_BY_WORKFLOW = {
     WorkflowName.DEBUG_CODE: "debugging.md",
     WorkflowName.EXPLAIN_CODE: "explanation.md",
 }
-
-
-def resolve_workflow_name(workflow: str | WorkflowName) -> WorkflowName | None:
-    if isinstance(workflow, WorkflowName):
-        return workflow
-    try:
-        return WorkflowName(workflow)
-    except ValueError:
-        return None
-
-
-def uses_multi_stage_delivery(workflow: str | WorkflowName) -> bool:
-    workflow_name = resolve_workflow_name(workflow)
-    return workflow_name in MULTI_STAGE_WORKFLOWS
-
-
-def is_user_facing_workflow(workflow: str | WorkflowName) -> bool:
-    workflow_name = resolve_workflow_name(workflow)
-    return workflow_name in USER_FACING_WORKFLOWS
-
-
-def workflow_prompt_file(workflow: str | WorkflowName) -> str:
-    workflow_name = resolve_workflow_name(workflow)
-    if workflow_name is None:
-        return "base.md"
-    return PROMPT_FILE_BY_WORKFLOW.get(workflow_name, "base.md")

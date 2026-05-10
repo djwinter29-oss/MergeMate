@@ -3,6 +3,8 @@
 from mergemate.domain.shared.enums import (
     WorkflowName,
     PROMPT_FILE_BY_WORKFLOW,
+)
+from mergemate.domain.policies import (
     resolve_workflow_name,
     uses_multi_stage_delivery,
     is_user_facing_workflow,
