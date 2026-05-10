@@ -12,10 +12,8 @@ Target lines:
 177-178: _mark_shutdown_interrupted returns existing when already terminal
 """
 import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any
-from unittest.mock import patch
 
 import pytest
 

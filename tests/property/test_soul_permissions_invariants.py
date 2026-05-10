@@ -15,7 +15,7 @@ import pytest
 
 from mergemate.application.services.documentation_service import DocumentationService
 from mergemate.domain.agents import get_soul, all_souls
-from mergemate.domain.agents.soul import SOUL_REGISTRY, DocPermission, Soul
+from mergemate.domain.agents.soul import SOUL_REGISTRY
 
 # ── whitelist / blacklist invariants ──────────────────────────────────────
 

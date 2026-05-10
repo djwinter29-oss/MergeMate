@@ -14,19 +14,15 @@ requiring changes to the concrete service classes.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
 
     from mergemate.application.execution_plan import (
         DirectExecutionPlan,
         MultiStageExecutionPlan,
-        ExecutionContext,
     )
-    from mergemate.domain.runs.entities import AgentRun
-    from mergemate.domain.runs.repository import AgentRunRepository
-    from mergemate.domain.shared import RunStage, RunStatus
+    from mergemate.domain.shared import RunStage
 
 # ---------------------------------------------------------------------------
 # Repository Protocols

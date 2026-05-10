@@ -1,10 +1,7 @@
 """Tests for shared enums — covering all branch paths."""
-import pytest
 
 from mergemate.domain.shared.enums import (
     WorkflowName,
-    MULTI_STAGE_WORKFLOWS,
-    USER_FACING_WORKFLOWS,
     PROMPT_FILE_BY_WORKFLOW,
     resolve_workflow_name,
     uses_multi_stage_delivery,
