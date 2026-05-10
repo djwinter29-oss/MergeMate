@@ -12,14 +12,7 @@ from mergemate.domain.shared.enums import (
     USER_FACING_WORKFLOWS,
     WorkflowName,
 )
-from mergemate.domain.workflows.stage import get_workflow_definitions  # noqa: F401
-
-
-# ── Derive multi-stage workflows from definitions (single source of truth) ──
-
-_MULTI_STAGE_WORKFLOWS = frozenset(
-    get_workflow_definitions().keys(),
-)
+from mergemate.domain.workflows.registry import get_workflow
 
 
 def resolve_workflow_name(workflow: str | WorkflowName) -> WorkflowName | None:
@@ -32,8 +25,19 @@ def resolve_workflow_name(workflow: str | WorkflowName) -> WorkflowName | None:
 
 
 def uses_multi_stage_delivery(workflow: str | WorkflowName) -> bool:
+    """Check whether *workflow* has a multi-stage delivery definition.
+
+    Tries ``WorkflowName`` resolution first (for known built-in workflows).
+    If that fails the workflow may come from a plugin, so falls back to
+    querying the registry with the raw string.
+    """
     workflow_name = resolve_workflow_name(workflow)
-    return workflow_name in _MULTI_STAGE_WORKFLOWS
+    if workflow_name is not None:
+        return get_workflow(workflow_name.value) is not None
+    # Plugin workflows that aren't in the WorkflowName enum — try raw string.
+    if isinstance(workflow, str):
+        return get_workflow(workflow) is not None
+    return False
 
 
 def is_user_facing_workflow(workflow: str | WorkflowName) -> bool:
@@ -53,5 +57,5 @@ __all__ = [
     "uses_multi_stage_delivery",
     "is_user_facing_workflow",
     "workflow_prompt_file",
-    "get_workflow_definitions",
+    "get_workflow",
 ]
