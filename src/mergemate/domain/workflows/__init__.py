@@ -35,6 +35,15 @@ from mergemate.domain.workflows.validation import (
     run_validation_hooks,
 )
 
+
+def _init_registry() -> None:
+    """Populate the workflow registry with built-in definitions."""
+    from mergemate.domain.workflows.stage import _register_builtin_workflows
+    _register_builtin_workflows()
+
+
+_init_registry()
+
 __all__ = [
     # registry
     "register_workflow",

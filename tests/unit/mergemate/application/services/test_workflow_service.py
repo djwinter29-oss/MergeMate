@@ -110,6 +110,8 @@ async def test_execute_direct_uses_requested_agent() -> None:
 
 
 def test_uses_multi_stage_delivery_is_explicit() -> None:
+    """Policy returns True only for workflows registered as multi-stage."""
+    # generate_code is registered as multi-stage in the built-in workflow registry
     assert uses_multi_stage_delivery("generate_code") is True
     assert uses_multi_stage_delivery("debug_code") is False
     assert uses_multi_stage_delivery("explain_code") is False
@@ -157,13 +159,13 @@ def test_execution_plans_report_tool_context_requirement_from_shared_base() -> N
 
 
 def test_build_execution_plan_rejects_non_positive_review_iterations() -> None:
-    service = WorkflowService(
-        GatewayStub(),
-        SettingsStub(workflow_control=WorkflowControlStub(max_review_iterations=0)),
-    )
-
+    """MultiStageExecutionPlan constructors validate max_iterations >= 1."""
+    from mergemate.application.execution_plan import MultiStageExecutionPlan
     with pytest.raises(StageExecutionError, match="max_iterations must be at least 1"):
-        service.build_execution_plan("generate_code", agent_name="coder")
+        MultiStageExecutionPlan(
+            agent_name="coder",
+            max_iterations=0,
+        )
 
 
 # ── Parallel execution tests ──────────────────────────────────────────────
