@@ -5,10 +5,8 @@ Covers:
 2.  resolve_agent_name_for_workflow: preferred_agent matches [lines 358-360]
 3.  resolve_agent_name_for_workflow: fallback agent scan [line 364]
 """
-import pytest
 
 from mergemate.config.models import AppConfig
-from mergemate.domain.shared import WorkflowName
 
 
 def _build_config() -> AppConfig:

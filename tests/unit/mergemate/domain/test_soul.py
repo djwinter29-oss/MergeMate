@@ -1,6 +1,5 @@
 """Tests for Soul entity — permission checking, whitelist/blacklist."""
 
-import pytest
 
 from mergemate.domain.agents.soul import (
     DocPermission,

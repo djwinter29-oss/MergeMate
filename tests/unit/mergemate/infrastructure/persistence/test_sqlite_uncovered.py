@@ -12,10 +12,8 @@ Covers:
 """
 from datetime import UTC, datetime
 
-import pytest
 
-from mergemate.domain.runs.entities import RunJob
-from mergemate.domain.shared import RunJobStatus, RunJobType, RunStatus
+from mergemate.domain.shared import RunJobStatus, RunStatus
 from mergemate.infrastructure.persistence.sqlite import (
     SQLiteDatabase,
     SQLiteRunJobRepository,
