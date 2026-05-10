@@ -22,17 +22,29 @@ The handler mutates it and returns it.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from mergemate.application.execution_plan import ExecutionRuntime
 
 
+# ── Public API ─────────────────────────────────────────────────────────────
+
+__all__ = [
+    "StageHandler",
+    "get_stage_handler",
+    "register_handler",
+]
+
+
 # ── Type alias ─────────────────────────────────────────────────────────────
 
-StageHandler = Any  # typing: Callable[[ExecutionRuntime, dict[str, Any]], dict[str, Any]]
-"""Signature: ``async def fn(runtime, stage, artifacts, agent_name) -> artifacts``."""
+StageHandler = Callable[
+    [ExecutionRuntime, dict[str, Any], str],  # runtime, artifacts, agent_name
+    Awaitable[dict[str, Any]],
+]
+"""Signature: ``async def fn(runtime, artifacts, agent_name) -> artifacts``."""
 
 
 # ── Handler registry ───────────────────────────────────────────────────────
