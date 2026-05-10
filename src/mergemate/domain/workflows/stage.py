@@ -154,6 +154,13 @@ _BUILTIN_WORKFLOWS: dict[WorkflowName, WorkflowDefinition] = {
     ),
 }
 
+def _register_builtin_workflows() -> None:
+    """Register built-in workflow definitions with the string-keyed registry."""
+    from mergemate.domain.workflows.registry import register_workflow
+
+    for _wf_name, _wf_def in _BUILTIN_WORKFLOWS.items():
+        register_workflow(_wf_name.value, _wf_def)
+
 
 def get_workflow_definitions() -> dict[WorkflowName, WorkflowDefinition]:
     """Return the map of known workflow definitions.
