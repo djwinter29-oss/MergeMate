@@ -61,3 +61,17 @@ __all__ = [
     "register_handler",
     "get_stage_handler",
 ]
+
+# ── Auto-register built-in workflows into the live registry at import time ─
+# This ensures that uses_multi_stage_delivery() and other policy functions
+# that query the registry find the built-in workflows without explicit
+# bootstrap wiring.  Plugin workflows registered later via entry points or
+# config are appended on top.
+
+from mergemate.domain.workflows.stage import _BUILTIN_WORKFLOWS as _builtin_wfs  # noqa: E402
+
+for _wf_name, _wf_def in _builtin_wfs.items():
+    try:
+        register_workflow(_wf_name.value, _wf_def)
+    except KeyError:
+        pass  # Already registered by an earlier import — not an error.
