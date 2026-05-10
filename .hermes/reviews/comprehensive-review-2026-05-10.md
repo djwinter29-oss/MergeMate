@@ -108,3 +108,33 @@ The entire codebase passes all quality gates with no errors.
 - Add `search(query, chat_id, limit)` method to ConversationRepository
 - Implement SQL FTS (full-text search) in SQLiteConversationRepository
 - Add `/search` Telegram command + formatted output in presenter.py
+
+---
+
+## 📚 Memory & Understanding Improvements
+
+### M1. Structured Lesson Extraction (not just raw text truncation)
+**Problem**: `SQLiteLearningRepository.record()` stores `result_excerpt[:1200]` — raw text truncation. No structured extraction. When loaded, the LLM must parse raw text to understand what was learned.
+**Suggested approach**:
+- Add an `_extract_lessons()` step after run completion: use LLM to distill `result_text` into structured notes (key technical points, gotchas, patterns, conclusions)
+- Add `learning_lessons TEXT` column to the `learning_entries` table
+- `LearningService.remember_success()` calls the extraction step
+- `PromptService.render()` injects both raw excerpt and extracted lessons
+- Kanban: architect→coder→tester→reviewer
+
+### M2. Per-Repository Knowledge Base
+**Problem**: All knowledge is stored by `chat_id` only. When working on multiple repos simultaneously, memory is polluted across projects.
+**Suggested approach**:
+- New `repo_knowledge` table (chat_id, repo_name, topic, summary, created_at)
+- Created by `SQLiteDatabase.initialize()`
+- New `LearningService.remember_repo_knowledge()` and `load_repo_knowledge()`
+- `PromptService.render()` loads current repo knowledge
+- `AppConfig` gets a `repo_name` config field
+- Kanban: architect→coder→tester→reviewer
+
+### M3. Workflow-Grouped Memory Injection
+**Problem**: `load_recent_learnings(chat_id, limit=3)` returns the last 3 entries regardless of workflow. If the user was doing `debug_code`, then switches to `generate_code`, no relevant history is injected.
+**Suggested approach**:
+- Group by `WorkflowName`: current workflow → top-3, other workflows → top-1 each
+- Or have `PromptService.render()` prioritize entries matching the current workflow
+- Kanban: architect→coder→tester
