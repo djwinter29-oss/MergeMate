@@ -391,6 +391,32 @@ def _make_runtime_from_deps(
     return ExecutionRuntime(deps=deps, is_cancelled=is_cancelled)
 
 
+def _make_runtime(
+    *,
+    repository=None,
+    context_service=None,
+    documentation_service=None,
+    learning_service=None,
+    planning_service=None,
+    workflow_service=None,
+    settings=None,
+    is_cancelled=lambda _run_id: False,
+    llm_gateway=None,
+) -> ExecutionRuntime:
+    """Build an ExecutionRuntime from individual dependencies (integration test helper)."""
+    deps = _make_deps(
+        llm_gateway or SimpleNamespace(),
+        repository=repository,
+        context_service=context_service,
+        documentation_service=documentation_service,
+        learning_service=learning_service,
+        planning_service=planning_service,
+        workflow_service=workflow_service,
+        settings=settings,
+    )
+    return ExecutionRuntime(deps=deps, is_cancelled=is_cancelled)
+
+
 # ---------------------------------------------------------------------------
 # Tests: MultiStageExecutionPlan.execute()
 # ---------------------------------------------------------------------------
@@ -421,15 +447,15 @@ class TestMultiStageExecutionPlanIntegration:
         workflow_service = WorkflowService(llm_gateway, SettingsStub())
 
         plan = _make_multistage_plan()
-        runtime = ExecutionRuntime(
-            run_repository=repo,
+        runtime = _make_runtime(
+            repository=repo,
             context_service=context,
             documentation_service=docs,
             learning_service=learning,
             planning_service=planning,
             workflow_service=workflow_service,
-            settings=SettingsStub(),
             is_cancelled=lambda _: False,
+            llm_gateway=llm_gateway,
         )
         execution = ExecutionContext(
             run=run,
@@ -493,15 +519,15 @@ class TestMultiStageExecutionPlanIntegration:
         workflow_service = WorkflowService(llm_gateway, SettingsStub())
 
         plan = _make_multistage_plan()
-        runtime = ExecutionRuntime(
-            run_repository=repo,
+        runtime = _make_runtime(
+            repository=repo,
             context_service=context,
             documentation_service=docs,
             learning_service=learning,
             planning_service=planning,
             workflow_service=workflow_service,
-            settings=SettingsStub(),
             is_cancelled=lambda _: False,
+            llm_gateway=llm_gateway,
         )
         execution = ExecutionContext(
             run=run,
@@ -548,8 +574,8 @@ class TestMultiStageExecutionPlanIntegration:
         workflow_service = WorkflowService(llm_gateway, SettingsStub())
 
         plan = _make_multistage_plan(max_iterations=1)
-        runtime = ExecutionRuntime(
-            run_repository=repo,
+        runtime = _make_runtime(
+            repository=repo,
             context_service=context,
             documentation_service=docs,
             learning_service=learning,
@@ -557,6 +583,7 @@ class TestMultiStageExecutionPlanIntegration:
             workflow_service=workflow_service,
             settings=SettingsStub(workflow_control=WorkflowControlStub(max_review_iterations=1)),
             is_cancelled=lambda _: False,
+            llm_gateway=llm_gateway,
         )
         execution = ExecutionContext(
             run=run,
@@ -591,15 +618,15 @@ class TestMultiStageExecutionPlanIntegration:
         workflow_service = WorkflowService(llm_gateway, SettingsStub())
 
         plan = _make_multistage_plan()
-        runtime = ExecutionRuntime(
-            run_repository=repo,
+        runtime = _make_runtime(
+            repository=repo,
             context_service=context,
             documentation_service=docs,
             learning_service=learning,
             planning_service=planning,
             workflow_service=workflow_service,
-            settings=SettingsStub(),
             is_cancelled=lambda _: True,
+            llm_gateway=llm_gateway,
         )
         execution = ExecutionContext(
             run=run,
@@ -638,15 +665,15 @@ class TestMultiStageExecutionPlanIntegration:
             call_count += 1
             return call_count >= 2
 
-        runtime = ExecutionRuntime(
-            run_repository=repo,
+        runtime = _make_runtime(
+            repository=repo,
             context_service=context,
             documentation_service=docs,
             learning_service=learning,
             planning_service=planning,
             workflow_service=workflow_service,
-            settings=SettingsStub(),
             is_cancelled=_is_cancelled,
+            llm_gateway=llm_gateway,
         )
         execution = ExecutionContext(
             run=run,
@@ -675,15 +702,15 @@ class TestMultiStageExecutionPlanIntegration:
         workflow_service = WorkflowService(llm_gateway, SettingsStub())
 
         plan = _make_multistage_plan()
-        runtime = ExecutionRuntime(
-            run_repository=repo,
+        runtime = _make_runtime(
+            repository=repo,
             context_service=context,
             documentation_service=docs,
             learning_service=learning,
             planning_service=planning,
             workflow_service=workflow_service,
-            settings=SettingsStub(),
             is_cancelled=lambda _: False,
+            llm_gateway=llm_gateway,
         )
         execution = ExecutionContext(
             run=run,
@@ -701,7 +728,19 @@ class TestMultiStageExecutionPlanIntegration:
                 run.status = RunStatus.CANCELLED
                 return await super().generate_tests(plan_text, design_text, implementation_text)
 
-        runtime.workflow_service = CancellingWorkflowService(llm_gateway, SettingsStub())
+        cws = CancellingWorkflowService(llm_gateway, SettingsStub())
+        runtime.deps = OrchestratorDependencies(
+            run_repository=runtime.deps.run_repository,
+            context_service=runtime.deps.context_service,
+            documentation_service=runtime.deps.documentation_service,
+            learning_service=runtime.deps.learning_service,
+            planning_service=runtime.deps.planning_service,
+            prompt_service=runtime.deps.prompt_service,
+            tool_service=runtime.deps.tool_service,
+            workflow_service=cws,
+            llm_gateway=runtime.deps.llm_gateway,
+            settings=runtime.deps.settings,
+        )
 
         result = await plan.execute(runtime, execution)
 
@@ -733,15 +772,15 @@ class TestDirectExecutionPlanIntegration:
         workflow_service = WorkflowService(llm_gateway, SettingsStub())
 
         plan = DirectExecutionPlan(agent_name="debugger")
-        runtime = ExecutionRuntime(
-            run_repository=repo,
+        runtime = _make_runtime(
+            repository=repo,
             context_service=context,
             documentation_service=docs,
             learning_service=learning,
             planning_service=planning,
             workflow_service=workflow_service,
-            settings=SettingsStub(),
             is_cancelled=lambda _: False,
+            llm_gateway=llm_gateway,
         )
         execution = ExecutionContext(
             run=run,
@@ -780,15 +819,15 @@ class TestDirectExecutionPlanIntegration:
         workflow_service = WorkflowService(llm_gateway, SettingsStub())
 
         plan = DirectExecutionPlan(agent_name="debugger")
-        runtime = ExecutionRuntime(
-            run_repository=repo,
+        runtime = _make_runtime(
+            repository=repo,
             context_service=context,
             documentation_service=docs,
             learning_service=learning,
             planning_service=planning,
             workflow_service=workflow_service,
-            settings=SettingsStub(),
             is_cancelled=lambda _: True,
+            llm_gateway=llm_gateway,
         )
         execution = ExecutionContext(
             run=run,
@@ -821,15 +860,15 @@ class TestDirectExecutionPlanIntegration:
         plan = DirectExecutionPlan(agent_name="debugger")
         sequence = iter([False, True])
 
-        runtime = ExecutionRuntime(
-            run_repository=repo,
+        runtime = _make_runtime(
+            repository=repo,
             context_service=context,
             documentation_service=docs,
             learning_service=learning,
             planning_service=planning,
             workflow_service=workflow_service,
-            settings=SettingsStub(),
             is_cancelled=lambda _: next(sequence, False),
+            llm_gateway=llm_gateway,
         )
         execution = ExecutionContext(
             run=run,

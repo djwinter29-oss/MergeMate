@@ -14,23 +14,13 @@ class AgentOrchestrator:
         deps: OrchestratorDependencies,
     ) -> None:
         self._deps = deps
-        self._run_repository = deps.run_repository
-        self._context_service = deps.context_service
-        self._documentation_service = deps.documentation_service
-        self._learning_service = deps.learning_service
-        self._planning_service = deps.planning_service
-        self._prompt_service = deps.prompt_service
-        self._tool_service = deps.tool_service
-        self._workflow_service = deps.workflow_service
-        self._llm_gateway = deps.llm_gateway
-        self._settings = deps.settings
 
     def _is_cancelled(self, run_id: str) -> bool:
-        latest_run = self._run_repository.get(run_id)
+        latest_run = self._deps.run_repository.get(run_id)
         return latest_run is not None and latest_run.status == RunStatus.CANCELLED
 
     async def process_run(self, run_id: str):
-        run = self._run_repository.get(run_id)
+        run = self._deps.run_repository.get(run_id)
         if run is None:
             raise RunNotFoundError(f"Run {run_id} was not found")
         if run.status in RunStatus.skip_process_statuses():
@@ -40,7 +30,7 @@ class AgentOrchestrator:
         if run.status != RunStatus.QUEUED:
             return run
 
-        start_decision = self._run_repository.try_update_status(
+        start_decision = self._deps.run_repository.try_update_status(
             run_id,
             RunStatus.RUNNING,
             expected_current_status=RunStatus.QUEUED,
@@ -51,12 +41,12 @@ class AgentOrchestrator:
         if not start_decision.transitioned:
             return run
 
-        recent_messages = self._context_service.load_recent_messages(run.chat_id)
+        recent_messages = self._deps.context_service.load_recent_messages(run.chat_id)
         if recent_messages and recent_messages[-1]["role"] == "user" and recent_messages[-1]["content"] == run.prompt:
             recent_messages = recent_messages[:-1]
-        learned_items = self._learning_service.load_recent_learnings(run.chat_id)
+        learned_items = self._deps.learning_service.load_recent_learnings(run.chat_id)
 
-        system_prompt, context_text = self._prompt_service.render(
+        system_prompt, context_text = self._deps.prompt_service.render(
             run.workflow,
             recent_messages,
             learned_items,
@@ -65,12 +55,12 @@ class AgentOrchestrator:
 
         # Inject role Soul definition for boundary enforcement
         system_prompt = self._inject_soul_to_prompt(system_prompt, run.agent_name)
-        execution_plan = self._workflow_service.build_execution_plan(
+        execution_plan = self._deps.workflow_service.build_execution_plan(
             run.workflow,
             agent_name=run.agent_name,
         )
         if execution_plan.requires_tool_context:
-            tool_context = await self._tool_service.build_runtime_tool_context_async(
+            tool_context = await self._deps.tool_service.build_runtime_tool_context_async(
                 run.run_id,
                 run.agent_name,
                 resume_stage=RunStage.RETRIEVE_CONTEXT,
@@ -78,8 +68,8 @@ class AgentOrchestrator:
             if tool_context:
                 context_text = f"{context_text}\n\nRuntime tool context:\n{tool_context}".strip()
 
-        runtime = ExecutionRuntime.from_deps(
-            self._deps,
+        runtime = ExecutionRuntime(
+            deps=self._deps,
             is_cancelled=self._is_cancelled,
         )
         execution = ExecutionContext(run=run, system_prompt=system_prompt, context_text=context_text)

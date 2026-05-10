@@ -373,7 +373,7 @@ class TestOrchestratorFullPipeline:
                     return "HIGH_CONCERNS: no\nAccepted."
                 return f"Stage response #{self._count}"
 
-        orchestrator._workflow_service = WorkflowService(
+        new_ws = WorkflowService(
             SimpleNamespace(generate=HighConcernsLLM().generate),
             SettingsStub(workflow_control=WorkflowControlStub(max_review_iterations=3)),
         )
@@ -388,7 +388,7 @@ class TestOrchestratorFullPipeline:
             planning_service=orchestrator._deps.planning_service,
             prompt_service=orchestrator._deps.prompt_service,
             tool_service=orchestrator._deps.tool_service,
-            workflow_service=orchestrator._workflow_service,
+            workflow_service=new_ws,
             llm_gateway=orchestrator._deps.llm_gateway,
             settings=orchestrator._deps.settings,
         )
@@ -513,7 +513,18 @@ class TestOrchestratorFullPipeline:
                 return ("system", "ctx")
 
         capturer = CapturingPromptService()
-        orchestrator._prompt_service = capturer
+        orchestrator._deps = OrchestratorDependencies(
+            run_repository=orchestrator._deps.run_repository,
+            context_service=orchestrator._deps.context_service,
+            documentation_service=orchestrator._deps.documentation_service,
+            learning_service=orchestrator._deps.learning_service,
+            planning_service=orchestrator._deps.planning_service,
+            prompt_service=capturer,
+            tool_service=orchestrator._deps.tool_service,
+            workflow_service=orchestrator._deps.workflow_service,
+            llm_gateway=orchestrator._deps.llm_gateway,
+            settings=orchestrator._deps.settings,
+        )
 
         result = await orchestrator.process_run("orch-trim-1")
 
@@ -539,8 +550,8 @@ class TestOrchestratorFullPipeline:
             planning_service=sqlite_orchestrator["planning_service"],
             prompt_service=PromptServiceStub(),
             tool_service=tool_service,
-            workflow_service=sqlite_orchestrator["orchestrator"]._workflow_service,
-            llm_gateway=sqlite_orchestrator["orchestrator"]._llm_gateway,
+            workflow_service=sqlite_orchestrator['orchestrator']._deps.workflow_service,
+            llm_gateway=sqlite_orchestrator['orchestrator']._deps.llm_gateway,
             settings=sqlite_orchestrator["settings"],
         )
         orchestrator = AgentOrchestrator(deps)
