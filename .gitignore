@@ -84,3 +84,6 @@ site/
 # Coverage report
 coverage.xml
 htmlcov/
+
+# Kanban worktrees
+.worktrees/
