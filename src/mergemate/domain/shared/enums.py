@@ -1,5 +1,6 @@
 """Shared enums and workflow helpers."""
 
+import warnings
 from enum import StrEnum
 
 
@@ -23,12 +24,26 @@ USER_FACING_WORKFLOWS = frozenset(
 )
 
 MULTI_STAGE_WORKFLOWS = frozenset({WorkflowName.GENERATE_CODE})
+warnings.warn(
+    "MULTI_STAGE_WORKFLOWS is deprecated. Use "
+    "domain/workflows/registry or "
+    "domain/policies/uses_multi_stage_delivery() instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 PROMPT_FILE_BY_WORKFLOW = {
     WorkflowName.GENERATE_CODE: "code_generation.md",
     WorkflowName.DEBUG_CODE: "debugging.md",
     WorkflowName.EXPLAIN_CODE: "explanation.md",
 }
+warnings.warn(
+    "PROMPT_FILE_BY_WORKFLOW is deprecated. Use "
+    "domain/workflows/registry or "
+    "domain/policies/resolve_prompt_file() instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 def resolve_workflow_name(workflow: str | WorkflowName) -> WorkflowName | None:
