@@ -7,9 +7,8 @@ Covers:
 4. health.py lines 55, 68: start/stoop early returns
 5. progress_notifier.py lines 18-20: CANCELLED format path
 """
-import asyncio
 from types import SimpleNamespace
-from unittest.mock import Mock, AsyncMock, MagicMock, patch
+from unittest.mock import Mock, AsyncMock, MagicMock
 
 import pytest
 

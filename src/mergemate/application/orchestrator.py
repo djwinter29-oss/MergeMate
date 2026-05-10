@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Workflow orchestration entrypoint."""
 
 from mergemate.application.execution_plan import ExecutionContext, ExecutionRuntime, OrchestratorDependencies

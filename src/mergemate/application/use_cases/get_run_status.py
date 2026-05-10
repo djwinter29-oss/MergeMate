@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Read the current run status."""
 
 from dataclasses import dataclass, field

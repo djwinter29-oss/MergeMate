@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Formatting helpers for Telegram replies."""
 
 from datetime import UTC, datetime

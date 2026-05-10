@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Cancel a run that is still awaiting confirmation."""
 
 from dataclasses import dataclass

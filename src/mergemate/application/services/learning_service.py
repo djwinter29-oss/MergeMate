@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Learning memory service backed by persisted successful runs."""
 
 

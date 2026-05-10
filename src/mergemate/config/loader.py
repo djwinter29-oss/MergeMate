@@ -1,3 +1,4 @@
+# mypy: allow-untyped-defs
 """Config discovery and loading utilities."""
 
 from pathlib import Path
