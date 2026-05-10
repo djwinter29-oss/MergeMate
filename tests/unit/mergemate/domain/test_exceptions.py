@@ -166,6 +166,7 @@ def test_exception_classes_list() -> None:
         "JobQueueError",
         "WorkerStoppedError",
         "InvalidWebhookModeError",
+        "WorkflowRegistrationError",
     }
     imported_names = {c.__name__ for c in ALL_EXCEPTIONS}
     assert imported_names == expected_classes
