@@ -82,3 +82,29 @@ The 4 deprecation shims (`is_user_facing_workflow`, `resolve_workflow_name`, `us
 ### None found.
 
 The entire codebase passes all quality gates with no errors.
+
+---
+
+## 🆕 High-Value Feature Gaps (new features, not bugs)
+
+### F1. CLI Interactive Mode (not just Telegram)
+**Problem**: Currently only Telegram bot is supported as user interface (`interfaces/telegram/`). There is no CLI mode, so developers cannot submit prompts or check status directly from the terminal.
+**Why valuable**: Developers work in the terminal. Switching to Telegram breaks the flow.
+**Suggested approach**: Add an interactive mode to `cli.py` (like `mergemate chat` or `mergemate run "write a FastAPI CRUD"`), reusing existing use cases (SubmitPromptUseCase, GetRunStatusUseCase, CancelRunUseCase).
+
+### F2. Retry/Resume Failed Run
+**Problem**: `CancelRunUseCase` exists but there is no `RetryRunUseCase` or `ResumeRunUseCase`. If a multi-stage workflow fails partway through, the only option is to start over from scratch.
+**Why valuable**: Long-running multi-stage workflows (e.g., generate_code) are expensive to re-run entirely.
+**Suggested approach**: 
+- Add `RetryRunUseCase` to re-submit a failed run
+- Add `ResumeRunUseCase` to resume from a failed stage
+- AgentRun entity may need to store failure stage info
+- Add `/retry` and `/resume` Telegram commands
+
+### F3. Conversation History Search
+**Problem**: `SQLiteConversationRepository` only supports append/load. No search across past conversations.
+**Why valuable**: Cross-session context retrieval is a core capability for an AI assistant.
+**Suggested approach**:
+- Add `search(query, chat_id, limit)` method to ConversationRepository
+- Implement SQL FTS (full-text search) in SQLiteConversationRepository
+- Add `/search` Telegram command + formatted output in presenter.py
