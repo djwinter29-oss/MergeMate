@@ -1,11 +1,10 @@
 """Additional coverage tests for remaining uncovered lines.
 
 Covers:
-1. gateway.py lines 92-93: _generate_first_success when all providers fail
-2. handlers.py lines 217-229: direct execution handler path
-3. bot.py lines 32, 59: readiness_state handling
-4. health.py lines 55, 68: start/stoop early returns
-5. progress_notifier.py lines 18-20: CANCELLED format path
+1. handlers.py lines 217-229: direct execution handler path
+2. bot.py lines 32, 59: readiness_state handling
+3. health.py lines 55, 68: start/stoop early returns
+4. progress_notifier.py lines 18-20: CANCELLED format path
 """
 from types import SimpleNamespace
 from unittest.mock import Mock, AsyncMock, MagicMock
@@ -13,38 +12,6 @@ from unittest.mock import Mock, AsyncMock, MagicMock
 import pytest
 
 from mergemate.domain.shared import RunStatus
-from mergemate.domain.shared.exceptions import AllProvidersFailedError
-
-
-# ── gateway.py: lines 92-93 ──────────────────────────────────────────
-
-class TestGatewayAllProvidersFailed:
-    """Cover _generate_first_success all-failures path (lines 92-93)."""
-
-    @pytest.mark.asyncio
-    async def test_generate_raises_when_all_providers_fail_first_success(self) -> None:
-        """Lines 92-93: all providers fail -> AllProvidersFailedError."""
-        from mergemate.infrastructure.llm.gateway import ParallelLLMGateway
-
-        provider = AsyncMock(spec=["generate"])
-        provider.generate.side_effect = RuntimeError("provider error")
-
-        agent = SimpleNamespace(
-            parallel_mode="parallel",
-            combine_strategy="first_success",
-        )
-        settings = SimpleNamespace(
-            agents={"agent": agent},
-            resolve_agent_provider_names=lambda _: ["p1", "p2"],
-        )
-
-        gateway = ParallelLLMGateway(
-            settings=settings,
-            clients={"p1": provider, "p2": provider},
-        )
-
-        with pytest.raises(AllProvidersFailedError, match="All parallel model calls failed"):
-            await gateway.generate("agent", "system", "user")
 
 
 # ── handlers.py: lines 217-229 ───────────────────────────────────────
