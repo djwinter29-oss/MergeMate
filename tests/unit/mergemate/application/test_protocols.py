@@ -1,7 +1,14 @@
 from __future__ import annotations
 
 import inspect
-from typing import get_protocol_members
+
+try:
+    from typing import get_protocol_members  # Python >= 3.13
+except ImportError:
+    from typing import _get_protocol_attrs  # type: ignore[attr-defined]
+
+    def get_protocol_members(tp: type) -> frozenset[str]:  # type: ignore[no-redef]
+        return frozenset(_get_protocol_attrs(tp))
 
 from mergemate.application.protocols import (
     ContextServiceProtocol,
