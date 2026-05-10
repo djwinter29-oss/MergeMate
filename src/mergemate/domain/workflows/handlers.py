@@ -68,7 +68,7 @@ async def _handle_design(
     agent_name: str,
 ) -> dict[str, Any]:
     """Architecture design stage: produce a design from the plan + context."""
-    design_text = await runtime.workflow_service.create_design(
+    design_text = await runtime.deps.workflow_service.create_design(
         artifacts["plan_text"],
         artifacts["context_text"],
     )
@@ -91,7 +91,7 @@ async def _handle_implementation(
     agent_name: str,
 ) -> dict[str, Any]:
     """Code generation stage: implement based on plan + design + context."""
-    implementation_text = await runtime.workflow_service.generate_code(
+    implementation_text = await runtime.deps.workflow_service.generate_code(
         artifacts["plan_text"],
         artifacts.get("design_text", ""),
         artifacts["context_text"],
@@ -115,7 +115,7 @@ async def _handle_testing(
     agent_name: str,
 ) -> dict[str, Any]:
     """Test generation stage: produce tests from plan + design + implementation."""
-    test_text = await runtime.workflow_service.generate_tests(
+    test_text = await runtime.deps.workflow_service.generate_tests(
         artifacts["plan_text"],
         artifacts.get("design_text", ""),
         artifacts.get("implementation_text", ""),
@@ -139,7 +139,7 @@ async def _handle_review(
     agent_name: str,
 ) -> dict[str, Any]:
     """Code review stage: evaluate design + implementation + tests."""
-    review_text = await runtime.workflow_service.review(
+    review_text = await runtime.deps.workflow_service.review(
         artifacts["plan_text"],
         artifacts.get("design_text", ""),
         artifacts.get("implementation_text", ""),
@@ -165,11 +165,11 @@ async def _handle_replanning(
 ) -> dict[str, Any]:
     """Replanning stage: generate a revised plan from review feedback."""
     prior_feedback = artifacts.get("review_text", "")
-    new_plan = await runtime.planning_service.draft_plan(
+    new_plan = await runtime.deps.planning_service.draft_plan(
         artifacts["run_prompt"],
         prior_feedback=prior_feedback,
     )
-    runtime.run_repository.update_plan(
+    runtime.deps.run_repository.update_plan(
         artifacts["run_id"],
         new_plan,
         current_stage="internal_replanning",
@@ -186,7 +186,7 @@ async def _handle_chronicle(
     agent_name: str,
 ) -> dict[str, Any]:
     """Chronicle stage: record lessons learned from the workflow run."""
-    lesson_text = await runtime.workflow_service.record_lesson(
+    lesson_text = await runtime.deps.workflow_service.record_lesson(
         plan_text=artifacts.get("plan_text", ""),
         design_text=artifacts.get("design_text", ""),
         implementation_text=artifacts.get("implementation_text", ""),
@@ -214,7 +214,7 @@ async def _handle_direct(
     agent_name: str,
 ) -> dict[str, Any]:
     """Direct execution stage: single-shot LLM call without sub-stages."""
-    direct_result = await runtime.workflow_service.execute_direct(
+    direct_result = await runtime.deps.workflow_service.execute_direct(
         agent_name,
         artifacts.get("system_prompt", ""),
         artifacts.get("context_text", ""),
@@ -238,7 +238,7 @@ def _persist_artifacts(
     **kwargs: Any,
 ) -> None:
     """Persist stage artifacts through the run repository."""
-    runtime.run_repository.save_artifacts(
+    runtime.deps.run_repository.save_artifacts(
         artifacts["run_id"],
         **kwargs,
     )
@@ -259,7 +259,7 @@ def _save_document(
     path: str | None = None
     if kind == "architecture":
         path = str(
-            runtime.documentation_service.write_architecture_design(
+            runtime.deps.documentation_service.write_architecture_design(
                 run_id=run_id,
                 iteration=iteration,
                 plan_text=plan_text,
@@ -270,7 +270,7 @@ def _save_document(
         artifacts["_design_document_path"] = path
     elif kind == "testing":
         path = str(
-            runtime.documentation_service.write_test_plan(
+            runtime.deps.documentation_service.write_test_plan(
                 run_id=run_id,
                 iteration=iteration,
                 plan_text=plan_text,
@@ -282,7 +282,7 @@ def _save_document(
         artifacts["_test_document_path"] = path
     elif kind == "review":
         path = str(
-            runtime.documentation_service.write_review_report(
+            runtime.deps.documentation_service.write_review_report(
                 run_id=run_id,
                 iteration=iteration,
                 plan_text=plan_text,
@@ -296,7 +296,7 @@ def _save_document(
         artifacts["_review_document_path"] = path
     elif kind == "lessons":
         path = str(
-            runtime.documentation_service.write_lesson(
+            runtime.deps.documentation_service.write_lesson(
                 run_id=run_id,
                 iteration=iteration,
                 plan_text=plan_text,

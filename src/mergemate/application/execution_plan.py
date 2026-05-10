@@ -83,6 +83,14 @@ class OrchestratorDependencies:
 
 @dataclass(slots=True)
 class ExecutionRuntime:
+    """Execution runtime — holds deps in a single attribute plus is_cancelled.
+
+    Handlers and execution plans access services through ``runtime.deps``
+    rather than individual attributes.  The legacy direct-attribute fields
+    are aliases for backward compatibility.
+    """
+
+    deps: OrchestratorDependencies
     run_repository: Any
     context_service: Any
     documentation_service: Any
@@ -96,6 +104,7 @@ class ExecutionRuntime:
     def from_deps(cls, deps: OrchestratorDependencies, *, is_cancelled: Callable[[str], bool]) -> ExecutionRuntime:
         """Construct ExecutionRuntime from an OrchestratorDependencies object."""
         return cls(
+            deps=deps,
             run_repository=deps.run_repository,
             context_service=deps.context_service,
             documentation_service=deps.documentation_service,
