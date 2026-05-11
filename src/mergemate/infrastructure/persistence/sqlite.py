@@ -222,6 +222,39 @@ class SQLiteRunRepository:
             ).fetchall()
         return [self._row_to_run(row) for row in rows]
 
+    def search(self, query: str, limit: int = 10, *, chat_id: int | None = None) -> list[AgentRun]:
+        like_query = f"%{query.lower()}%"
+        where_clauses = [
+            "(",
+            "lower(coalesce(run_id, '')) LIKE ? OR",
+            "lower(coalesce(agent_name, '')) LIKE ? OR",
+            "lower(coalesce(workflow, '')) LIKE ? OR",
+            "lower(coalesce(status, '')) LIKE ? OR",
+            "lower(coalesce(current_stage, '')) LIKE ? OR",
+            "lower(coalesce(prompt, '')) LIKE ? OR",
+            "lower(coalesce(plan_text, '')) LIKE ? OR",
+            "lower(coalesce(design_text, '')) LIKE ? OR",
+            "lower(coalesce(test_text, '')) LIKE ? OR",
+            "lower(coalesce(review_text, '')) LIKE ? OR",
+            "lower(coalesce(result_text, '')) LIKE ? OR",
+            "lower(coalesce(error_text, '')) LIKE ?",
+            ")",
+        ]
+        parameters: list[object] = [like_query] * 12
+        if chat_id is not None:
+            where_clauses.append("AND chat_id = ?")
+            parameters.append(chat_id)
+        query_sql = f"""
+                SELECT * FROM agent_runs
+                WHERE {' '.join(where_clauses)}
+                ORDER BY updated_at DESC
+                LIMIT ?
+                """
+        parameters.append(limit)
+        with self._database.connection() as connection:
+            rows = connection.execute(query_sql, tuple(parameters)).fetchall()
+        return [self._row_to_run(row) for row in rows]
+
     def try_update_status(
         self,
         run_id: str,
@@ -430,6 +463,37 @@ class SQLiteConversationRepository:
                 (chat_id, limit),
             ).fetchall()
         return [{"role": row["role"], "content": row["content"]} for row in reversed(rows)]
+
+    def search_messages(
+        self,
+        query: str,
+        limit: int = 10,
+        *,
+        chat_id: int | None = None,
+    ) -> list[dict[str, str | int]]:
+        like_query = f"%{query.lower()}%"
+        query_sql = """
+                SELECT chat_id, role, content, created_at
+                FROM conversation_messages
+                WHERE lower(coalesce(content, '')) LIKE ?
+                """
+        parameters: list[object] = [like_query]
+        if chat_id is not None:
+            query_sql += " AND chat_id = ?"
+            parameters.append(chat_id)
+        query_sql += " ORDER BY created_at DESC LIMIT ?"
+        parameters.append(limit)
+        with self._database.connection() as connection:
+            rows = connection.execute(query_sql, tuple(parameters)).fetchall()
+        return [
+            {
+                "chat_id": row["chat_id"],
+                "role": row["role"],
+                "content": row["content"],
+                "created_at": row["created_at"],
+            }
+            for row in rows
+        ]
 
 
 class SQLiteRunJobRepository:
