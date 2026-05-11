@@ -17,6 +17,8 @@ from mergemate.application.services.workflow_service import WorkflowService
 from mergemate.application.use_cases.cancel_run import CancelRunUseCase
 from mergemate.application.use_cases.get_run_status import GetRunStatusUseCase
 from mergemate.application.use_cases.submit_prompt import SubmitPromptUseCase
+from typing import TYPE_CHECKING
+
 from mergemate.config.loader import load_runtime_settings, resolve_config_path
 from mergemate.config.models import AppConfig
 from mergemate.infrastructure.llm.gateway import ParallelLLMGateway
@@ -25,11 +27,16 @@ from mergemate.infrastructure.persistence.sqlite import (
     SQLiteConversationRepository,
     SQLiteDatabase,
     SQLiteLearningRepository,
-    SQLiteRepoKnowledgeRepository,
     SQLiteRunJobRepository,
     SQLiteRunRepository,
     SQLiteToolEventRepository,
 )
+
+if TYPE_CHECKING:
+    from mergemate.infrastructure.persistence.sqlite import SQLiteRepoKnowledgeRepository
+else:
+    SQLiteRepoKnowledgeRepository = None
+
 from mergemate.infrastructure.queue import JobQueueBackend
 from mergemate.infrastructure.queue.local_queue import LocalQueue
 from mergemate.infrastructure.telemetry.logger import configure_logging, log_startup_configuration
@@ -113,7 +120,7 @@ class PersistenceContext:
     conversation_repository: SQLiteConversationRepository
     learning_repository: SQLiteLearningRepository
     tool_event_repository: SQLiteToolEventRepository
-    repo_knowledge_repository: SQLiteRepoKnowledgeRepository
+    repo_knowledge_repository: "SQLiteRepoKnowledgeRepository"
 
 
 @dataclass(slots=True)
@@ -160,13 +167,19 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
         database_path=resolved_database_path,
     )
 
+    repo_knowledge_repository_cls = SQLiteRepoKnowledgeRepository
+    if repo_knowledge_repository_cls is None:
+        from mergemate.infrastructure.persistence.sqlite import (
+            SQLiteRepoKnowledgeRepository as repo_knowledge_repository_cls,
+        )
+
     run_repository = SQLiteRunRepository(database)
     run_job_repository = SQLiteRunJobRepository(database)
     queue_backend = LocalQueue()
     conversation_repository = SQLiteConversationRepository(database)
     learning_repository = SQLiteLearningRepository(database)
     tool_event_repository = SQLiteToolEventRepository(database)
-    repo_knowledge_repository = SQLiteRepoKnowledgeRepository(database)
+    repo_knowledge_repository = repo_knowledge_repository_cls(database)
     context_service = ContextService(conversation_repository)
     learning_service = LearningService(
         learning_repository,
