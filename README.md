@@ -85,6 +85,8 @@ Current limitations:
 
 ## Commands
 
+The list below mirrors `mergemate --help` and should stay in sync with the CLI.
+
 - `mergemate run-bot`
 - `mergemate validate-config`
 - `mergemate print-config-path`
