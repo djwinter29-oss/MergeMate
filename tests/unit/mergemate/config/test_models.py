@@ -60,6 +60,13 @@ def test_config_model_returns_copy_when_resolving_provider_names() -> None:
     assert resolved_provider_names == ["secondary", "tertiary"]
 
 
+def test_config_model_falls_back_to_default_provider_when_agent_has_no_provider_names() -> None:
+    config = _build_config()
+    config.agents["reviewer"].provider_names = []
+
+    assert config.resolve_agent_provider_names("reviewer") == ["primary"]
+
+
 def test_config_model_resolves_telegram_token_and_raises_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     config = _build_config()
     monkeypatch.delenv("TELEGRAM_TOKEN", raising=False)

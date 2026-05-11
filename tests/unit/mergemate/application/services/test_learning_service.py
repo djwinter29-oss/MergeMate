@@ -101,6 +101,18 @@ class AsyncMockGateway:
         return '{"technical_points": ["tp1"], "pitfalls": ["pit1"], "patterns": ["pat1"], "conclusion": "done"}'
 
 
+class StaticAsyncMockGateway:
+    """Simulates an LLM gateway that returns a fixed payload."""
+
+    def __init__(self, response: str) -> None:
+        self.response = response
+        self.calls: list[tuple[str, str, str]] = []
+
+    async def generate(self, agent_name: str, system_prompt: str, user_prompt: str) -> str:
+        self.calls.append((agent_name, system_prompt, user_prompt))
+        return self.response
+
+
 class FailingAsyncMockGateway:
     """Simulates an LLM gateway that raises an exception."""
 
@@ -136,6 +148,48 @@ async def test_extract_lessons_returns_json_with_4_keys_when_llm_succeeds() -> N
     assert parsed["conclusion"] == "done"
     assert len(gateway.calls) == 1
     assert gateway.calls[0][0] == "lessons-extractor"
+
+
+@pytest.mark.asyncio
+async def test_extract_lessons_fills_missing_keys_from_partial_json() -> None:
+    gateway = StaticAsyncMockGateway('{"technical_points": ["tp1"]}')
+    service = LearningService(
+        LearningRepositoryStub(),
+        enabled=True,
+        max_context_items=2,
+        max_result_chars=5,
+        llm_gateway=gateway,
+        extraction_agent_name="lessons-extractor",
+    )
+
+    result = await service._extract_lessons("Some result text")
+
+    import json
+
+    parsed = json.loads(result)
+    assert parsed["technical_points"] == ["tp1"]
+    assert parsed["pitfalls"] == []
+    assert parsed["patterns"] == []
+    assert parsed["conclusion"] == ""
+    assert len(gateway.calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_extract_lessons_returns_empty_json_when_llm_returns_non_object_json() -> None:
+    gateway = StaticAsyncMockGateway('["not", "a", "dict"]')
+    service = LearningService(
+        LearningRepositoryStub(),
+        enabled=True,
+        max_context_items=2,
+        max_result_chars=5,
+        llm_gateway=gateway,
+        extraction_agent_name="lessons-extractor",
+    )
+
+    result = await service._extract_lessons("Some result text")
+
+    assert result == "{}"
+    assert len(gateway.calls) == 1
 
 
 @pytest.mark.asyncio
