@@ -5,19 +5,22 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from mergemate.domain.tools import ToolInvoker
+
 if TYPE_CHECKING:
-    from mergemate.config.models import AppConfig
     from pathlib import Path
+
+    from mergemate.config.models import AppConfig
 
 
 class ToolRegistry:
-    def __init__(self, tools: dict[str, object]) -> None:
+    def __init__(self, tools: dict[str, ToolInvoker]) -> None:
         self._tools = tools
 
     def list_tools(self) -> list[str]:
         return sorted(self._tools.keys())
 
-    def get_tool(self, name: str):
+    def get_tool(self, name: str) -> ToolInvoker | None:
         return self._tools.get(name)
 
     def get_tool_metadata(self, name: str):
@@ -46,7 +49,7 @@ class ToolRegistryBuilder:
         from mergemate.infrastructure.tools.builtin.package_installer import PackageInstallerTool
         from mergemate.infrastructure.tools.builtin.syntax_checker import SyntaxCheckerTool
 
-        self._tools: dict[str, object] = {
+        self._tools: dict[str, ToolInvoker] = {
             "code_formatter": CodeFormatterTool(),
             "package_installer": PackageInstallerTool(
                 allow_package_install=settings.tools.allow_package_install,

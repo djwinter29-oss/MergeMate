@@ -4,6 +4,7 @@
 import asyncio
 from collections.abc import Iterator
 
+from mergemate.domain.tools import ToolInvoker
 from mergemate.domain.tools.entities import ToolMetadata
 from mergemate.domain.shared import RunStage, RunStatus, tool_stage
 
@@ -117,7 +118,7 @@ class ToolService:
             }
             self._record_tool_event(run_id, tool_name, action=action, status="blocked", detail=blocked_result["detail"])
             return blocked_result
-        tool = self._tool_registry.get_tool(tool_name)
+        tool: ToolInvoker | None = self._tool_registry.get_tool(tool_name)
         if tool is None:
             blocked_result = {"status": "blocked", "detail": f"Tool {tool_name} is not available."}
             self._record_tool_event(run_id, tool_name, action=action, status="blocked", detail=blocked_result["detail"])
@@ -212,11 +213,13 @@ class ToolService:
         platform_name = platform or self._settings.source_control.default_platform
 
         for tool_name, metadata in self._iter_repository_context_metadata(platform_name):
-            tool = self._tool_registry.get_tool(tool_name)
+            tool: ToolInvoker | None = self._tool_registry.get_tool(tool_name)
             if tool is None:
                 continue
-            if metadata.context_key is not None:
-                context[metadata.context_key] = tool.invoke({"action": metadata.default_action})
+            context_key = metadata.context_key
+            action = metadata.default_action
+            if context_key is not None and action is not None:
+                context[context_key] = tool.invoke({"action": action})
 
         return context
 
@@ -226,7 +229,7 @@ class ToolService:
             saw_platform_metadata = True
             if metadata.auth_action is None:
                 break
-            tool = self._tool_registry.get_tool(tool_name)
+            tool: ToolInvoker | None = self._tool_registry.get_tool(tool_name)
             if tool is None:
                 return {"status": "blocked", "detail": f"Platform tool {tool_name} is not enabled."}
             return tool.invoke({"action": metadata.auth_action})
