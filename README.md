@@ -82,8 +82,8 @@ Current limitations:
 - progress estimates are still static and workflow-based rather than telemetry-driven
 - sandboxed code execution is not part of the MVP
 - runtime tool execution is still limited to safe context collection; autonomous mutating tool use is not implemented
-Commands
---------
+
+## Commands
 
 The list below mirrors `mergemate --help` and should stay in sync with the CLI.
 
