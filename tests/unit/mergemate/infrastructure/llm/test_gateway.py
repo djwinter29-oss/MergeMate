@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 import asyncio
 import time as time_module
 
@@ -10,6 +11,7 @@ from mergemate.config.models import RetryConfig
 from mergemate.domain.shared.exceptions import AllProvidersFailedError, ProviderResponseError
 from mergemate.infrastructure.llm.gateway import (
     ParallelLLMGateway,
+    _extract_retry_after,
     _full_jitter_delay,
     _is_retryable,
     _RetryBudget,
@@ -466,6 +468,20 @@ class TestWithRetry:
         assert call_count == 2
         assert elapsed >= 0.005  # at least the Retry-After delay
         assert budget.retry_count == 0  # 429 does NOT consume budget
+
+    def test_extract_retry_after_parses_http_date(self) -> None:
+        response = MagicMock(spec=httpx.Response)
+        response.status_code = 429
+        retry_after_at = datetime(2026, 1, 1, 12, 0, 10, tzinfo=timezone.utc)
+        response.headers = {"Retry-After": retry_after_at.strftime("%a, %d %b %Y %H:%M:%S GMT")}
+        exc = httpx.HTTPStatusError("rate limited", request=MagicMock(), response=response)
+
+        computed_delay = _extract_retry_after(
+            exc,
+            now=datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        )
+
+        assert computed_delay == 10.0
 
     @pytest.mark.asyncio
     async def test_retry_count_on_retryable_errors_increments_budget(self) -> None:
