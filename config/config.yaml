@@ -45,6 +45,8 @@ storage:
   workspace_root: ./workspace
   database_path: .state/mergemate.db
 
+repo_name: mergemate
+
 learning:
   enabled: true
   max_context_items: 3
