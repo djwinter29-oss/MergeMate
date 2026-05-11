@@ -50,6 +50,7 @@ The current implementation includes:
 - separate test plans under `docs/testing/` and review reports under `docs/reviews/`
 - SQLite-backed run and conversation persistence
 - learning memory from successful prior runs within the same chat
+- optional repository-scoped knowledge keyed by `repo_name` in config
 - optional multi-model fan-out for an agent, with parallel execution across configured provider aliases
 - static planner, coder, tester, and reviewer agent roles in config
 - bounded review-driven replanning up to a configurable maximum iteration count
@@ -126,6 +127,8 @@ The current split-runtime implementation work starts with durable planning and e
 ## Learning And Package Installation
 
 MergeMate now persists short excerpts from successful runs and feeds recent learned examples back into later prompts for the same chat.
+
+If you set the optional top-level `repo_name` in config, MergeMate also loads repository-specific knowledge snippets for that repository and includes them in the prompt context. When `repo_name` is unset, the bot falls back to chat-scoped learning only.
 
 MergeMate can also fan out one request to multiple configured model aliases in parallel. The default `coder` agent is now configured to call two provider aliases concurrently and return a sectioned combined result.
 
