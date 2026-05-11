@@ -37,10 +37,10 @@ telegram:
   webhook_public_base_url: https://bot.example.com
   webhook_path: /telegram/webhook
   webhook_secret_token_env: TELEGRAM_WEBHOOK_SECRET
-    webhook_healthcheck_enabled: true
-    webhook_healthcheck_listen_host: 127.0.0.1
-    webhook_healthcheck_listen_port: 8081
-    webhook_healthcheck_path: /healthz
+  webhook_healthcheck_enabled: true
+  webhook_healthcheck_listen_host: 127.0.0.1
+  webhook_healthcheck_listen_port: 8081
+  webhook_healthcheck_path: /healthz
 ```
 
 Operational notes:

@@ -118,7 +118,7 @@ By default, runtime state is stored in a SQLite database at `.state/mergemate.db
 
 Use `mergemate validate-config` to verify which config file and database path will be used before startup.
 
-For webhook mode, also set `telegram.mode: webhook`, provide `telegram.webhook_public_base_url`, and expose `TELEGRAM_WEBHOOK_SECRET`. MergeMate now rejects insecure webhook config at startup: non-loopback public URLs must use `https`, the webhook path cannot include query or fragment components, and webhook mode requires a secret-token environment variable. Webhook mode also supports a local readiness endpoint by default. For an initial self-hosted deployment, see `docs/operations/webhook-deployment.md`.
+For webhook mode, also set `telegram.mode: webhook`, provide `telegram.webhook_public_base_url`, and expose `TELEGRAM_WEBHOOK_SECRET`. MergeMate now rejects insecure webhook config at startup: non-loopback public URLs must use `https`, the webhook path cannot include query or fragment components, and webhook mode requires a secret-token environment variable. Webhook mode also supports a local readiness endpoint by default; use `mergemate probe-readiness --wait` during rollout and tune the polling loop with `--interval-seconds`, `--max-wait-seconds`, and `--timeout-seconds`. For an initial self-hosted deployment, see `docs/operations/webhook-deployment.md`.
 
 For step-by-step setup and operation, see `docs/user-guide.md`. For production-oriented persistence layout and deployment boundaries, see `docs/operations/production-deployment.md`.
 
