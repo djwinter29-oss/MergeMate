@@ -218,12 +218,23 @@ class SourceControlConfig(BaseModel):
     gitlab_executable: str = "glab"
 
 
+class RetryConfig(BaseModel):
+    """Exponential backoff with full-jitter retry policy for LLM gateway calls."""
+
+    max_retries: int = Field(default=3, ge=0)
+    base_delay_seconds: float = Field(default=2.0, ge=0.001)
+    max_delay_seconds: float = Field(default=60.0, ge=1.0)
+    budget_window_seconds: int = Field(default=60, ge=1)
+    budget_max_retries: int = Field(default=10, ge=1)
+
+
 class RuntimeConfig(BaseModel):
     max_concurrent_runs: int = Field(default=2, ge=1)
     status_update_interval_seconds: int = Field(default=5, ge=1)
     default_request_timeout_seconds: int = Field(default=300, ge=1)
     job_lease_seconds: int = Field(default=30, ge=1)
     job_heartbeat_interval_seconds: int = Field(default=10, ge=1)
+    llm_retry: RetryConfig = Field(default_factory=RetryConfig)
 
 
 class WorkflowControlConfig(BaseModel):
