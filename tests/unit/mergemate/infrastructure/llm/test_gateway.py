@@ -1,14 +1,20 @@
 from dataclasses import dataclass, field
 import asyncio
-
-import pytest
-
-from mergemate.infrastructure.llm.gateway import ParallelLLMGateway
-from mergemate.domain.shared.exceptions import AllProvidersFailedError, ProviderResponseError
-from unittest.mock import MagicMock
-
+import time as time_module
 
 import httpx
+import pytest
+from unittest.mock import MagicMock
+
+from mergemate.config.models import RetryConfig
+from mergemate.domain.shared.exceptions import AllProvidersFailedError, ProviderResponseError
+from mergemate.infrastructure.llm.gateway import (
+    ParallelLLMGateway,
+    _full_jitter_delay,
+    _is_retryable,
+    _RetryBudget,
+    with_retry,
+)
 
 
 class ClientStub:
@@ -224,16 +230,6 @@ async def test_generate_from_provider_raises_on_non_str_result() -> None:
 
 
 # ── Retry / backoff tests ─────────────────────────────────────────────
-
-import time as time_module
-
-from mergemate.config.models import RetryConfig
-from mergemate.infrastructure.llm.gateway import (
-    _is_retryable,
-    _full_jitter_delay,
-    _RetryBudget,
-    with_retry,
-)
 
 
 class TestRetryableClassification:
