@@ -3,13 +3,16 @@
 Retry/backoff lives here per architecture decision: the gateway layer
 wraps ``_generate_from_provider`` with exponential full-jitter retry,
 a sliding-window retry budget (soft circuit breaker), and rate-limit
-awareness (429/Retry-After doesn't consume the budget).
+awareness (429/Retry-After header values, including HTTP-date formats,
+don't consume the budget).
 """
 
 import asyncio
 import random
 import time
 from collections.abc import Mapping
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any, Callable
 
 from mergemate.config.models import RetryConfig
@@ -209,7 +212,11 @@ def _is_rate_limit(exc: BaseException) -> bool:
     return isinstance(exc, HTTPStatusError) and exc.response.status_code == 429
 
 
-def _extract_retry_after(exc: BaseException) -> float | None:
+def _extract_retry_after(
+    exc: BaseException,
+    *,
+    now: datetime | None = None,
+) -> float | None:
     from httpx import HTTPStatusError
 
     if not isinstance(exc, HTTPStatusError):
@@ -218,9 +225,22 @@ def _extract_retry_after(exc: BaseException) -> float | None:
     if header is None:
         return None
     try:
-        return float(header)
+        return max(0.0, float(header))
     except (ValueError, TypeError):
+        pass
+
+    try:
+        retry_after_at = parsedate_to_datetime(header)
+    except (TypeError, ValueError):
         return None
+    if retry_after_at is None:
+        return None
+    if retry_after_at.tzinfo is None:
+        retry_after_at = retry_after_at.replace(tzinfo=timezone.utc)
+    current_time = now or datetime.now(timezone.utc)
+    if current_time.tzinfo is None:
+        current_time = current_time.replace(tzinfo=timezone.utc)
+    return max(0.0, (retry_after_at - current_time).total_seconds())
 
 
 # ── Gateway class ─────────────────────────────────────────────────────
