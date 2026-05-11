@@ -6,8 +6,6 @@ from typing import Any
 import warnings as _warnings
 
 from .enums import (
-    MULTI_STAGE_WORKFLOWS,
-    PROMPT_FILE_BY_WORKFLOW,
     USER_FACING_WORKFLOWS,
     WorkflowName,
 )
@@ -51,7 +49,18 @@ from .value_objects import (
 
 def _get_policies() -> Any:
     import importlib
+
     return importlib.import_module("mergemate.domain.policies")
+
+
+def __getattr__(name: str) -> Any:
+    """Lazily expose deprecated shared constants from the enums module."""
+
+    if name in {"MULTI_STAGE_WORKFLOWS", "PROMPT_FILE_BY_WORKFLOW"}:
+        from . import enums as _enums
+
+        return getattr(_enums, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def is_user_facing_workflow(*args: object, **kwargs: object) -> bool:

@@ -1,9 +1,13 @@
 """Tests for shared enums — covering all branch paths."""
 
-from mergemate.domain.shared.enums import (
-    WorkflowName,
-    PROMPT_FILE_BY_WORKFLOW,
-)
+import warnings
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", DeprecationWarning)
+    from mergemate.domain.shared.enums import (
+        PROMPT_FILE_BY_WORKFLOW,
+        WorkflowName,
+    )
 from mergemate.domain.policies import (
     resolve_workflow_name,
     uses_multi_stage_delivery,

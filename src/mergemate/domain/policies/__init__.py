@@ -8,11 +8,16 @@ functions from the domain layer.
 """
 
 from mergemate.domain.shared.enums import (
-    PROMPT_FILE_BY_WORKFLOW,
     USER_FACING_WORKFLOWS,
     WorkflowName,
 )
 from mergemate.domain.workflows.registry import get_workflow
+
+_PROMPT_FILE_BY_WORKFLOW: dict[WorkflowName, str] = {
+    WorkflowName.GENERATE_CODE: "code_generation.md",
+    WorkflowName.DEBUG_CODE: "debugging.md",
+    WorkflowName.EXPLAIN_CODE: "explanation.md",
+}
 
 
 def resolve_workflow_name(workflow: str | WorkflowName) -> WorkflowName | None:
@@ -49,7 +54,7 @@ def workflow_prompt_file(workflow: str | WorkflowName) -> str:
     workflow_name = resolve_workflow_name(workflow)
     if workflow_name is None:
         return "base.md"
-    return PROMPT_FILE_BY_WORKFLOW.get(workflow_name, "base.md")
+    return _PROMPT_FILE_BY_WORKFLOW.get(workflow_name, "base.md")
 
 
 __all__ = [

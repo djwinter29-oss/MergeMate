@@ -1,12 +1,16 @@
 """Tests for WorkflowStage ordering and WorkflowName enum completeness."""
 
+import warnings
+
 import pytest
 
-from mergemate.domain.shared.enums import (
-    MULTI_STAGE_WORKFLOWS,
-    USER_FACING_WORKFLOWS,
-    WorkflowName,
-)
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", DeprecationWarning)
+    from mergemate.domain.shared.enums import (
+        MULTI_STAGE_WORKFLOWS,
+        USER_FACING_WORKFLOWS,
+        WorkflowName,
+    )
 from mergemate.domain.policies import (
     resolve_workflow_name,
 )
