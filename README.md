@@ -97,6 +97,9 @@ The list below mirrors `mergemate --help` and should stay in sync with the CLI.
 - `mergemate search-runs <query> [--limit N]`
 - `mergemate search-conversations <query> [--limit N]`
 
+`search-runs` looks through stored run prompts, results, and metadata. `search-conversations`
+searches the saved chat message history.
+
 ## GitHub Automation
 
 The repository includes two GitHub Actions workflows:
