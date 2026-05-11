@@ -7,7 +7,6 @@ awareness (429/Retry-After doesn't consume the budget).
 """
 
 import asyncio
-import math
 import random
 import time
 from collections.abc import Mapping
