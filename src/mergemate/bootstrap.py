@@ -33,7 +33,7 @@ from mergemate.infrastructure.persistence.sqlite import (
 from mergemate.infrastructure.queue import JobQueueBackend
 from mergemate.infrastructure.queue.local_queue import LocalQueue
 from mergemate.infrastructure.telemetry.logger import configure_logging, log_startup_configuration
-from mergemate.interfaces.telegram.lifecycle_notifier import TelegramRunLifecycleNotifier
+from mergemate.interfaces.telegram.lifecycle_notifier import LifecycleNotifier, TelegramRunLifecycleNotifier
 from mergemate.infrastructure.tools.registry import ToolRegistryBuilder
 
 # ── Workflow plugin discovery ───────────────────────────────────────────────
@@ -139,7 +139,7 @@ class MergeMateRuntime:
     services: ServiceContext
     queue_backend: JobQueueBackend
     worker: BackgroundRunWorker
-    lifecycle_notifier: TelegramRunLifecycleNotifier
+    lifecycle_notifier: LifecycleNotifier
 
 
 def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
