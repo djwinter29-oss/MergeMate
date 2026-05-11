@@ -273,37 +273,26 @@ class AgentRunRepository(Protocol):
 Then wrap the `SQLiteRunRepository` methods (see C1 — use `asyncio.to_thread` in an adapter,
 or switch to `aiosqlite`).
 
-### Mod2. Queue backend has no Protocol/interface
+### Mod2. Queue backend protocol status
 
 **Severity: Moderate**
-**Files:** `infrastructure/queue/local_queue.py`
+**Files:** `infrastructure/queue/__init__.py`, `infrastructure/queue/local_queue.py`
 
-#### Problem
+#### Status
 
-The queue backend (`LocalQueue`) is a concrete in-memory implementation with no Protocol
-or ABC. The `RunDispatcher` accepts it via duck typing:
+Resolved in current main.
 
-```python
-class RunDispatcher:
-    def __init__(self, run_job_repository, queue_backend):
-```
+`JobQueueBackend` is now defined as a `Protocol` in
+`src/mergemate/infrastructure/queue/__init__.py`, and `LocalQueue` explicitly
+implements that contract. The dispatcher and worker now depend on the queue
+boundary via the protocol instead of ad-hoc duck typing.
 
-If someone wants to swap in Redis Queue, RabbitMQ, or SQS, there's no contract to implement.
-The calling code (`dispatcher.dispatch_run()`) calls `queue_backend.enqueue()` directly.
+#### Notes
 
-#### Recommendation
-
-Define a `JobQueueBackend` Protocol in `infrastructure/queue/__init__.py`:
-
-```python
-class JobQueueBackend(Protocol):
-    async def enqueue(self, job_id: str) -> bool: ...
-    async def dequeue(self) -> str: ...
-    async def acknowledge(self, job_id: str) -> None: ...
-```
-
-Then have `LocalQueue` explicitly satisfy this Protocol (add `async def` signatures and
-internal `asyncio.to_thread` for the current synchronous implementation).
+- The abstraction now makes it straightforward to swap in a Redis, RabbitMQ, or
+  SQS-backed implementation later.
+- The implementation detail remains in-memory today, but the contract boundary is
+  now explicit and type-checked.
 
 ---
 
@@ -391,7 +380,7 @@ from mergemate.domain.shared.exceptions import (
 | Files inspected | 18 files across 6 subpackages |
 | External deps | Zero (stdlib only) |
 | Cross-boundary refs | 1 (handlers.py → application, TYPE_CHECKING only) |
-| Protocols defined | 3 (AgentRunRepository, RunJobRepository, ValidationHook) |
+|| Protocols defined | 5 (AgentRunRepository, RunJobRepository, ValidationHook, HandlerContext, StageHandler) |
 | Exception hierarchy depth | 3 levels (MergeMateError → 7 subtypes → 11 leaf exceptions) |
 
 **Strengths:**
@@ -402,7 +391,8 @@ from mergemate.domain.shared.exceptions import (
 - Soul definitions (`domain/agents/soul.py`) are cleanly separated from business logic
 
 **Weakness:**
-- `handlers.py`'s `StageHandler = Any` type is a type-safety hole. The 7 built-in handlers accept `ExecutionRuntime` from the application layer. This should be a domain Protocol.
+- None currently called out in this slice; `handlers.py` now uses `HandlerContext`
+  and `StageHandler` Protocols instead of an `Any` alias.
 
 ### 2. Interface Contracts (Protocols / ABCs)
 
@@ -414,12 +404,13 @@ from mergemate.domain.shared.exceptions import (
 | `RunJobRepository` | `domain/runs/repository.py` | `SQLiteRunRepository` | No (sync sigs) |
 | `LLMClient` | `infrastructure/llm/base.py` | `OpenAIAdapter` | Yes (async prot) |
 | `ValidationHook` | `domain/workflows/validation.py` | `@runtime_checkable` | Yes (async prot) |
-| *(missing)* `JobQueueBackend` | — | `LocalQueue` | No protocol |
+| `JobQueueBackend` | `infrastructure/queue/__init__.py` | `LocalQueue` | Yes (async protocol) |
 | *(missing)* `ToolInvoker` | — | 4 tool classes | No protocol |
-| *(missing)* `LifecycleNotifier` | — | `TelegramRunLifecycleNotifier` | No protocol |
+| `LifecycleNotifier` | `interfaces/telegram/lifecycle_notifier.py` | `TelegramRunLifecycleNotifier` | Yes (async protocol) |
 
-**Recommendation:** Add `JobQueueBackend` Protocol and make `AgentRunRepository` / `RunJobRepository`
-protocols async (see Mod1 and C1).
+**Recommendation:** Add async repository protocols for `AgentRunRepository` /
+`RunJobRepository` (see Mod1 and C1). The queue and lifecycle notifier boundaries
+are already covered.
 
 ### 3. config/models.py
 
