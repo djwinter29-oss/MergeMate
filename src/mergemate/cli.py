@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 import time
+from typing import Sequence
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
@@ -178,3 +179,47 @@ def platform_auth(
         typer.echo(result["detail"], err=True)
         raise typer.Exit(code=1)
     typer.echo(result["detail"])
+
+
+@app.command("search-runs")
+def search_runs(
+    query: str = typer.Argument(..., help="Search term to match against run fields"),
+    limit: int = typer.Option(10, min=1, max=100, help="Maximum results to return"),
+    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
+) -> None:
+    """Search agent runs by keyword across prompts, results, and metadata fields."""
+    runtime = bootstrap(config)
+    runs = runtime.persistence.run_repository.search(query, limit=limit)
+    _print_search_results(runs)
+
+
+@app.command("search-conversations")
+def search_conversations(
+    query: str = typer.Argument(..., help="Search term to match against conversation messages"),
+    limit: int = typer.Option(10, min=1, max=100, help="Maximum results to return"),
+    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
+) -> None:
+    """Search conversation messages by keyword."""
+    runtime = bootstrap(config)
+    messages = runtime.persistence.conversation_repository.search_messages(query, limit=limit)
+    _print_message_search_results(messages)
+
+
+def _print_search_results(runs: Sequence) -> None:
+    if not runs:
+        typer.echo("No matching runs found.")
+        return
+    for run in runs:
+        snippet = (run.prompt or "")[:80].replace("\n", " ")
+        typer.echo(
+            f"[{run.run_id[:8]}] {run.workflow}/{run.status.value}  —  {snippet}"
+        )
+
+
+def _print_message_search_results(messages: list[dict[str, str | int]]) -> None:
+    if not messages:
+        typer.echo("No matching messages found.")
+        return
+    for msg in messages:
+        content = str(msg["content"])[:100].replace("\n", " ")
+        typer.echo(f"[chat:{msg['chat_id']} {msg['role']}] {content}")

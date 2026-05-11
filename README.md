@@ -94,6 +94,8 @@ The list below mirrors `mergemate --help` and should stay in sync with the CLI.
 - `mergemate install-package <package-name>`
 - `mergemate repo-context [--platform github|gitlab]`
 - `mergemate platform-auth github|gitlab`
+- `mergemate search-runs <query> [--limit N]`
+- `mergemate search-conversations <query> [--limit N]`
 
 ## GitHub Automation
 

@@ -486,3 +486,80 @@ def test_platform_auth_prints_success(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert result.exit_code == 0
     assert "auth ok" in result.stdout
+
+
+def _search_runtime(search_run_result=None, search_msg_result=None):
+    class RunRepoStub:
+        def search(self, query, limit=10, *, chat_id=None):
+            return search_run_result or []
+
+    class ConvRepoStub:
+        def search_messages(self, query, limit=10, *, chat_id=None):
+            return search_msg_result or []
+
+    return SimpleNamespace(
+        persistence=SimpleNamespace(
+            run_repository=RunRepoStub(),
+            conversation_repository=ConvRepoStub(),
+        ),
+    )
+
+
+def test_search_runs_prints_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "bootstrap", lambda _config: _search_runtime())
+
+    result = runner.invoke(cli.app, ["search-runs", "nonexistent"])
+
+    assert result.exit_code == 0
+    assert "No matching runs found." in result.stdout
+
+
+def test_search_runs_prints_matches(monkeypatch: pytest.MonkeyPatch) -> None:
+    from mergemate.domain.shared import RunStatus
+
+    class FakeRun:
+        run_id = "abc12345"
+        workflow = "generate_code"
+        status = RunStatus.COMPLETED
+        prompt = "Build a CLI tool"
+
+    monkeypatch.setattr(
+        cli,
+        "bootstrap",
+        lambda _config: _search_runtime(search_run_result=[FakeRun()]),
+    )
+
+    result = runner.invoke(cli.app, ["search-runs", "CLI"])
+
+    assert result.exit_code == 0
+    assert "abc12345" in result.stdout
+    assert "generate_code" in result.stdout
+    assert "Build a CLI tool" in result.stdout
+
+
+def test_search_conversations_prints_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "bootstrap", lambda _config: _search_runtime())
+
+    result = runner.invoke(cli.app, ["search-conversations", "missing"])
+
+    assert result.exit_code == 0
+    assert "No matching messages found." in result.stdout
+
+
+def test_search_conversations_prints_matches(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        cli,
+        "bootstrap",
+        lambda _config: _search_runtime(
+            search_msg_result=[
+                {"chat_id": 42, "role": "user", "content": "Hello bot", "created_at": "2026-01-01T00:00:00"}
+            ]
+        ),
+    )
+
+    result = runner.invoke(cli.app, ["search-conversations", "hello"])
+
+    assert result.exit_code == 0
+    assert "chat:42" in result.stdout
+    assert "user" in result.stdout
+    assert "Hello bot" in result.stdout

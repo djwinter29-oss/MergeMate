@@ -152,6 +152,48 @@ def test_run_repository_round_trip_and_updates(tmp_path) -> None:
     assert repository.save_artifacts("missing", result_text="x") is None
 
 
+def test_run_repository_search_returns_matching_runs(tmp_path) -> None:
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repository = SQLiteRunRepository(database)
+    run = _build_run()
+    repository.create(run)
+    repository.update_plan(run.run_id, "This plan talks about CLI tools")
+
+    results = repository.search("CLI")
+    assert len(results) == 1
+    assert results[0].run_id == "run-1"
+
+    results = repository.search("nonexistent")
+    assert len(results) == 0
+
+    results = repository.search("cli")
+    assert len(results) == 1
+
+
+def test_conversation_repository_search_messages_returns_matches(tmp_path) -> None:
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    conversations = SQLiteConversationRepository(database)
+    conversations.append_message(1, "user", "Hello CLI bot")
+    conversations.append_message(1, "assistant", "Sure, here is a CLI")
+    conversations.append_message(2, "user", "Unrelated topic")
+
+    results = conversations.search_messages("CLI")
+    assert len(results) == 2
+    assert results[0]["role"] == "assistant"
+    assert all(r["content"] for r in results)
+
+    results = conversations.search_messages("CLI", chat_id=1)
+    assert len(results) == 2
+
+    results = conversations.search_messages("CLI", chat_id=2)
+    assert len(results) == 0
+
+    results = conversations.search_messages("nonexistent")
+    assert len(results) == 0
+
+
 def test_conversation_and_learning_repositories_preserve_order_and_limit(tmp_path) -> None:
     database = SQLiteDatabase(tmp_path / "state.db")
     database.initialize()
