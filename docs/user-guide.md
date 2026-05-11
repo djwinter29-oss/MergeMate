@@ -102,6 +102,10 @@ mergemate probe-readiness
 mergemate probe-readiness --wait
 ```
 
+`--wait` keeps polling until the webhook healthcheck reports `{"status": "ready"}`. Use
+`--interval-seconds` to slow down or speed up the polling loop, `--max-wait-seconds` to bound the
+overall wait time, and `--timeout-seconds` to adjust the timeout for each individual HTTP probe.
+
 Run the Telegram bot:
 
 ```bash
