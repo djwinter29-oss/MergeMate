@@ -84,6 +84,10 @@ mergemate probe-readiness --wait --config ~/.config/mergemate/config.yaml
 curl --fail --silent http://127.0.0.1:8081/healthz
 ```
 
+The CLI probe accepts the same polling knobs as the code path: `--wait` for continuous polling,
+`--interval-seconds` to tune the polling cadence, `--max-wait-seconds` to cap the total wait, and
+`--timeout-seconds` to set the per-request HTTP timeout.
+
 Example rollout wait loop:
 
 ```bash

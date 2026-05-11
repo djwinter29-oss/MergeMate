@@ -75,6 +75,10 @@ Pair that service with:
 - a persistent host path such as `/srv/mergemate/workspace`
 - the readiness probe command `mergemate probe-readiness --wait --config ...` during rollout
 
+For longer rollouts, `mergemate probe-readiness --wait` also supports `--interval-seconds`,
+`--max-wait-seconds`, and `--timeout-seconds` if you need to tune the wait loop without changing
+the deployment service.
+
 ## Intended Split Topology
 
 The intended later production topology for this project is:
