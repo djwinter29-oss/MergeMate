@@ -9,6 +9,7 @@ from mergemate.application.use_cases.submit_prompt import PromptSubmissionError
 from mergemate.domain.shared import RunJobStatus, RunJobType, RunStatus
 from mergemate.domain.shared.exceptions import WorkerStoppedError
 from mergemate.infrastructure.queue import JobQueueBackend
+from mergemate.interfaces.telegram.lifecycle_notifier import LifecycleNotifier
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class BackgroundRunWorker:
         run_job_repository,
         queue_backend: JobQueueBackend,
         submit_prompt,
-        lifecycle_notifier,
+        lifecycle_notifier: LifecycleNotifier,
         *,
         max_concurrent_runs: int,
         lease_seconds: int,

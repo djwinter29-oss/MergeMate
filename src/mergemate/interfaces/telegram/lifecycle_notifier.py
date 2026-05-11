@@ -3,7 +3,7 @@
 
 import asyncio
 import logging
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from mergemate.domain.shared import RunStatus
 from mergemate.interfaces.telegram import message_utils
@@ -12,6 +12,8 @@ from mergemate.interfaces.telegram.presenter import (
     format_plan_for_confirmation,
 )
 from mergemate.interfaces.telegram.progress_notifier import notify_terminal_update, start_progress_watcher
+
+__all__ = ["LifecycleNotifier", "TelegramRunLifecycleNotifier"]
 
 
 class _BotLike(Protocol):
@@ -36,6 +38,21 @@ class _RunLike(Protocol):
     latest_tool_event: dict[str, str] | None
     result_text: str | None
     error_text: str | None
+
+
+@runtime_checkable
+class LifecycleNotifier(Protocol):
+    """Protocol for run lifecycle notification adapters."""
+
+    def bind_application(self, application: _ApplicationLike) -> None: ...
+
+    def bind_runtime(self, runtime) -> None: ...
+
+    async def notify_plan_ready(self, run: _RunLike) -> bool: ...
+
+    async def notify_auto_execution_started(self, run: _RunLike) -> bool: ...
+
+    async def notify_terminal(self, run: _RunLike) -> bool: ...
 
 
 logger = logging.getLogger(__name__)

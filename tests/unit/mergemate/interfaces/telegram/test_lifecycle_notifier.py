@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import pytest
 
 from mergemate.domain.shared import RunStatus
-from mergemate.interfaces.telegram.lifecycle_notifier import TelegramRunLifecycleNotifier
+from mergemate.interfaces.telegram.lifecycle_notifier import LifecycleNotifier, TelegramRunLifecycleNotifier
 
 
 class BotStub:
@@ -37,6 +37,12 @@ class RunStub:
     error_text: str | None = None
 
 
+def test_notifier_implements_lifecycle_protocol() -> None:
+    notifier = TelegramRunLifecycleNotifier(SettingsStub())
+
+    assert isinstance(notifier, LifecycleNotifier)
+
+
 @pytest.mark.asyncio
 async def test_notify_plan_ready_returns_true_and_sends_message() -> None:
     notifier = TelegramRunLifecycleNotifier(SettingsStub())
@@ -50,8 +56,6 @@ async def test_notify_plan_ready_returns_true_and_sends_message() -> None:
     chat_id, text = notifier._application.bot.messages[0]  # type: ignore[union-attr]
     assert chat_id == 99
     assert "run-1" in text
-
-
 
 
 @pytest.mark.asyncio
