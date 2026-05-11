@@ -2,11 +2,7 @@ from datetime import UTC, datetime, timedelta
 import sqlite3
 from pathlib import Path
 
-import pytest
-
 from mergemate.infrastructure.persistence.sqlite import SQLiteDatabase, SQLiteLearningRepository
-
-pytestmark = pytest.mark.asyncio
 
 
 def _seed_learning_entries(database_path: Path, rows: list[tuple[int, str, str, str, str | None, str]]) -> None:
@@ -39,7 +35,7 @@ def _iso(base: datetime, seconds: int) -> str:
     return (base + timedelta(seconds=seconds)).isoformat()
 
 
-async def test_list_grouped_by_workflow_limits_current_workflow_and_other_workflows(tmp_path) -> None:
+def test_list_grouped_by_workflow_limits_current_workflow_and_other_workflows(tmp_path) -> None:
     database_path = tmp_path / "state.db"
     base = datetime(2026, 1, 1, tzinfo=UTC)
     _seed_learning_entries(
@@ -47,10 +43,10 @@ async def test_list_grouped_by_workflow_limits_current_workflow_and_other_workfl
         [
             (7, "debug_code", "debug-new", "debug-excerpt-new", None, _iso(base, 5)),
             (7, "debug_code", "debug-old", "debug-excerpt-old", None, _iso(base, 4)),
-            (7, "generate_code", "generate-4", "generate-excerpt-4", "{\"lesson\": 4}", _iso(base, 3)),
-            (7, "generate_code", "generate-3", "generate-excerpt-3", "{\"lesson\": 3}", _iso(base, 2)),
-            (7, "generate_code", "generate-2", "generate-excerpt-2", "{\"lesson\": 2}", _iso(base, 1)),
-            (7, "generate_code", "generate-1", "generate-excerpt-1", "{\"lesson\": 1}", _iso(base, 0)),
+            (7, "generate_code", "generate-4", "generate-excerpt-4", '{"lesson": 4}', _iso(base, 3)),
+            (7, "generate_code", "generate-3", "generate-excerpt-3", '{"lesson": 3}', _iso(base, 2)),
+            (7, "generate_code", "generate-2", "generate-excerpt-2", '{"lesson": 2}', _iso(base, 1)),
+            (7, "generate_code", "generate-1", "generate-excerpt-1", '{"lesson": 1}', _iso(base, 0)),
             (7, "plan_code", "plan-new", "plan-excerpt-new", None, _iso(base, 6)),
             (7, "plan_code", "plan-old", "plan-excerpt-old", None, _iso(base, -1)),
         ],
@@ -58,7 +54,7 @@ async def test_list_grouped_by_workflow_limits_current_workflow_and_other_workfl
 
     repository = SQLiteLearningRepository(SQLiteDatabase(database_path))
 
-    results = await repository.list_grouped_by_workflow(
+    results = repository.list_grouped_by_workflow(
         chat_id=7,
         current_workflow="generate_code",
         same_workflow_limit=2,
@@ -93,7 +89,7 @@ async def test_list_grouped_by_workflow_limits_current_workflow_and_other_workfl
     ]
 
 
-async def test_list_grouped_by_workflow_returns_other_workflows_when_current_workflow_missing(tmp_path) -> None:
+def test_list_grouped_by_workflow_returns_other_workflows_when_current_workflow_missing(tmp_path) -> None:
     database_path = tmp_path / "state.db"
     base = datetime(2026, 1, 1, tzinfo=UTC)
     _seed_learning_entries(
@@ -108,7 +104,7 @@ async def test_list_grouped_by_workflow_returns_other_workflows_when_current_wor
 
     repository = SQLiteLearningRepository(SQLiteDatabase(database_path))
 
-    results = await repository.list_grouped_by_workflow(
+    results = repository.list_grouped_by_workflow(
         chat_id=11,
         current_workflow="generate_code",
         same_workflow_limit=3,
