@@ -14,7 +14,7 @@
 | architect | `docs/architecture/` | 无 | 极低 |
 | coder | `docs/implementation/` | `src/` | **高** |
 | tester | `docs/testing/` | `tests/` | 中 |
-| reviewer | `docs/review/` | 无 | 极低 |
+| reviewer | `docs/reviews/` | 无 | 极低 |
 | chronicler | `docs/lessons/` | 无 | 极低 |
 
 **核心冲突面只在 coder × coder（多个 coder worker 改同文件）和 coder × tester（改同一行）。**
