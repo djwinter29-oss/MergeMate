@@ -216,8 +216,10 @@ class ToolService:
             tool: ToolInvoker | None = self._tool_registry.get_tool(tool_name)
             if tool is None:
                 continue
-            if metadata.context_key is not None:
-                context[metadata.context_key] = tool.invoke({"action": metadata.default_action})
+            context_key = metadata.context_key
+            action = metadata.default_action
+            if context_key is not None and action is not None:
+                context[context_key] = tool.invoke({"action": action})
 
         return context
 
