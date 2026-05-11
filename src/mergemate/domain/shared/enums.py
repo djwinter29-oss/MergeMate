@@ -7,6 +7,7 @@ is_user_facing_workflow, workflow_prompt_file) have been moved to
 
 import warnings
 from enum import StrEnum
+from typing import Any
 
 
 class WorkflowName(StrEnum):
@@ -28,24 +29,31 @@ USER_FACING_WORKFLOWS = frozenset(
     }
 )
 
-MULTI_STAGE_WORKFLOWS = frozenset({WorkflowName.GENERATE_CODE})
-warnings.warn(
-    "MULTI_STAGE_WORKFLOWS is deprecated. Use "
-    "domain/workflows/registry or "
-    "domain/policies/uses_multi_stage_delivery() instead.",
-    DeprecationWarning,
-    stacklevel=2,
-)
-
-PROMPT_FILE_BY_WORKFLOW = {
-    WorkflowName.GENERATE_CODE: "code_generation.md",
-    WorkflowName.DEBUG_CODE: "debugging.md",
-    WorkflowName.EXPLAIN_CODE: "explanation.md",
+_DEPRECATED_EXPORTS: dict[str, Any] = {
+    "MULTI_STAGE_WORKFLOWS": frozenset({WorkflowName.GENERATE_CODE}),
+    "PROMPT_FILE_BY_WORKFLOW": {
+        WorkflowName.GENERATE_CODE: "code_generation.md",
+        WorkflowName.DEBUG_CODE: "debugging.md",
+        WorkflowName.EXPLAIN_CODE: "explanation.md",
+    },
 }
-warnings.warn(
-    "PROMPT_FILE_BY_WORKFLOW is deprecated. Use "
-    "domain/workflows/registry or "
-    "domain/policies/resolve_prompt_file() instead.",
-    DeprecationWarning,
-    stacklevel=2,
-)
+
+
+def __getattr__(name: str) -> Any:
+    """Lazily expose deprecated compatibility aliases.
+
+    The values are still available for backward compatibility, but we only
+    emit the deprecation warning when callers actually access the alias.
+    """
+
+    if name in _DEPRECATED_EXPORTS:
+        warnings.warn(
+            f"{name} is deprecated. Use domain/workflows/registry or "
+            "domain/policies helpers instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        value = _DEPRECATED_EXPORTS[name]
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
