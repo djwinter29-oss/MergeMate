@@ -81,6 +81,7 @@ class StageDescriptor:
 @dataclass(slots=True, frozen=True)
 class OrchestratorDependencies:
     """Bundled dependencies for AgentOrchestrator and ExecutionRuntime."""
+
     run_repository: AgentRunRepository
     context_service: ContextServiceProtocol
     documentation_service: DocumentationServiceProtocol
@@ -138,7 +139,9 @@ class DirectExecutionPlan(BaseExecutionPlan):
     async def execute(self, runtime: ExecutionRuntime, execution: ExecutionContext) -> Any:
         run = execution.run
         cancelled = _check_cancelled(
-            run_id=run.run_id, deps=runtime.deps, is_cancelled=runtime.is_cancelled,
+            run_id=run.run_id,
+            deps=runtime.deps,
+            is_cancelled=runtime.is_cancelled,
         )
         if cancelled is not None:
             return cancelled
@@ -149,7 +152,9 @@ class DirectExecutionPlan(BaseExecutionPlan):
             execution.context_text,
         )
         cancelled = _check_cancelled(
-            run_id=run.run_id, deps=runtime.deps, is_cancelled=runtime.is_cancelled,
+            run_id=run.run_id,
+            deps=runtime.deps,
+            is_cancelled=runtime.is_cancelled,
         )
         if cancelled is not None:
             return cancelled

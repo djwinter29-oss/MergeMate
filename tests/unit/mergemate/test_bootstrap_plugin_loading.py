@@ -2,6 +2,7 @@
 
 Target: bootstrap.py lines 42-104, currently 84% uncovered -> 95%+.
 """
+
 from types import SimpleNamespace
 
 from mergemate import bootstrap as bootstrap_module
@@ -23,6 +24,7 @@ def test_discover_workflow_plugins_success(monkeypatch) -> None:
     def _make_entry_point(name: str):
         def _load(_self):
             return lambda: calls.append(name)
+
         return type("EntryPoint", (), {"name": name, "load": _load})()
 
     monkeypatch.setattr(
@@ -45,10 +47,12 @@ def test_discover_workflow_plugins_failure_logs_warning(monkeypatch, caplog) -> 
 
     monkeypatch.setattr(
         "importlib.metadata.entry_points",
-        lambda *, group: iter([
-            type("EntryPoint", (), {"name": "good", "load": lambda s: _good_plugin})(),
-            type("EntryPoint", (), {"name": "bad", "load": lambda s: _failing_plugin})(),
-        ]),
+        lambda *, group: iter(
+            [
+                type("EntryPoint", (), {"name": "good", "load": lambda s: _good_plugin})(),
+                type("EntryPoint", (), {"name": "bad", "load": lambda s: _failing_plugin})(),
+            ]
+        ),
     )
     caplog.set_level(logging.WARNING)
     bootstrap_module.discover_workflow_plugins()

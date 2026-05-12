@@ -57,7 +57,9 @@ class OrchestratorRunRepositoryStub:
     def get(self, run_id: str):
         return self.run if self.run.run_id == run_id else None
 
-    def try_update_status(self, run_id: str, status: RunStatus, *, expected_current_status=None, current_stage=None):
+    def try_update_status(
+        self, run_id: str, status: RunStatus, *, expected_current_status=None, current_stage=None
+    ):
         return self.transition_result
 
 
@@ -100,7 +102,14 @@ class RunRepositoryStub:
     def create(self, run) -> None:
         self.runs[run.run_id] = run
 
-    def update_plan(self, run_id: str, plan_text: str, prompt: str | None = None, *, current_stage: str | None = None):
+    def update_plan(
+        self,
+        run_id: str,
+        plan_text: str,
+        prompt: str | None = None,
+        *,
+        current_stage: str | None = None,
+    ):
         run = self.runs.get(run_id)
         if run is None:
             return None
@@ -112,7 +121,16 @@ class RunRepositoryStub:
         self.updated_plans.append((run_id, plan_text))
         return run
 
-    def update_status(self, run_id: str, status: RunStatus, *, expected_current_status=None, current_stage=None, result_text=None, error_text=None):
+    def update_status(
+        self,
+        run_id: str,
+        status: RunStatus,
+        *,
+        expected_current_status=None,
+        current_stage=None,
+        result_text=None,
+        error_text=None,
+    ):
         run = self.runs.get(run_id)
         if run is None:
             return None
@@ -123,7 +141,16 @@ class RunRepositoryStub:
             run.error_text = error_text
         return run
 
-    def try_update_status(self, run_id: str, status: RunStatus, *, expected_current_status=None, current_stage=None, result_text=None, error_text=None):
+    def try_update_status(
+        self,
+        run_id: str,
+        status: RunStatus,
+        *,
+        expected_current_status=None,
+        current_stage=None,
+        result_text=None,
+        error_text=None,
+    ):
         return self.try_update_result
 
     def approve(self, run_id: str):
@@ -218,7 +245,9 @@ class ContextStub:
 
 
 class SubmitPromptStub:
-    def __init__(self, execute_result=None, complete_result=None, complete_error: Exception | None = None) -> None:
+    def __init__(
+        self, execute_result=None, complete_result=None, complete_error: Exception | None = None
+    ) -> None:
         self.execute_result = execute_result
         self.complete_result = complete_result
         self.complete_error = complete_error
@@ -282,7 +311,9 @@ class RuntimeSettingsStub:
     def resolve_agent_provider_names(self, agent_name: str) -> list[str]:
         return ["openai"]
 
-    def resolve_agent_name_for_workflow(self, workflow: str, *, preferred_agent_name: str | None = None) -> str:
+    def resolve_agent_name_for_workflow(
+        self, workflow: str, *, preferred_agent_name: str | None = None
+    ) -> str:
         return preferred_agent_name or "planner"
 
     def preview_database_path(self, resolved_path: Path) -> Path:
@@ -310,7 +341,9 @@ class LearningSettingsStub:
         self.roles = roles or {}
         self.agents = agents or {}
 
-    def resolve_agent_name_for_workflow(self, workflow: str, *, preferred_agent_name: str | None = None) -> str:
+    def resolve_agent_name_for_workflow(
+        self, workflow: str, *, preferred_agent_name: str | None = None
+    ) -> str:
         return preferred_agent_name or "learning"
 
 
@@ -347,7 +380,15 @@ async def test_orchestrator_returns_early_for_non_queued_run() -> None:
 
 @pytest.mark.asyncio
 async def test_orchestrator_returns_run_when_transition_does_not_happen() -> None:
-    run = SimpleNamespace(run_id="run-1", status=RunStatus.QUEUED, approved=True, chat_id=1, prompt="prompt", workflow="generate_code", agent_name="coder")
+    run = SimpleNamespace(
+        run_id="run-1",
+        status=RunStatus.QUEUED,
+        approved=True,
+        chat_id=1,
+        prompt="prompt",
+        workflow="generate_code",
+        agent_name="coder",
+    )
     repo = OrchestratorRunRepositoryStub(run)
     repo.transition_result = SimpleNamespace(run=run, transitioned=False)
     deps = SimpleNamespace(
@@ -371,7 +412,12 @@ async def test_orchestrator_returns_run_when_transition_does_not_happen() -> Non
 
 def test_tool_service_skips_resume_transition_when_current_run_is_not_waiting_tool() -> None:
     run = SimpleNamespace(status=RunStatus.RUNNING)
-    run_repo = SimpleNamespace(get=lambda _run_id: run, try_update_status=lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("should not transition")))
+    run_repo = SimpleNamespace(
+        get=lambda _run_id: run,
+        try_update_status=lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("should not transition")
+        ),
+    )
     service = ToolService(
         ToolRegistryStub({}),
         SimpleNamespace(source_control=SimpleNamespace(default_platform="github"), agents={}),
@@ -433,7 +479,9 @@ async def test_workflow_service_record_lesson_includes_error_section() -> None:
 
 def test_cancel_run_returns_none_when_repository_update_clears_run() -> None:
     repository = SimpleNamespace(
-        get=lambda _run_id: SimpleNamespace(run_id="run-1", chat_id=10, status=RunStatus.AWAITING_CONFIRMATION),
+        get=lambda _run_id: SimpleNamespace(
+            run_id="run-1", chat_id=10, status=RunStatus.AWAITING_CONFIRMATION
+        ),
         try_update_status=lambda *args, **kwargs: SimpleNamespace(run=None, transitioned=False),
     )
     use_case = CancelRunUseCase(repository)
@@ -444,13 +492,21 @@ def test_cancel_run_returns_none_when_repository_update_clears_run() -> None:
 @pytest.mark.asyncio
 async def test_submit_prompt_complete_planning_returns_none_when_run_missing() -> None:
     repository = RunRepositoryStub()
-    use_case = SubmitPromptUseCase(repository, ContextServiceStub(), SimpleNamespace(dispatch_run=lambda *args, **kwargs: None), PlanningServiceStub(), SimpleNamespace(workflow_control=SimpleNamespace(require_confirmation=False)))
+    use_case = SubmitPromptUseCase(
+        repository,
+        ContextServiceStub(),
+        SimpleNamespace(dispatch_run=lambda *args, **kwargs: None),
+        PlanningServiceStub(),
+        SimpleNamespace(workflow_control=SimpleNamespace(require_confirmation=False)),
+    )
 
     assert await use_case.complete_planning("missing") is None
 
 
 @pytest.mark.asyncio
-async def test_submit_prompt_complete_planning_raises_when_approval_missing_before_dispatch() -> None:
+async def test_submit_prompt_complete_planning_raises_when_approval_missing_before_dispatch() -> (
+    None
+):
     repository = RunRepositoryStub()
     run = SimpleNamespace(
         run_id="run-1",
@@ -475,13 +531,21 @@ async def test_submit_prompt_complete_planning_raises_when_approval_missing_befo
     )
     repository.create(run)
     repository.approve_result = ApprovalDecision(run=None, transitioned=False)
-    use_case = SubmitPromptUseCase(repository, ContextServiceStub(), SimpleNamespace(dispatch_run=lambda *args, **kwargs: None), PlanningServiceStub(), SimpleNamespace(workflow_control=SimpleNamespace(require_confirmation=False)))
+    use_case = SubmitPromptUseCase(
+        repository,
+        ContextServiceStub(),
+        SimpleNamespace(dispatch_run=lambda *args, **kwargs: None),
+        PlanningServiceStub(),
+        SimpleNamespace(workflow_control=SimpleNamespace(require_confirmation=False)),
+    )
 
     with pytest.raises(PromptSubmissionError, match="approval failed before dispatch"):
         await use_case.complete_planning("run-1")
 
 
-def test_submit_prompt_approve_returns_non_transitioned_result_when_approval_does_not_transition() -> None:
+def test_submit_prompt_approve_returns_non_transitioned_result_when_approval_does_not_transition() -> (
+    None
+):
     repository = RunRepositoryStub()
     run = SimpleNamespace(
         run_id="run-1",
@@ -506,7 +570,13 @@ def test_submit_prompt_approve_returns_non_transitioned_result_when_approval_doe
     )
     repository.create(run)
     repository.approve_result = ApprovalDecision(run=run, transitioned=False)
-    use_case = SubmitPromptUseCase(repository, ContextServiceStub(), SimpleNamespace(dispatch_run=lambda *args, **kwargs: None), PlanningServiceStub(), SimpleNamespace(workflow_control=SimpleNamespace(require_confirmation=False)))
+    use_case = SubmitPromptUseCase(
+        repository,
+        ContextServiceStub(),
+        SimpleNamespace(dispatch_run=lambda *args, **kwargs: None),
+        PlanningServiceStub(),
+        SimpleNamespace(workflow_control=SimpleNamespace(require_confirmation=False)),
+    )
 
     result = use_case.approve("run-1")
 
@@ -516,7 +586,9 @@ def test_submit_prompt_approve_returns_non_transitioned_result_when_approval_doe
 
 
 @pytest.mark.asyncio
-async def test_cli_probe_readiness_handles_invalid_json_http_error(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_cli_probe_readiness_handles_invalid_json_http_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     def fake_urlopen(_url, timeout):
         raise HTTPError("http://example.com", 500, "boom", hdrs=None, fp=io.BytesIO(b"not-json"))
 
@@ -529,8 +601,12 @@ async def test_cli_probe_readiness_handles_invalid_json_http_error(monkeypatch: 
     assert is_ready is False
 
 
-def test_loader_falls_back_to_cwd_when_no_pyproject_is_found(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(loader_module, "PACKAGE_DEFAULTS_PATH", tmp_path / "package" / "defaults.yaml")
+def test_loader_falls_back_to_cwd_when_no_pyproject_is_found(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        loader_module, "PACKAGE_DEFAULTS_PATH", tmp_path / "package" / "defaults.yaml"
+    )
     monkeypatch.chdir(tmp_path)
 
     assert _discover_default_local_config_path() == tmp_path / "config" / "config.yaml"
@@ -570,22 +646,38 @@ def test_config_model_resolves_roles_and_agent_fallbacks(monkeypatch: pytest.Mon
     assert config.resolve_agent_provider_names("coder") == ["secondary"]
     assert config.resolve_agent_provider_names("missing") == ["primary"]
 
-    assert config.resolve_agent_name_for_workflow("planning", preferred_agent_name="planner") == "planner"
-    assert config.resolve_agent_name_for_workflow("planning", preferred_agent_name="architect") == "planner"
+    assert (
+        config.resolve_agent_name_for_workflow("planning", preferred_agent_name="planner")
+        == "planner"
+    )
+    assert (
+        config.resolve_agent_name_for_workflow("planning", preferred_agent_name="architect")
+        == "planner"
+    )
 
     config.roles = {}
-    assert config.resolve_agent_name_for_workflow("generate_code", preferred_agent_name="coder") == "coder"
-    assert config.resolve_agent_name_for_workflow("generate_code", preferred_agent_name="missing") == "coder"
+    assert (
+        config.resolve_agent_name_for_workflow("generate_code", preferred_agent_name="coder")
+        == "coder"
+    )
+    assert (
+        config.resolve_agent_name_for_workflow("generate_code", preferred_agent_name="missing")
+        == "coder"
+    )
 
 
 @pytest.mark.asyncio
-async def test_bot_stop_runtime_tasks_marks_readiness_state_and_stops_worker(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_bot_stop_runtime_tasks_marks_readiness_state_and_stops_worker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     readiness_state = ReadinessStateSpy()
     worker = WorkerSpy()
     runtime = TelegramRuntimeStub(RuntimeSettingsStub(), worker=worker)
     application = ApplicationStub(runtime)
     application.bot_data["webhook_readiness_state"] = readiness_state
-    monkeypatch.setattr(telegram_bot, "stop_progress_watchers", lambda _application: asyncio.sleep(0))
+    monkeypatch.setattr(
+        telegram_bot, "stop_progress_watchers", lambda _application: asyncio.sleep(0)
+    )
 
     await telegram_bot.stop_runtime_tasks(application)
 
@@ -594,7 +686,9 @@ async def test_bot_stop_runtime_tasks_marks_readiness_state_and_stops_worker(mon
 
 
 def test_bot_build_application_stores_readiness_state(monkeypatch: pytest.MonkeyPatch) -> None:
-    builder_application = SimpleNamespace(bot_data={}, handlers=[], add_handler=lambda handler: None)
+    builder_application = SimpleNamespace(
+        bot_data={}, handlers=[], add_handler=lambda handler: None
+    )
 
     class BuilderStub:
         def token(self, value: str):
@@ -625,7 +719,11 @@ def test_bot_build_application_stores_readiness_state(monkeypatch: pytest.Monkey
     monkeypatch.setattr(telegram_bot, "ApplicationBuilder", lambda: BuilderStub())
     monkeypatch.setattr(telegram_bot, "CommandHandler", lambda name, fn: (name, fn.__name__))
     monkeypatch.setattr(telegram_bot, "MessageHandler", lambda *_args: ("message", "handle_prompt"))
-    monkeypatch.setattr(telegram_bot, "filters", SimpleNamespace(TEXT=FilterStub("text"), COMMAND=FilterStub("command")))
+    monkeypatch.setattr(
+        telegram_bot,
+        "filters",
+        SimpleNamespace(TEXT=FilterStub("text"), COMMAND=FilterStub("command")),
+    )
 
     runtime = TelegramRuntimeStub(RuntimeSettingsStub())
     bot_runtime = telegram_bot.TelegramBotRuntime(runtime)
@@ -638,7 +736,9 @@ def test_bot_build_application_stores_readiness_state(monkeypatch: pytest.Monkey
 
 def test_health_server_start_is_idempotent_and_stop_is_safe_when_not_started() -> None:
     state = WebhookReadinessState()
-    server = WebhookHealthServer(listen_host="127.0.0.1", listen_port=0, path="/healthz", state=state)
+    server = WebhookHealthServer(
+        listen_host="127.0.0.1", listen_port=0, path="/healthz", state=state
+    )
 
     server.start()
     first_port = server.listen_port
@@ -646,7 +746,9 @@ def test_health_server_start_is_idempotent_and_stop_is_safe_when_not_started() -
     assert server.listen_port == first_port
     server.stop()
 
-    not_started = WebhookHealthServer(listen_host="127.0.0.1", listen_port=0, path="/healthz", state=state)
+    not_started = WebhookHealthServer(
+        listen_host="127.0.0.1", listen_port=0, path="/healthz", state=state
+    )
     not_started.stop()
 
 

@@ -67,7 +67,9 @@ def test_config_model_falls_back_to_default_provider_when_agent_has_no_provider_
     assert config.resolve_agent_provider_names("reviewer") == ["primary"]
 
 
-def test_config_model_resolves_telegram_token_and_raises_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_config_model_resolves_telegram_token_and_raises_when_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     config = _build_config()
     monkeypatch.delenv("TELEGRAM_TOKEN", raising=False)
 
@@ -78,7 +80,9 @@ def test_config_model_resolves_telegram_token_and_raises_when_missing(monkeypatc
     assert config.resolve_telegram_token() == "telegram-secret"
 
 
-def test_config_model_resolves_telegram_webhook_url_and_secret_token(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_config_model_resolves_telegram_webhook_url_and_secret_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     payload = _build_config().model_dump()
     payload["telegram"] = {
         "bot_token_env": "TELEGRAM_TOKEN",
@@ -113,9 +117,14 @@ def test_config_model_resolves_workspace_database_docs_and_absolute_paths(tmp_pa
     config_path.write_text("config: true\n", encoding="utf-8")
 
     assert config.resolve_workspace_root(config_path) == (tmp_path / "workspace").resolve()
-    assert config.resolve_database_path(config_path) == (tmp_path / "workspace" / ".state" / "runtime.db").resolve()
+    assert (
+        config.resolve_database_path(config_path)
+        == (tmp_path / "workspace" / ".state" / "runtime.db").resolve()
+    )
     assert config.resolve_docs_root(config_path) == (tmp_path / "workspace" / "docs").resolve()
-    assert config.resolve_working_directory(config_path) == (tmp_path / "workspace" / "repo").resolve()
+    assert (
+        config.resolve_working_directory(config_path) == (tmp_path / "workspace" / "repo").resolve()
+    )
 
     config.storage.database_path = str((tmp_path / "absolute.db").resolve())
     config.source_control.working_directory = str((tmp_path / "absolute-repo").resolve())
@@ -139,7 +148,9 @@ def test_config_model_preview_paths_do_not_create_workspace(tmp_path: Path) -> N
     assert workspace_root.exists() is False
 
 
-def test_config_model_expands_environment_based_provider_override(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_config_model_expands_environment_based_provider_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     config = _build_config()
     monkeypatch.setenv("SECONDARY_KEY", "secondary-secret")
 
@@ -152,14 +163,22 @@ def test_config_model_resolves_agent_name_for_workflow() -> None:
 
     assert config.resolve_agent_name_for_workflow("generate_code") == "coder"
     assert config.resolve_agent_name_for_workflow(WorkflowName.GENERATE_CODE) == "coder"
-    assert config.resolve_agent_name_for_workflow("generate_code", preferred_agent_name="coder") == "coder"
-    assert config.resolve_agent_name_for_workflow("generate_code", preferred_agent_name="reviewer") == "coder"
+    assert (
+        config.resolve_agent_name_for_workflow("generate_code", preferred_agent_name="coder")
+        == "coder"
+    )
+    assert (
+        config.resolve_agent_name_for_workflow("generate_code", preferred_agent_name="reviewer")
+        == "coder"
+    )
 
 
 def test_config_model_raises_for_unknown_workflow() -> None:
     config = _build_config()
 
-    with pytest.raises(ConfigWorkflowNotFoundError, match="No configured agent found for workflow debug_code"):
+    with pytest.raises(
+        ConfigWorkflowNotFoundError, match="No configured agent found for workflow debug_code"
+    ):
         config.resolve_agent_name_for_workflow("debug_code")
 
 
@@ -212,7 +231,9 @@ def test_config_model_rejects_non_positive_poll_limit() -> None:
         ("workflow_control", "max_review_iterations"),
     ],
 )
-def test_config_model_rejects_non_positive_learning_and_review_values(section: str, key: str) -> None:
+def test_config_model_rejects_non_positive_learning_and_review_values(
+    section: str, key: str
+) -> None:
     payload = _build_config().model_dump()
     payload.setdefault(section, {})[key] = 0
 
@@ -594,7 +615,9 @@ def test_config_model_returns_none_when_webhook_secret_token_env_is_none() -> No
     assert config.resolve_telegram_webhook_secret_token() is None
 
 
-def test_config_model_raises_when_webhook_secret_token_env_var_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_config_model_raises_when_webhook_secret_token_env_var_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """resolve_telegram_webhook_secret_token raises when the env var is not set."""
     payload = _build_config().model_dump()
     payload["telegram"] = {
@@ -606,7 +629,10 @@ def test_config_model_raises_when_webhook_secret_token_env_var_is_missing(monkey
     config = AppConfig.model_validate(payload)
     monkeypatch.delenv("TELEGRAM_WEBHOOK_SECRET", raising=False)
 
-    with pytest.raises(ValueError, match="Telegram webhook secret token not found in environment variable TELEGRAM_WEBHOOK_SECRET"):
+    with pytest.raises(
+        ValueError,
+        match="Telegram webhook secret token not found in environment variable TELEGRAM_WEBHOOK_SECRET",
+    ):
         config.resolve_telegram_webhook_secret_token()
 
 

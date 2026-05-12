@@ -36,9 +36,13 @@ def test_every_soul_has_exactly_one_exclusive_write_section() -> None:
     """Each built-in Soul owns exactly one write section (except explainer which owns none)."""
     for name, soul in SOUL_REGISTRY.items():
         if name == "explainer":
-            assert len(soul.doc_permissions.write) == 0, "explainer should have no write permissions"
+            assert len(soul.doc_permissions.write) == 0, (
+                "explainer should have no write permissions"
+            )
         else:
-            assert len(soul.doc_permissions.write) >= 1, f"{name} should have at least one write section"
+            assert len(soul.doc_permissions.write) >= 1, (
+                f"{name} should have at least one write section"
+            )
 
 
 def test_no_two_souls_share_the_same_write_section() -> None:
@@ -197,7 +201,9 @@ def test_doc_permission_read_is_superset_of_write() -> None:
     for name, soul in SOUL_REGISTRY.items():
         extra_sections = set(soul.doc_permissions.read) - set(soul.doc_permissions.write)
         extra_read_count += len(extra_sections)
-    assert extra_read_count > 0, "expected at least some Souls to have cross-section read permissions"
+    assert extra_read_count > 0, (
+        "expected at least some Souls to have cross-section read permissions"
+    )
 
 
 # ── boundary enforcement (runtime tests via DocumentationService) ─────────
@@ -273,8 +279,13 @@ def test_unknown_role_bypasses_permission_check(tmp_path: Path) -> None:
 def test_all_souls_are_registered_and_findable() -> None:
     """Every built-in Soul should be findable via get_soul by name."""
     expected_names = {
-        "planner", "architect", "coder", "tester",
-        "reviewer", "chronicler", "explainer",
+        "planner",
+        "architect",
+        "coder",
+        "tester",
+        "reviewer",
+        "chronicler",
+        "explainer",
     }
     for name in expected_names:
         soul = get_soul(name)
@@ -311,6 +322,4 @@ def test_soul_can_write_section_and_read_section() -> None:
 
     # Every write section should be readable by at least one other Soul
     inaccessible = write_sections - read_sections
-    assert not inaccessible, (
-        f"Write sections not readable by any other Soul: {inaccessible}"
-    )
+    assert not inaccessible, f"Write sections not readable by any other Soul: {inaccessible}"

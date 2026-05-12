@@ -26,8 +26,7 @@ def register_workflow(name: str, definition: WorkflowDefinition) -> None:
     """
     if name in _WORKFLOW_REGISTRY:
         raise KeyError(
-            f"Workflow {name!r} is already registered. "
-            f"Existing: {_WORKFLOW_REGISTRY[name].name!r}"
+            f"Workflow {name!r} is already registered. Existing: {_WORKFLOW_REGISTRY[name].name!r}"
         )
     _WORKFLOW_REGISTRY[name] = definition
 

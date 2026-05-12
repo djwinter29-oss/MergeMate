@@ -29,7 +29,7 @@ class PlanningService:
             "  One line per task. Each task must specify the role responsible "
             "in parentheses after an @ symbol.\n"
             "  Valid roles: planner, architect, coder, tester, reviewer\n"
-            "  Example: \"- [ ] Design auth flow — define API endpoints and user model (@architect)\"\n"
+            '  Example: "- [ ] Design auth flow — define API endpoints and user model (@architect)"\n'
             "- [ ] ...\n"
         )
         user_prompt = (
@@ -44,7 +44,9 @@ class PlanningService:
             "7. Task Breakdown (see system prompt for format)"
         )
         if prior_feedback:
-            user_prompt += f"\n\nIncorporate this feedback or reviewer concern:\n{prior_feedback.strip()}"
+            user_prompt += (
+                f"\n\nIncorporate this feedback or reviewer concern:\n{prior_feedback.strip()}"
+            )
         return await self._llm_gateway.generate(
             self._settings.resolve_agent_name_for_workflow("planning"),
             system_prompt,
@@ -77,10 +79,12 @@ class PlanningService:
                 break
             match = re.match(r"^- \[.?\] (.+?)\(@(\w+)\)\s*$", line)
             if match:
-                tasks.append({
-                    "description": match.group(1).strip(),
-                    "owner": match.group(2).strip(),
-                })
+                tasks.append(
+                    {
+                        "description": match.group(1).strip(),
+                        "owner": match.group(2).strip(),
+                    }
+                )
         return tasks
 
     @staticmethod

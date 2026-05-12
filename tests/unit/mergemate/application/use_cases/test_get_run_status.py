@@ -26,7 +26,9 @@ class ToolEventRepositoryStub:
 
     def list_for_run(self, run_id: str, limit: int = 5):
         self.calls.append((run_id, limit))
-        return [{"tool_name": "syntax_checker", "action": "check", "status": "ok", "detail": "done"}]
+        return [
+            {"tool_name": "syntax_checker", "action": "check", "status": "ok", "detail": "done"}
+        ]
 
 
 def test_execute_returns_run_by_id_when_chat_matches() -> None:

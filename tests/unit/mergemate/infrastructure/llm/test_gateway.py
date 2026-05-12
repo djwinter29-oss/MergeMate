@@ -86,7 +86,7 @@ async def test_generate_reports_missing_provider_aliases_when_none_are_available
 
     with pytest.raises(
         AllProvidersFailedError,
-        match=r"Configured providers: missing-one, missing-two\. Missing clients: missing-one, missing-two\."
+        match=r"Configured providers: missing-one, missing-two\. Missing clients: missing-one, missing-two\.",
     ):
         await gateway.generate("coder", "system", "user")
 
@@ -94,7 +94,9 @@ async def test_generate_reports_missing_provider_aliases_when_none_are_available
 @pytest.mark.asyncio
 async def test_generate_uses_first_available_provider_for_single_mode() -> None:
     client = ClientStub("ok")
-    settings = SettingsStub(provider_names=["one"], agents={"coder": AgentStub(parallel_mode="single")})
+    settings = SettingsStub(
+        provider_names=["one"], agents={"coder": AgentStub(parallel_mode="single")}
+    )
     gateway = ParallelLLMGateway(settings, {"one": client})
 
     result = await gateway.generate("coder", "system", "user")
@@ -193,8 +195,10 @@ async def test_generate_first_success_raises_when_all_providers_fail() -> None:
     )
     gateway = ParallelLLMGateway(
         settings,
-        {"one": ClientStub(RuntimeError("provider one failed")),
-         "two": ClientStub(RuntimeError("provider two failed"))},
+        {
+            "one": ClientStub(RuntimeError("provider one failed")),
+            "two": ClientStub(RuntimeError("provider two failed")),
+        },
     )
 
     with pytest.raises(
@@ -318,13 +322,19 @@ class TestFullJitterDelay:
 
     def test_delay_increases_exponentially_no_cap(self) -> None:
         """Attempt 5 with base=1 and max=1000: cap = min(1000, 32) = 32."""
-        delays = [_full_jitter_delay(5, base_delay_seconds=1.0, max_delay_seconds=1000) for _ in range(100)]
+        delays = [
+            _full_jitter_delay(5, base_delay_seconds=1.0, max_delay_seconds=1000)
+            for _ in range(100)
+        ]
         for d in delays:
             assert 0 <= d <= 32.0
 
     def test_delay_respects_max_cap(self) -> None:
         """Attempt 10 with base=1 and max=10: cap = min(10, 1024) = 10."""
-        delays = [_full_jitter_delay(10, base_delay_seconds=1.0, max_delay_seconds=10.0) for _ in range(100)]
+        delays = [
+            _full_jitter_delay(10, base_delay_seconds=1.0, max_delay_seconds=10.0)
+            for _ in range(100)
+        ]
         for d in delays:
             assert 0 <= d <= 10.0
 
@@ -334,7 +344,10 @@ class TestFullJitterDelay:
 
     def test_randomness(self) -> None:
         """Verify we get varying delays (not all the same)."""
-        delays = {_full_jitter_delay(3, base_delay_seconds=10.0, max_delay_seconds=60.0) for _ in range(50)}
+        delays = {
+            _full_jitter_delay(3, base_delay_seconds=10.0, max_delay_seconds=60.0)
+            for _ in range(50)
+        }
         assert len(delays) > 5, f"Expected variety in jitter, got {len(delays)} unique values"
 
 
@@ -561,6 +574,7 @@ class TestParallelLLMGatewayWithRetry:
             agents={"coder": AgentStub(parallel_mode="parallel", combine_strategy="sectioned")},
         )
         from mergemate.config.models import RuntimeConfig
+
         settings.runtime = RuntimeConfig(
             llm_retry=RetryConfig(max_retries=5, base_delay_seconds=0.001),
         )
@@ -587,6 +601,7 @@ class TestParallelLLMGatewayWithRetry:
             agents={"coder": AgentStub(parallel_mode="parallel", combine_strategy="sectioned")},
         )
         from mergemate.config.models import RuntimeConfig
+
         settings.runtime = RuntimeConfig(
             llm_retry=RetryConfig(max_retries=5, base_delay_seconds=0.001),
         )
@@ -604,6 +619,7 @@ class TestParallelLLMGatewayWithRetry:
     @pytest.mark.asyncio
     async def test_parallel_retry_continues_across_providers(self) -> None:
         """In parallel sectioned mode, failures with retries don't block other providers."""
+
         class FlakyClient:
             def __init__(self, fail_count: int) -> None:
                 self.calls = 0
@@ -620,6 +636,7 @@ class TestParallelLLMGatewayWithRetry:
             agents={"coder": AgentStub(parallel_mode="parallel", combine_strategy="sectioned")},
         )
         from mergemate.config.models import RuntimeConfig
+
         settings.runtime = RuntimeConfig(
             llm_retry=RetryConfig(max_retries=3, base_delay_seconds=0.001),
         )
@@ -648,6 +665,7 @@ class TestParallelLLMGatewayWithRetry:
             agents={"coder": AgentStub(parallel_mode="parallel", combine_strategy="sectioned")},
         )
         from mergemate.config.models import RuntimeConfig
+
         settings.runtime = RuntimeConfig(
             llm_retry=RetryConfig(max_retries=3, base_delay_seconds=0.001),
         )

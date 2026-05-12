@@ -53,9 +53,7 @@ def _build_request(update: Update, runtime) -> TelegramRequest | None:
 
 
 def _parse_tools_command_args(args: list[str]) -> tuple[str | None, int, str | None]:
-    limit_error = (
-        f"Usage: /tools [run_id] [limit]. Limit must be a positive integer up to {MAX_TOOL_HISTORY_LIMIT}."
-    )
+    limit_error = f"Usage: /tools [run_id] [limit]. Limit must be a positive integer up to {MAX_TOOL_HISTORY_LIMIT}."
 
     def _parse_limit(raw_value: str) -> int | None:
         if not raw_value.isdigit():
@@ -112,7 +110,9 @@ async def tools_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if chat is None or message is None:
         return
 
-    run_id, limit, error_message = _parse_tools_command_args(list(context.args) if context.args else [])
+    run_id, limit, error_message = _parse_tools_command_args(
+        list(context.args) if context.args else []
+    )
     if error_message is not None:
         await message.reply_text(error_message)
         return
@@ -201,8 +201,14 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 chat_id=request.chat_id,
             )
         except PromptSubmissionError as exc:
-            failed_run = runtime.services.get_run_status.execute(exc.run_id, chat_id=request.chat_id)
-            error_text = failed_run.error_text if failed_run is not None and failed_run.error_text else exc.error_text
+            failed_run = runtime.services.get_run_status.execute(
+                exc.run_id, chat_id=request.chat_id
+            )
+            error_text = (
+                failed_run.error_text
+                if failed_run is not None and failed_run.error_text
+                else exc.error_text
+            )
             await message_utils.send_text_chunks(message.reply_text, error_text)
             return
         if revised is None:
@@ -215,7 +221,7 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 runtime.settings.resolve_agent_name_for_workflow("planning"),
                 revised.plan_text or "",
                 revised.estimate_seconds,
-            )
+            ),
         )
         return
 
@@ -231,7 +237,11 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
     except PromptSubmissionError as exc:
         failed_run = runtime.services.get_run_status.execute(exc.run_id, chat_id=request.chat_id)
-        error_text = failed_run.error_text if failed_run is not None and failed_run.error_text else exc.error_text
+        error_text = (
+            failed_run.error_text
+            if failed_run is not None and failed_run.error_text
+            else exc.error_text
+        )
         await message_utils.send_text_chunks(message.reply_text, error_text)
         return
     await message_utils.send_text_chunks(
@@ -254,7 +264,8 @@ async def handle_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         if completed is not None and completed.plan_text:
             await message_utils.send_text_chunks(
                 lambda chunk: context.application.bot.send_message(
-                    chat_id=request.chat_id, text=chunk,
+                    chat_id=request.chat_id,
+                    text=chunk,
                 ),
                 format_plan_for_confirmation(
                     completed.run_id,

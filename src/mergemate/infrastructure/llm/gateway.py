@@ -255,7 +255,9 @@ class ParallelLLMGateway:
         self._clients = clients
 
     def _resolve_provider_names(self, agent_name: str) -> tuple[list[str], list[str]]:
-        provider_names = list(dict.fromkeys(self._settings.resolve_agent_provider_names(agent_name)))
+        provider_names = list(
+            dict.fromkeys(self._settings.resolve_agent_provider_names(agent_name))
+        )
         available_names = [name for name in provider_names if name in self._clients]
         missing_names = [name for name in provider_names if name not in self._clients]
         return available_names, missing_names
@@ -275,7 +277,9 @@ class ParallelLLMGateway:
         combine_strategy = agent.combine_strategy if agent is not None else "sectioned"
 
         if parallel_mode != "parallel" or len(available_names) == 1:
-            return await self._generate_from_provider(available_names[0], system_prompt, user_prompt)
+            return await self._generate_from_provider(
+                available_names[0], system_prompt, user_prompt
+            )
 
         if combine_strategy == "first_success":
             return await self._generate_first_success(available_names, system_prompt, user_prompt)
@@ -354,7 +358,9 @@ class ParallelLLMGateway:
         system_prompt: str,
         user_prompt: str,
     ) -> str:
-        retry_cfg: RetryConfig = getattr(getattr(self._settings, 'runtime', None), 'llm_retry', RetryConfig())
+        retry_cfg: RetryConfig = getattr(
+            getattr(self._settings, "runtime", None), "llm_retry", RetryConfig()
+        )
 
         async def _call() -> str:
             result = await self._clients[provider_name].generate(system_prompt, user_prompt)

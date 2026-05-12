@@ -5,6 +5,7 @@ Covers:
 2.  _continue_planning catches PromptSubmissionError and returns [lines 251-252]
 3.  _continue_planning checks plan_text before sending confirmation [line 254]
 """
+
 import asyncio
 from dataclasses import dataclass, field
 from types import SimpleNamespace
@@ -69,7 +70,9 @@ class ContextStub:
 
 
 class SubmitPromptStub:
-    def __init__(self, execute_result=None, complete_result=None, complete_error: Exception | None = None) -> None:
+    def __init__(
+        self, execute_result=None, complete_result=None, complete_error: Exception | None = None
+    ) -> None:
         self.execute_result = execute_result
         self.complete_result = complete_result
         self.complete_error = complete_error
@@ -101,7 +104,9 @@ def _runtime(*, submit=None, latest=None, default_agent="coder", workflow="gener
     settings = SimpleNamespace(
         default_agent=default_agent,
         agents={default_agent: SimpleNamespace(workflow=workflow)},
-        resolve_agent_name_for_workflow=lambda requested_workflow: "planner" if requested_workflow == "planning" else default_agent,
+        resolve_agent_name_for_workflow=lambda requested_workflow: (
+            "planner" if requested_workflow == "planning" else default_agent
+        ),
     )
     return SimpleNamespace(
         settings=settings,

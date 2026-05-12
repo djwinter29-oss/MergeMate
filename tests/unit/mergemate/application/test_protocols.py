@@ -10,6 +10,7 @@ except ImportError:
     def get_protocol_members(tp: type) -> frozenset[str]:  # type: ignore[no-redef]
         return frozenset(_get_protocol_attrs(tp))
 
+
 from mergemate.application.protocols import (
     ContextServiceProtocol,
     DocumentationServiceProtocol,
@@ -34,11 +35,18 @@ def _protocol_methods(protocol: type) -> list[str]:
     return sorted(get_protocol_members(protocol))
 
 
-def _normalized_signature(signature: inspect.Signature) -> list[tuple[str, inspect._ParameterKind, object]]:
-    return [(parameter.name, parameter.kind, parameter.default) for parameter in signature.parameters.values()]
+def _normalized_signature(
+    signature: inspect.Signature,
+) -> list[tuple[str, inspect._ParameterKind, object]]:
+    return [
+        (parameter.name, parameter.kind, parameter.default)
+        for parameter in signature.parameters.values()
+    ]
 
 
-def _assert_protocol_compatible(concrete_cls: type, protocol: type, async_methods: set[str] | None = None) -> None:
+def _assert_protocol_compatible(
+    concrete_cls: type, protocol: type, async_methods: set[str] | None = None
+) -> None:
     async_methods = async_methods or set()
     concrete_signature_targets = []
 
@@ -46,9 +54,13 @@ def _assert_protocol_compatible(concrete_cls: type, protocol: type, async_method
         assert hasattr(concrete_cls, name), f"{concrete_cls.__name__} is missing member {name!r}"
         attr = getattr(concrete_cls, name)
         assert callable(attr), f"{concrete_cls.__name__}.{name} is not callable"
-        assert _normalized_signature(inspect.signature(attr)) == _normalized_signature(inspect.signature(getattr(protocol, name)))
+        assert _normalized_signature(inspect.signature(attr)) == _normalized_signature(
+            inspect.signature(getattr(protocol, name))
+        )
         if name in async_methods:
-            assert inspect.iscoroutinefunction(attr), f"{concrete_cls.__name__}.{name} should be async"
+            assert inspect.iscoroutinefunction(attr), (
+                f"{concrete_cls.__name__}.{name} should be async"
+            )
 
         concrete_signature_targets.append((name, inspect.signature(attr)))
 
@@ -98,10 +110,19 @@ def test_workflow_service_implements_workflow_service_protocol() -> None:
     _assert_protocol_compatible(
         WorkflowService,
         WorkflowServiceProtocol,
-        async_methods={"create_design", "generate_code", "execute_direct", "generate_tests", "review", "record_lesson"},
+        async_methods={
+            "create_design",
+            "generate_code",
+            "execute_direct",
+            "generate_tests",
+            "review",
+            "record_lesson",
+        },
     )
     assert callable(getattr(WorkflowService, "has_high_concerns"))
-    assert _normalized_signature(inspect.signature(WorkflowService.has_high_concerns)) == _normalized_signature(
+    assert _normalized_signature(
+        inspect.signature(WorkflowService.has_high_concerns)
+    ) == _normalized_signature(
         inspect.signature(getattr(WorkflowServiceProtocol, "has_high_concerns"))
     )
 

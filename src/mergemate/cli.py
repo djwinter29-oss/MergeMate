@@ -21,7 +21,9 @@ def _resolve_readiness_url(settings) -> str:
     if telegram_settings.mode != "webhook":
         raise ValueError("Readiness probing is only available when telegram.mode is webhook")
     if not telegram_settings.webhook_healthcheck_enabled:
-        raise ValueError("Readiness probing is disabled because telegram.webhook_healthcheck_enabled is false")
+        raise ValueError(
+            "Readiness probing is disabled because telegram.webhook_healthcheck_enabled is false"
+        )
     return (
         f"http://{telegram_settings.webhook_healthcheck_listen_host}:"
         f"{telegram_settings.webhook_healthcheck_listen_port}"
@@ -35,7 +37,9 @@ def _resolve_runtime_summary(settings) -> tuple[str, str]:
     return default_provider, default_agent
 
 
-def _probe_readiness_once(readiness_url: str, *, timeout_seconds: float) -> tuple[str, dict[str, object], bool]:
+def _probe_readiness_once(
+    readiness_url: str, *, timeout_seconds: float
+) -> tuple[str, dict[str, object], bool]:
     try:
         with urlopen(readiness_url, timeout=timeout_seconds) as response:
             response_body = response.read().decode("utf-8")
@@ -55,20 +59,19 @@ def _probe_readiness_once(readiness_url: str, *, timeout_seconds: float) -> tupl
 
 
 @app.command("run-bot")
-def run_bot(config: Path | None = typer.Option(None, help="Path to a YAML configuration file")) -> None:
+def run_bot(
+    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
+) -> None:
     """Start the Telegram bot runtime."""
     runtime = bootstrap(config)
     default_provider, default_agent = _resolve_runtime_summary(runtime.settings)
-    typer.echo(
-        f"MergeMate configured for provider={default_provider} "
-        f"agent={default_agent}"
-    )
+    typer.echo(f"MergeMate configured for provider={default_provider} agent={default_agent}")
     TelegramBotRuntime(runtime).run()
 
 
 @app.command("validate-config")
 def validate_config(
-    config: Path | None = typer.Option(None, help="Path to a YAML configuration file")
+    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
 ) -> None:
     """Validate and print the resolved configuration path."""
     resolved_path = resolve_config_path(config)
@@ -211,9 +214,7 @@ def _print_search_results(runs: Sequence) -> None:
         return
     for run in runs:
         snippet = (run.prompt or "")[:80].replace("\n", " ")
-        typer.echo(
-            f"[{run.run_id[:8]}] {run.workflow}/{run.status.value}  —  {snippet}"
-        )
+        typer.echo(f"[{run.run_id[:8]}] {run.workflow}/{run.status.value}  —  {snippet}")
 
 
 def _print_message_search_results(messages: list[dict[str, str | int]]) -> None:

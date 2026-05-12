@@ -60,7 +60,9 @@ async def test_draft_plan_includes_prior_feedback_when_present() -> None:
     assert result == "response-from-planner"
     assert gateway.calls[0][0] == "planner"
     assert "User request:\nbuild login" in gateway.calls[0][2]
-    assert "Incorporate this feedback or reviewer concern:\nadd audit logging" in gateway.calls[0][2]
+    assert (
+        "Incorporate this feedback or reviewer concern:\nadd audit logging" in gateway.calls[0][2]
+    )
 
 
 @pytest.mark.asyncio
@@ -72,7 +74,10 @@ async def test_revise_plan_merges_feedback_before_redrafting() -> None:
 
     assert updated_prompt == "build feature\n\nAdditional user feedback:\ncover edge cases"
     assert plan_text == "response-from-planner"
-    assert "User request:\nbuild feature\n\nAdditional user feedback:\ncover edge cases" in gateway.calls[0][2]
+    assert (
+        "User request:\nbuild feature\n\nAdditional user feedback:\ncover edge cases"
+        in gateway.calls[0][2]
+    )
 
 
 @pytest.mark.asyncio
@@ -86,10 +91,19 @@ async def test_extract_tasks_parses_breakdown_section() -> None:
 """
     tasks = PlanningService.extract_tasks(plan)
     assert len(tasks) == 4
-    assert tasks[0] == {"description": "Design auth flow — define API endpoints", "owner": "architect"}
+    assert tasks[0] == {
+        "description": "Design auth flow — define API endpoints",
+        "owner": "architect",
+    }
     assert tasks[1] == {"description": "Implement login — build sign-in logic", "owner": "coder"}
-    assert tasks[2] == {"description": "Write unit tests — cover login edge cases", "owner": "tester"}
-    assert tasks[3] == {"description": "Review code — check auth flow and tests", "owner": "reviewer"}
+    assert tasks[2] == {
+        "description": "Write unit tests — cover login edge cases",
+        "owner": "tester",
+    }
+    assert tasks[3] == {
+        "description": "Review code — check auth flow and tests",
+        "owner": "reviewer",
+    }
 
 
 def test_extract_tasks_returns_empty_when_no_breakdown() -> None:

@@ -35,7 +35,9 @@ def test_presenter_formats_all_primary_messages() -> None:
     run = RunStub()
 
     assert "Request accepted" in format_acknowledgement("run-1", "coder", 30)
-    assert "Estimated execution time after approval" in format_plan_for_confirmation("run-1", "planner", "plan", 30)
+    assert "Estimated execution time after approval" in format_plan_for_confirmation(
+        "run-1", "planner", "plan", 30
+    )
     assert format_status("run-1", "queued") == "Run run-1 is currently queued."
     assert "Estimated remaining time" in format_status("run-1", "queued", 12)
     assert "Run run-1 is running." in format_detailed_status(run)
@@ -118,7 +120,9 @@ def test_presenter_formats_tool_history_without_or_with_invalid_timestamp() -> N
         approved=base_run.approved,
         estimate_seconds=base_run.estimate_seconds,
         created_at=base_run.created_at,
-        tool_events=[{"tool_name": "syntax_checker", "action": "check", "status": "ok", "detail": ""}],
+        tool_events=[
+            {"tool_name": "syntax_checker", "action": "check", "status": "ok", "detail": ""}
+        ],
         latest_tool_event=None,
     )
     run_with_invalid_timestamp = SimpleNamespace(
@@ -142,7 +146,9 @@ def test_presenter_formats_tool_history_without_or_with_invalid_timestamp() -> N
     )
 
     assert "syntax_checker check [ok]: (no detail)" in format_tool_history(run_without_timestamp)
-    assert "not-a-timestamp git_repository status [ok]: clean" in format_tool_history(run_with_invalid_timestamp)
+    assert "not-a-timestamp git_repository status [ok]: clean" in format_tool_history(
+        run_with_invalid_timestamp
+    )
 
 
 def test_presenter_formats_relative_tool_age_across_units() -> None:

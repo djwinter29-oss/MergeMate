@@ -10,7 +10,11 @@ from uuid import uuid4
 from typing import Any
 
 from mergemate.domain.runs.entities import AgentRun, RunJob
-from mergemate.domain.runs.repository import ApprovalDecision, QueuedRunJobDecision, StatusUpdateDecision
+from mergemate.domain.runs.repository import (
+    ApprovalDecision,
+    QueuedRunJobDecision,
+    StatusUpdateDecision,
+)
 from mergemate.domain.shared import RunJobStatus, RunJobType, RunStage, RunStatus
 
 
@@ -134,9 +138,13 @@ class SQLiteDatabase:
             self._ensure_column(connection, "agent_runs", "design_text", "TEXT")
             self._ensure_column(connection, "agent_runs", "test_text", "TEXT")
             self._ensure_column(connection, "agent_runs", "review_text", "TEXT")
-            self._ensure_column(connection, "agent_runs", "review_iterations", "INTEGER NOT NULL DEFAULT 0")
+            self._ensure_column(
+                connection, "agent_runs", "review_iterations", "INTEGER NOT NULL DEFAULT 0"
+            )
             self._ensure_column(connection, "agent_runs", "approved", "INTEGER NOT NULL DEFAULT 0")
-            self._ensure_column(connection, "run_jobs", "attempt_count", "INTEGER NOT NULL DEFAULT 0")
+            self._ensure_column(
+                connection, "run_jobs", "attempt_count", "INTEGER NOT NULL DEFAULT 0"
+            )
             self._ensure_column(connection, "run_jobs", "lease_owner", "TEXT")
             self._ensure_column(connection, "run_jobs", "lease_expires_at", "TEXT")
             self._ensure_column(connection, "learning_entries", "learning_lessons", "TEXT")
@@ -144,7 +152,9 @@ class SQLiteDatabase:
             self._ensure_column(connection, "agent_runs", "repo_name", "TEXT")
 
     @staticmethod
-    def _ensure_column(connection: sqlite3.Connection, table_name: str, column_name: str, definition: str) -> None:
+    def _ensure_column(
+        connection: sqlite3.Connection, table_name: str, column_name: str, definition: str
+    ) -> None:
         existing_columns = {
             row["name"] for row in connection.execute(f"PRAGMA table_info({table_name})").fetchall()
         }
@@ -246,7 +256,7 @@ class SQLiteRunRepository:
             parameters.append(chat_id)
         query_sql = f"""
                 SELECT * FROM agent_runs
-                WHERE {' '.join(where_clauses)}
+                WHERE {" ".join(where_clauses)}
                 ORDER BY updated_at DESC
                 LIMIT ?
                 """
@@ -351,7 +361,11 @@ class SQLiteRunRepository:
         if existing.status not in {RunStatus.AWAITING_CONFIRMATION, RunStatus.QUEUED}:
             return ApprovalDecision(run=existing, transitioned=False)
 
-        next_status = RunStatus.QUEUED.value if existing.status == RunStatus.AWAITING_CONFIRMATION else existing.status.value
+        next_status = (
+            RunStatus.QUEUED.value
+            if existing.status == RunStatus.AWAITING_CONFIRMATION
+            else existing.status.value
+        )
         next_stage = (
             RunStage.QUEUED_FOR_EXECUTION
             if existing.status == RunStatus.AWAITING_CONFIRMATION
@@ -366,7 +380,13 @@ class SQLiteRunRepository:
                   AND approved = 0
                   AND status = ?
                 """,
-                (next_status, next_stage, datetime.now(UTC).isoformat(), run_id, existing.status.value),
+                (
+                    next_status,
+                    next_stage,
+                    datetime.now(UTC).isoformat(),
+                    run_id,
+                    existing.status.value,
+                ),
             )
         return ApprovalDecision(run=self.get(run_id), transitioned=cursor.rowcount > 0)
 
@@ -404,7 +424,9 @@ class SQLiteRunRepository:
                     test_text if test_text is not None else existing.test_text,
                     review_text if review_text is not None else existing.review_text,
                     result_text if result_text is not None else existing.result_text,
-                    review_iterations if review_iterations is not None else existing.review_iterations,
+                    review_iterations
+                    if review_iterations is not None
+                    else existing.review_iterations,
                     datetime.now(UTC).isoformat(),
                     run_id,
                 ),
@@ -539,8 +561,12 @@ class SQLiteRunJobRepository:
                         job.status.value,
                         job.attempt_count,
                         job.lease_owner,
-                        job.lease_expires_at.isoformat() if job.lease_expires_at is not None else None,
-                        job.last_heartbeat_at.isoformat() if job.last_heartbeat_at is not None else None,
+                        job.lease_expires_at.isoformat()
+                        if job.lease_expires_at is not None
+                        else None,
+                        job.last_heartbeat_at.isoformat()
+                        if job.last_heartbeat_at is not None
+                        else None,
                         job.error_text,
                         job.queued_at.isoformat(),
                         job.started_at.isoformat() if job.started_at is not None else None,
@@ -721,12 +747,18 @@ class SQLiteRunJobRepository:
             status=RunJobStatus(row["status"]),
             attempt_count=row["attempt_count"],
             lease_owner=row["lease_owner"],
-            lease_expires_at=_to_datetime(row["lease_expires_at"]) if row["lease_expires_at"] is not None else None,
-            last_heartbeat_at=_to_datetime(row["last_heartbeat_at"]) if row["last_heartbeat_at"] is not None else None,
+            lease_expires_at=_to_datetime(row["lease_expires_at"])
+            if row["lease_expires_at"] is not None
+            else None,
+            last_heartbeat_at=_to_datetime(row["last_heartbeat_at"])
+            if row["last_heartbeat_at"] is not None
+            else None,
             error_text=row["error_text"],
             queued_at=_to_datetime(row["queued_at"]),
             started_at=_to_datetime(row["started_at"]) if row["started_at"] is not None else None,
-            finished_at=_to_datetime(row["finished_at"]) if row["finished_at"] is not None else None,
+            finished_at=_to_datetime(row["finished_at"])
+            if row["finished_at"] is not None
+            else None,
             updated_at=_to_datetime(row["updated_at"]),
         )
 
@@ -735,14 +767,28 @@ class SQLiteLearningRepository:
     def __init__(self, database: SQLiteDatabase) -> None:
         self._database = database
 
-    def record(self, chat_id: int, workflow: str, prompt: str, result_excerpt: str, learning_lessons: str | None = None) -> None:
+    def record(
+        self,
+        chat_id: int,
+        workflow: str,
+        prompt: str,
+        result_excerpt: str,
+        learning_lessons: str | None = None,
+    ) -> None:
         with self._database.connection() as connection:
             connection.execute(
                 """
                 INSERT INTO learning_entries (chat_id, workflow, prompt, result_excerpt, learning_lessons, created_at)
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (chat_id, workflow, prompt, result_excerpt, learning_lessons, datetime.now(UTC).isoformat()),
+                (
+                    chat_id,
+                    workflow,
+                    prompt,
+                    result_excerpt,
+                    learning_lessons,
+                    datetime.now(UTC).isoformat(),
+                ),
             )
 
     def list_recent(self, chat_id: int, limit: int = 3) -> list[dict[str, str]]:
@@ -768,7 +814,9 @@ class SQLiteLearningRepository:
         ]
 
     def list_grouped_by_workflow(
-        self, chat_id: int, current_workflow: str,
+        self,
+        chat_id: int,
+        current_workflow: str,
         same_workflow_limit: int = 3,
         other_workflow_limit: int = 1,
     ) -> list[dict[str, str]]:
@@ -791,12 +839,14 @@ class SQLiteLearningRepository:
             wf = row["workflow"]
             if wf not in groups:
                 groups[wf] = []
-            groups[wf].append({
-                "workflow": wf,
-                "prompt": row["prompt"],
-                "result_excerpt": row["result_excerpt"],
-                "learning_lessons": row["learning_lessons"],
-            })
+            groups[wf].append(
+                {
+                    "workflow": wf,
+                    "prompt": row["prompt"],
+                    "result_excerpt": row["result_excerpt"],
+                    "learning_lessons": row["learning_lessons"],
+                }
+            )
 
         current_entries = groups.pop(current_workflow, [])[:same_workflow_limit]
 
@@ -821,7 +871,9 @@ class SQLiteRepoKnowledgeRepository:
                 (chat_id, repo_name, topic, summary, datetime.now(UTC).isoformat()),
             )
 
-    def list_recent(self, chat_id: int, repo_name: str | None = None, limit: int = 5) -> list[dict[str, str]]:
+    def list_recent(
+        self, chat_id: int, repo_name: str | None = None, limit: int = 5
+    ) -> list[dict[str, str]]:
         with self._database.connection() as connection:
             if repo_name is not None:
                 rows = connection.execute(

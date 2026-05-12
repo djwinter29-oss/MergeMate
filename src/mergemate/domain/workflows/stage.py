@@ -158,6 +158,7 @@ _BUILTIN_WORKFLOWS: dict[WorkflowName, WorkflowDefinition] = {
     ),
 }
 
+
 def _register_builtin_workflows() -> None:
     """Register built-in workflow definitions with the string-keyed registry.
 

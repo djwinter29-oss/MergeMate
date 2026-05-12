@@ -27,6 +27,8 @@ class RunJobRepositoryStub:
             created = True
 
         return Decision()
+
+
 def test_dispatch_run_enqueues_work_and_returns_result() -> None:
     queue_backend = QueueBackendStub()
     run_job_repository = RunJobRepositoryStub()

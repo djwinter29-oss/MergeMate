@@ -30,7 +30,9 @@ class _PackageInstallerTool:
         self.label = "package_installer"
 
 
-def _make_settings(*, enable_git: bool, enable_github: bool, enable_gitlab: bool) -> SimpleNamespace:
+def _make_settings(
+    *, enable_git: bool, enable_github: bool, enable_gitlab: bool
+) -> SimpleNamespace:
     return SimpleNamespace(
         tools=SimpleNamespace(
             allow_package_install=True,
@@ -49,7 +51,9 @@ def _make_settings(*, enable_git: bool, enable_github: bool, enable_gitlab: bool
     )
 
 
-def test_tool_registry_builder_registers_permanent_and_conditional_tools_with_working_directory(monkeypatch) -> None:
+def test_tool_registry_builder_registers_permanent_and_conditional_tools_with_working_directory(
+    monkeypatch,
+) -> None:
     recorder = _Recorder()
     working_directory = Path("/workspace/repo")
     settings = _make_settings(enable_git=True, enable_github=True, enable_gitlab=True)
@@ -117,7 +121,16 @@ def test_tool_registry_builder_registers_permanent_and_conditional_tools_with_wo
     assert registry.get_tool("gitlab_cli").label == "gitlab_cli"
 
     assert recorder.calls == [
-        ("package_installer", (), {"allow_package_install": True, "allowed_packages": ["requests"], "pip_executable": "python3", "timeout_seconds": 45}),
+        (
+            "package_installer",
+            (),
+            {
+                "allow_package_install": True,
+                "allowed_packages": ["requests"],
+                "pip_executable": "python3",
+                "timeout_seconds": 45,
+            },
+        ),
         ("git_repository", ("git", working_directory, 45), {}),
         ("github_cli", ("gh", working_directory, 45), {}),
         ("gitlab_cli", ("glab", working_directory, 45), {}),

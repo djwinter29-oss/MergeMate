@@ -6,6 +6,7 @@ Covers:
 3. health.py lines 55, 68: start/stoop early returns
 4. progress_notifier.py lines 18-20: CANCELLED format path
 """
+
 from types import SimpleNamespace
 from unittest.mock import Mock, AsyncMock, MagicMock
 
@@ -15,6 +16,7 @@ from mergemate.domain.shared import RunStatus
 
 
 # ── handlers.py: lines 217-229 ───────────────────────────────────────
+
 
 class TestDirectHandler:
     """Cover the direct execution handler path (lines 217-229)."""
@@ -44,11 +46,14 @@ class TestDirectHandler:
         assert result["result_text"] == "direct result"
         assert result["_is_direct"] is True
         runtime.workflow_service.execute_direct.assert_called_once_with(
-            "test-agent", "sys", "ctx",
+            "test-agent",
+            "sys",
+            "ctx",
         )
 
 
 # ── bot.py: lines 32, 59 ─────────────────────────────────────────────
+
 
 class TestBotReadiness:
     """Cover bot.py readiness_state handling (lines 32, 59)."""
@@ -89,6 +94,7 @@ class TestBotReadiness:
 
 # ── health.py: lines 55, 68 ──────────────────────────────────────────
 
+
 class TestHealthServer:
     """Cover WebhookHealthServer.start/stoop early returns (lines 55, 68)."""
 
@@ -123,6 +129,7 @@ class TestHealthServer:
 
 
 # ── progress_notifier.py: lines 18-20 ────────────────────────────────
+
 
 class TestProgressNotifierFormat:
     """Cover _format_terminal_update branches (lines 18-20)."""

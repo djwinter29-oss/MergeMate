@@ -26,10 +26,15 @@ class RunStatus(StrEnum):
     @classmethod
     def skip_process_statuses(cls) -> frozenset["RunStatus"]:
         """Statuses for which a run should not be re-processed."""
-        return frozenset({
-            cls.COMPLETED, cls.FAILED, cls.CANCELLED,
-            cls.RUNNING, cls.WAITING_TOOL,
-        })
+        return frozenset(
+            {
+                cls.COMPLETED,
+                cls.FAILED,
+                cls.CANCELLED,
+                cls.RUNNING,
+                cls.WAITING_TOOL,
+            }
+        )
 
 
 class RunStage(StrEnum):

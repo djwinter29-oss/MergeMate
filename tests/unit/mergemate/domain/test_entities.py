@@ -183,9 +183,7 @@ def test_agent_run_is_slots_class() -> None:
         pytest.param(RunStatus.CANCELLED, RunStage.COMPLETED, id="cancelled"),
     ],
 )
-def test_agent_run_status_transitions(
-    new_status: RunStatus, new_stage: RunStage
-) -> None:
+def test_agent_run_status_transitions(new_status: RunStatus, new_stage: RunStage) -> None:
     """AgentRun allows all expected status+stage combinations."""
     now = datetime.now(UTC)
     run = AgentRun(

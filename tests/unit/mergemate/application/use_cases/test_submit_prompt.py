@@ -21,7 +21,14 @@ class InMemoryRunRepository:
     def get(self, run_id: str):
         return self.runs.get(run_id)
 
-    def update_plan(self, run_id: str, plan_text: str, prompt: str | None = None, *, current_stage: str | None = None):
+    def update_plan(
+        self,
+        run_id: str,
+        plan_text: str,
+        prompt: str | None = None,
+        *,
+        current_stage: str | None = None,
+    ):
         if self.return_none_on_update:
             return None
         run = self.runs[run_id]
@@ -227,7 +234,9 @@ async def test_execute_marks_run_failed_when_plan_drafting_raises() -> None:
 @pytest.mark.asyncio
 async def test_execute_marks_run_failed_when_dispatch_rejects_during_shutdown() -> None:
     repository = InMemoryRunRepository()
-    dispatcher = DispatcherStub(error=RuntimeError("Background worker is stopping and cannot accept new runs."))
+    dispatcher = DispatcherStub(
+        error=RuntimeError("Background worker is stopping and cannot accept new runs.")
+    )
     use_case = SubmitPromptUseCase(
         repository,
         ContextServiceStub(),
@@ -396,7 +405,9 @@ def test_approve_rejects_run_from_other_chat() -> None:
 
 def test_approve_marks_run_failed_when_dispatch_rejects_during_shutdown() -> None:
     repository = InMemoryRunRepository()
-    dispatcher = DispatcherStub(error=RuntimeError("Background worker is stopping and cannot accept new runs."))
+    dispatcher = DispatcherStub(
+        error=RuntimeError("Background worker is stopping and cannot accept new runs.")
+    )
     use_case = SubmitPromptUseCase(
         repository,
         ContextServiceStub(),

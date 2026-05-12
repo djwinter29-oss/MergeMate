@@ -18,7 +18,14 @@ class LearningRepositoryStub:
         self.recorded.append((chat_id, workflow, prompt, result_excerpt, learning_lessons))
 
     def list_recent(self, chat_id: int, limit: int = 3):
-        return [{"workflow": "generate_code", "prompt": "p", "result_excerpt": f"{chat_id}-{limit}", "learning_lessons": None}]
+        return [
+            {
+                "workflow": "generate_code",
+                "prompt": "p",
+                "result_excerpt": f"{chat_id}-{limit}",
+                "learning_lessons": None,
+            }
+        ]
 
     def list_grouped_by_workflow(
         self,
@@ -45,7 +52,9 @@ async def test_remember_success_truncates_and_records_when_enabled() -> None:
     repository = LearningRepositoryStub()
     service = LearningService(repository, enabled=True, max_context_items=2, max_result_chars=5)
 
-    await service.remember_success(chat_id=1, workflow="generate_code", prompt="prompt", result_text=" 123456 ")
+    await service.remember_success(
+        chat_id=1, workflow="generate_code", prompt="prompt", result_text=" 123456 "
+    )
 
     # learning_lessons is "{}" because llm_gateway is None
     assert repository.recorded == [(1, "generate_code", "prompt", "12345", "{}")]
@@ -56,24 +65,41 @@ async def test_remember_success_skips_when_disabled() -> None:
     repository = LearningRepositoryStub()
     service = LearningService(repository, enabled=False, max_context_items=2, max_result_chars=5)
 
-    await service.remember_success(chat_id=1, workflow="generate_code", prompt="prompt", result_text="value")
+    await service.remember_success(
+        chat_id=1, workflow="generate_code", prompt="prompt", result_text="value"
+    )
 
     assert repository.recorded == []
 
 
 def test_load_recent_learnings_respects_enabled_flag_and_limit() -> None:
     repository = LearningRepositoryStub()
-    enabled_service = LearningService(repository, enabled=True, max_context_items=4, max_result_chars=5)
-    disabled_service = LearningService(repository, enabled=False, max_context_items=4, max_result_chars=5)
+    enabled_service = LearningService(
+        repository, enabled=True, max_context_items=4, max_result_chars=5
+    )
+    disabled_service = LearningService(
+        repository, enabled=False, max_context_items=4, max_result_chars=5
+    )
 
-    assert enabled_service.load_recent_learnings(7) == [{"workflow": "generate_code", "prompt": "p", "result_excerpt": "7-4", "learning_lessons": None}]
+    assert enabled_service.load_recent_learnings(7) == [
+        {
+            "workflow": "generate_code",
+            "prompt": "p",
+            "result_excerpt": "7-4",
+            "learning_lessons": None,
+        }
+    ]
     assert disabled_service.load_recent_learnings(7) == []
 
 
 def test_load_grouped_learnings_delegates_and_honors_enabled_flag() -> None:
     repository = LearningRepositoryStub()
-    enabled_service = LearningService(repository, enabled=True, max_context_items=4, max_result_chars=5)
-    disabled_service = LearningService(repository, enabled=False, max_context_items=4, max_result_chars=5)
+    enabled_service = LearningService(
+        repository, enabled=True, max_context_items=4, max_result_chars=5
+    )
+    disabled_service = LearningService(
+        repository, enabled=False, max_context_items=4, max_result_chars=5
+    )
 
     assert enabled_service.load_grouped_learnings(7, current_workflow="generate_code") == [
         {

@@ -218,7 +218,15 @@ CHRONICLER_SOUL = Soul(
     ],
     doc_permissions=DocPermission(
         write=["lessons"],
-        read=["planning", "architecture", "implementation", "testing", "review", "shared", "requirements"],
+        read=[
+            "planning",
+            "architecture",
+            "implementation",
+            "testing",
+            "review",
+            "shared",
+            "requirements",
+        ],
     ),
 )
 

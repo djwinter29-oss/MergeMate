@@ -11,13 +11,19 @@ def _extract_message_content(data: dict[str, object]) -> str:
         raise ProviderResponseError("Provider returned an invalid response: missing choices[0].")
     first_choice = choices[0]
     if not isinstance(first_choice, dict):
-        raise ProviderResponseError("Provider returned an invalid response: choices[0] was not an object.")
+        raise ProviderResponseError(
+            "Provider returned an invalid response: choices[0] was not an object."
+        )
     message = first_choice.get("message")
     if not isinstance(message, dict):
-        raise ProviderResponseError("Provider returned an invalid response: choices[0].message was missing.")
+        raise ProviderResponseError(
+            "Provider returned an invalid response: choices[0].message was missing."
+        )
     content = message.get("content")
     if not isinstance(content, str):
-        raise ProviderResponseError("Provider returned an invalid response: choices[0].message.content was not text.")
+        raise ProviderResponseError(
+            "Provider returned an invalid response: choices[0].message.content was not text."
+        )
     return content.strip()
 
 
@@ -75,5 +81,7 @@ class OpenAIAdapter:
             response.raise_for_status()
             data = response.json()
         if not isinstance(data, dict):
-            raise ProviderResponseError("Provider returned an invalid response: top-level JSON object was expected.")
+            raise ProviderResponseError(
+                "Provider returned an invalid response: top-level JSON object was expected."
+            )
         return _extract_message_content(data)

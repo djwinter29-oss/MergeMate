@@ -40,6 +40,7 @@ __all__ = [
 
 # ── Handler Context Protocol ────────────────────────────────────────────────
 
+
 @runtime_checkable
 class HandlerContext(Protocol):
     """Minimal protocol satisfied by ``ExecutionRuntime``.
@@ -57,6 +58,7 @@ class HandlerContext(Protocol):
 
 # ── Handler Protocol ───────────────────────────────────────────────────────
 
+
 class StageHandler(Protocol):
     """Protocol for async stage handler functions."""
 
@@ -66,8 +68,7 @@ class StageHandler(Protocol):
         artifacts: dict[str, Any],
         *,
         agent_name: str,
-    ) -> dict[str, Any]:
-        ...
+    ) -> dict[str, Any]: ...
 
 
 # ── Handler registry ───────────────────────────────────────────────────────
@@ -77,9 +78,11 @@ _HANDLERS: dict[str, StageHandler] = {}
 
 def register_handler(key: str) -> Callable[[StageHandler], StageHandler]:
     """Decorator that registers an async handler function under *key*."""
+
     def _decorator(fn: StageHandler) -> StageHandler:
         _HANDLERS[key] = fn
         return fn
+
     return _decorator
 
 
@@ -107,9 +110,12 @@ async def _handle_design(
         artifacts["plan_text"],
         artifacts["context_text"],
     )
-    _save_document(runtime, artifacts, "architecture", design_text=design_text, agent_name=agent_name)
+    _save_document(
+        runtime, artifacts, "architecture", design_text=design_text, agent_name=agent_name
+    )
     _persist_artifacts(
-        runtime, artifacts,
+        runtime,
+        artifacts,
         current_stage="design",
         design_text=design_text,
         review_iterations=artifacts.get("_iteration", 0),
@@ -133,7 +139,8 @@ async def _handle_implementation(
         agent_name=agent_name,
     )
     _persist_artifacts(
-        runtime, artifacts,
+        runtime,
+        artifacts,
         current_stage="implementation",
         result_text=implementation_text,
         review_iterations=artifacts.get("_iteration", 0),
@@ -157,7 +164,8 @@ async def _handle_testing(
     )
     _save_document(runtime, artifacts, "testing", test_text=test_text, agent_name=agent_name)
     _persist_artifacts(
-        runtime, artifacts,
+        runtime,
+        artifacts,
         current_stage="testing",
         test_text=test_text,
         review_iterations=artifacts.get("_iteration", 0),
@@ -182,7 +190,8 @@ async def _handle_review(
     )
     _save_document(runtime, artifacts, "review", review_text=review_text, agent_name=agent_name)
     _persist_artifacts(
-        runtime, artifacts,
+        runtime,
+        artifacts,
         current_stage="review",
         review_text=review_text,
         review_iterations=artifacts.get("_iteration", 0),
@@ -232,7 +241,8 @@ async def _handle_chronicle(
     )
     _save_document(runtime, artifacts, "lessons", lesson_text=lesson_text, agent_name=agent_name)
     _persist_artifacts(
-        runtime, artifacts,
+        runtime,
+        artifacts,
         current_stage="chronicle",
         lesson_text=lesson_text,
         review_iterations=artifacts.get("_iteration", 0),
@@ -255,7 +265,8 @@ async def _handle_direct(
         artifacts.get("context_text", ""),
     )
     _persist_artifacts(
-        runtime, artifacts,
+        runtime,
+        artifacts,
         current_stage="execution",
         result_text=direct_result,
     )
@@ -272,6 +283,7 @@ _DOCUMENT_KINDS: dict[str, DocumentSaver] = {}
 
 def register_document_kind(kind: str) -> Callable[[DocumentSaver], DocumentSaver]:
     """Decorator that registers a document-saver function under *kind*."""
+
     def _decorator(fn: DocumentSaver) -> DocumentSaver:
         if kind in _DOCUMENT_KINDS:
             warnings.warn(
@@ -282,6 +294,7 @@ def register_document_kind(kind: str) -> Callable[[DocumentSaver], DocumentSaver
             )
         _DOCUMENT_KINDS[kind] = fn
         return fn
+
     return _decorator
 
 
@@ -416,7 +429,6 @@ def _save_document(
     saver = _DOCUMENT_KINDS.get(kind)
     if saver is None:
         raise ValueError(
-            f"Unknown document kind {kind!r}. "
-            f"Registered kinds: {sorted(_DOCUMENT_KINDS)}"
+            f"Unknown document kind {kind!r}. Registered kinds: {sorted(_DOCUMENT_KINDS)}"
         )
     saver(runtime, artifacts, kind, agent_name=agent_name, **extra)

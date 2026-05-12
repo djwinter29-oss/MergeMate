@@ -1,4 +1,5 @@
 """Tests for openai_adapter — covering all error paths in _extract_message_content."""
+
 import pytest
 
 from mergemate.domain.shared.exceptions import ProviderResponseError
@@ -23,7 +24,9 @@ class TestExtractMessageContent:
     def test_line_20_content_not_string(self) -> None:
         """Line 20: choices[0].message.content is not a string."""
         data = {"choices": [{"message": {"content": 42}}]}
-        with pytest.raises(ProviderResponseError, match="choices\\[0\\]\\.message\\.content was not text"):
+        with pytest.raises(
+            ProviderResponseError, match="choices\\[0\\]\\.message\\.content was not text"
+        ):
             _extract_message_content(data)
 
     @pytest.mark.asyncio
@@ -50,7 +53,9 @@ class TestExtractMessageContent:
             async def __aexit__(self, exc_type, exc, tb) -> None:
                 return None
 
-            async def post(self, url: str, *, headers: dict[str, str], json: dict[str, object]) -> ResponseStub:
+            async def post(
+                self, url: str, *, headers: dict[str, str], json: dict[str, object]
+            ) -> ResponseStub:
                 return ResponseStub()
 
         monkeypatch.setattr(openai_adapter.httpx, "AsyncClient", AsyncClientStub)

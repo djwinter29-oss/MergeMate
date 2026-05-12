@@ -48,7 +48,9 @@ class TelegramBotRuntime:
     def __init__(self, runtime) -> None:
         self._runtime = runtime
 
-    def build_application(self, *, readiness_state: WebhookReadinessState | None = None) -> Application:
+    def build_application(
+        self, *, readiness_state: WebhookReadinessState | None = None
+    ) -> Application:
         builder = ApplicationBuilder().token(self._runtime.settings.resolve_telegram_token())
         builder = builder.post_init(start_runtime_tasks)
         builder = builder.post_stop(stop_runtime_tasks)

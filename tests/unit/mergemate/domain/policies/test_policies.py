@@ -118,11 +118,7 @@ def test_workflow_prompt_file_workflowname_with_no_prompt_returns_base() -> None
     """A known WorkflowName that has no prompt file mapping returns base.md."""
     from mergemate.domain.shared.enums import PROMPT_FILE_BY_WORKFLOW
 
-    unmapped = next(
-        wf
-        for wf in WorkflowName
-        if wf not in PROMPT_FILE_BY_WORKFLOW
-    )
+    unmapped = next(wf for wf in WorkflowName if wf not in PROMPT_FILE_BY_WORKFLOW)
     result = workflow_prompt_file(unmapped)
 
     assert result == "base.md"

@@ -140,11 +140,13 @@ async def test_watch_run_progress_skips_duplicate_snapshots_and_missing_runs(mon
 
     monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
     application = ApplicationStub()
-    runtime = RuntimeStub([
-        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
-        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
-        None,
-    ])
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            None,
+        ]
+    )
 
     await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
 
@@ -152,7 +154,9 @@ async def test_watch_run_progress_skips_duplicate_snapshots_and_missing_runs(mon
 
 
 @pytest.mark.asyncio
-async def test_watch_run_progress_stops_after_configured_poll_limit(monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
+async def test_watch_run_progress_stops_after_configured_poll_limit(
+    monkeypatch, caplog: pytest.LogCaptureFixture
+) -> None:
     async def _sleep(_seconds: int) -> None:
         return None
 
@@ -175,7 +179,9 @@ async def test_watch_run_progress_stops_after_configured_poll_limit(monkeypatch,
 
 
 @pytest.mark.asyncio
-async def test_watch_run_progress_sends_update_for_new_tool_activity_on_same_stage(monkeypatch) -> None:
+async def test_watch_run_progress_sends_update_for_new_tool_activity_on_same_stage(
+    monkeypatch,
+) -> None:
     async def _sleep(_seconds: int) -> None:
         return None
 
@@ -186,7 +192,14 @@ async def test_watch_run_progress_sends_update_for_new_tool_activity_on_same_sta
             _build_snapshot(_build_run(RunStatus.WAITING_TOOL, "tool:syntax_checker")),
             _build_snapshot(
                 _build_run(RunStatus.WAITING_TOOL, "tool:syntax_checker"),
-                tool_events=[{"tool_name": "syntax_checker", "action": "check", "status": "started", "detail": "Invoking tool."}],
+                tool_events=[
+                    {
+                        "tool_name": "syntax_checker",
+                        "action": "check",
+                        "status": "started",
+                        "detail": "Invoking tool.",
+                    }
+                ],
             ),
             _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
         ]
@@ -195,7 +208,10 @@ async def test_watch_run_progress_sends_update_for_new_tool_activity_on_same_sta
     await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
 
     assert len(application.bot.messages) == 3
-    assert "Latest tool: syntax_checker check [started] - Invoking tool.." in application.bot.messages[1][1]
+    assert (
+        "Latest tool: syntax_checker check [started] - Invoking tool.."
+        in application.bot.messages[1][1]
+    )
     assert "Run run-1 completed." in application.bot.messages[2][1]
 
 
@@ -230,7 +246,9 @@ async def test_watch_run_progress_splits_oversized_updates(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_watch_run_progress_logs_and_retries_after_send_failure(monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
+async def test_watch_run_progress_logs_and_retries_after_send_failure(
+    monkeypatch, caplog: pytest.LogCaptureFixture
+) -> None:
     async def _sleep(_seconds: int) -> None:
         return None
 
@@ -254,7 +272,9 @@ async def test_watch_run_progress_logs_and_retries_after_send_failure(monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_watch_run_progress_retries_terminal_delivery_after_send_failure(monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
+async def test_watch_run_progress_retries_terminal_delivery_after_send_failure(
+    monkeypatch, caplog: pytest.LogCaptureFixture
+) -> None:
     async def _sleep(_seconds: int) -> None:
         return None
 
@@ -276,7 +296,9 @@ async def test_watch_run_progress_retries_terminal_delivery_after_send_failure(m
 
 
 @pytest.mark.asyncio
-async def test_watch_run_progress_skips_duplicate_terminal_delivery_after_immediate_send(monkeypatch) -> None:
+async def test_watch_run_progress_skips_duplicate_terminal_delivery_after_immediate_send(
+    monkeypatch,
+) -> None:
     async def _sleep(_seconds: int) -> None:
         return None
 
@@ -348,7 +370,9 @@ async def test_stop_progress_watchers_cancels_active_tasks(monkeypatch) -> None:
 
 
 @pytest.mark.asyncio
-async def test_start_progress_watcher_cleanup_clears_terminal_delivery_tracking(monkeypatch) -> None:
+async def test_start_progress_watcher_cleanup_clears_terminal_delivery_tracking(
+    monkeypatch,
+) -> None:
     async def fake_watch_run_progress(application, runtime, chat_id: int, run_id: str) -> None:
         application.bot_data.setdefault("terminal_deliveries", set()).add(run_id)
 
@@ -380,8 +404,11 @@ async def test_stop_progress_watchers_clears_terminal_delivery_registry() -> Non
 
 
 @pytest.mark.asyncio
-async def test_watch_run_progress_poll_limit_after_terminal_delivery_failure(monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
+async def test_watch_run_progress_poll_limit_after_terminal_delivery_failure(
+    monkeypatch, caplog: pytest.LogCaptureFixture
+) -> None:
     """Lines 117-123: terminal delivery fails repeatedly and poll limit is hit."""
+
     async def _sleep(_seconds: int) -> None:
         return None
 
@@ -410,8 +437,11 @@ async def test_watch_run_progress_poll_limit_after_terminal_delivery_failure(mon
 
 
 @pytest.mark.asyncio
-async def test_watch_run_progress_poll_limit_after_send_failure(monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
+async def test_watch_run_progress_poll_limit_after_send_failure(
+    monkeypatch, caplog: pytest.LogCaptureFixture
+) -> None:
     """Lines 132-134: send_text_chunks raises and poll limit is hit."""
+
     async def _sleep(_seconds: int) -> None:
         return None
 
@@ -444,8 +474,11 @@ async def test_watch_run_progress_poll_limit_after_send_failure(monkeypatch, cap
 
 
 @pytest.mark.asyncio
-async def test_watch_run_progress_poll_limit_after_non_terminal_progress(monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
+async def test_watch_run_progress_poll_limit_after_non_terminal_progress(
+    monkeypatch, caplog: pytest.LogCaptureFixture
+) -> None:
     """Lines 140-146: non-terminal progress made but poll limit reached before terminal status."""
+
     async def _sleep(_seconds: int) -> None:
         return None
 

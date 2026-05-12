@@ -16,7 +16,9 @@ class WorkflowService:
         self._llm_gateway = llm_gateway
         self._settings = settings
 
-    def build_execution_plan(self, workflow: str, *, agent_name: str) -> DirectExecutionPlan | MultiStageExecutionPlan:
+    def build_execution_plan(
+        self, workflow: str, *, agent_name: str
+    ) -> DirectExecutionPlan | MultiStageExecutionPlan:
         if uses_multi_stage_delivery(workflow):
             wf_def = get_workflow_definitions().get(WorkflowName(workflow))
             return MultiStageExecutionPlan(
@@ -38,10 +40,14 @@ class WorkflowService:
             workflow,
             preferred_agent_name=preferred_agent_name,
         )
-        role_config = getattr(self._settings, 'roles', None)
+        role_config = getattr(self._settings, "roles", None)
         if role_config is not None:
             role_config = role_config.get(agent_name)
-        if role_config is not None and role_config.parallel_mode == "parallel" and len(role_config.workers) > 1:
+        if (
+            role_config is not None
+            and role_config.parallel_mode == "parallel"
+            and len(role_config.workers) > 1
+        ):
             return await self._run_parallel_stage(
                 workflow=workflow,
                 system_prompt=system_prompt,
@@ -61,6 +67,7 @@ class WorkflowService:
         preferred_agent_name: str | None = None,
     ) -> str:
         """Run multiple workers in parallel and combine results."""
+
         async def _run_worker(worker_name: str) -> str:
             agent_name = self._settings.resolve_agent_name_for_workflow(
                 workflow,
@@ -74,9 +81,7 @@ class WorkflowService:
             return_exceptions=True,
         )
 
-        non_error_results = [
-            r for r in raw_results if not isinstance(r, Exception)
-        ]
+        non_error_results = [r for r in raw_results if not isinstance(r, Exception)]
 
         if not non_error_results:
             err_msgs = [str(r) for r in raw_results if isinstance(r, Exception)]
@@ -129,25 +134,25 @@ class WorkflowService:
     async def execute_direct(self, agent_name: str, system_prompt: str, user_prompt: str) -> str:
         return await self._llm_gateway.generate(agent_name, system_prompt, user_prompt)
 
-    async def generate_tests(self, plan_text: str, design_text: str, implementation_text: str) -> str:
+    async def generate_tests(
+        self, plan_text: str, design_text: str, implementation_text: str
+    ) -> str:
         system_prompt = (
             "You are the test agent. Produce tests and a validation approach for the implementation. "
             "Focus on runnable tests, edge cases, and verification steps."
         )
-        user_prompt = (
-            f"Plan:\n{plan_text}\n\nDesign:\n{design_text}\n\nImplementation:\n{implementation_text}"
-        )
+        user_prompt = f"Plan:\n{plan_text}\n\nDesign:\n{design_text}\n\nImplementation:\n{implementation_text}"
         return await self._generate_stage_output("testing", system_prompt, user_prompt)
 
-    async def review(self, plan_text: str, design_text: str, implementation_text: str, test_text: str) -> str:
+    async def review(
+        self, plan_text: str, design_text: str, implementation_text: str, test_text: str
+    ) -> str:
         system_prompt = (
             "You are the review agent. Review the design and implementation. "
             "Start with 'HIGH_CONCERNS: yes' if there are serious concerns, otherwise 'HIGH_CONCERNS: no'. "
             "Then provide findings, rationale, and whether replanning is required."
         )
-        user_prompt = (
-            f"Plan:\n{plan_text}\n\nDesign:\n{design_text}\n\nImplementation:\n{implementation_text}\n\nTests:\n{test_text}"
-        )
+        user_prompt = f"Plan:\n{plan_text}\n\nDesign:\n{design_text}\n\nImplementation:\n{implementation_text}\n\nTests:\n{test_text}"
         return await self._generate_stage_output("review", system_prompt, user_prompt)
 
     async def record_lesson(
@@ -187,8 +192,7 @@ class WorkflowService:
             "**Lessons Learned** — what went well, what could be improved\n"
             "**Pitfalls to Avoid** — mistakes, gotchas, anti-patterns\n"
             "**Best Practices** — conventions and patterns to reuse\n\n"
-            "Be concise and concrete.\n\n"
-            + "\n\n".join(parts)
+            "Be concise and concrete.\n\n" + "\n\n".join(parts)
         )
         return await self._generate_stage_output(
             "learning",

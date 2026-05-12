@@ -17,6 +17,7 @@ Covers:
 14. MultiStageExecutionPlan.execute last-iteration check at line 342
 15. MultiStageExecutionPlan.execute loop completion at line 360
 """
+
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -78,7 +79,9 @@ class AsyncWorkflowServiceStub:
     """Async workflow service that fulfills all methods the handlers call."""
 
     def __init__(self, has_high_concerns=None) -> None:
-        self._has_high_concerns = has_high_concerns if has_high_concerns is not None else (lambda x: False)
+        self._has_high_concerns = (
+            has_high_concerns if has_high_concerns is not None else (lambda x: False)
+        )
 
     def has_high_concerns(self, text: str) -> bool:
         return self._has_high_concerns(text)
@@ -136,8 +139,14 @@ class RunRepositoryStub:
         return None
 
 
-def _make_runtime(run=None, run_repository=None, *, is_cancelled=None, workflow_service=None,
-                  planning_service=None) -> ExecutionRuntime:
+def _make_runtime(
+    run=None,
+    run_repository=None,
+    *,
+    is_cancelled=None,
+    workflow_service=None,
+    planning_service=None,
+) -> ExecutionRuntime:
     deps = OrchestratorDependencies(
         run_repository=run_repository or RunRepositoryStub(run or _make_run()),
         context_service=SimpleNamespace(append_message=lambda *a, **kw: None),
@@ -191,7 +200,9 @@ class TestMultiStageExecutionPlanStages:
 
     def test_stages_returns_descriptors_when_workflow_def_provided(self) -> None:
         """Cover line 231: stages returns StageDescriptor tuple with workflow def."""
-        plan = MultiStageExecutionPlan("test-agent", max_iterations=3, workflow_definition=_GENERATE_CODE_DEF)
+        plan = MultiStageExecutionPlan(
+            "test-agent", max_iterations=3, workflow_definition=_GENERATE_CODE_DEF
+        )
         stages = plan.stages
         assert len(stages) > 0
         assert all(isinstance(s, StageDescriptor) for s in stages)
@@ -220,7 +231,9 @@ class TestCancelChecks:
         from mergemate.application.execution_plan import _check_cancelled
         from mergemate.domain.workflows.stage import WorkflowStage
 
-        stage = WorkflowStage(name="test", current_stage=RunStage.DESIGN, checks_cancellation_before=False)
+        stage = WorkflowStage(
+            name="test", current_stage=RunStage.DESIGN, checks_cancellation_before=False
+        )
         deps = OrchestratorDependencies(
             run_repository=SimpleNamespace(get=lambda _: None),
             context_service=SimpleNamespace(),
@@ -234,8 +247,10 @@ class TestCancelChecks:
             settings=SimpleNamespace(),
         )
         result = _check_cancelled(
-            run_id="r1", deps=deps,
-            is_cancelled=lambda _: True, stage=stage,
+            run_id="r1",
+            deps=deps,
+            is_cancelled=lambda _: True,
+            stage=stage,
         )
         assert result is None
 
@@ -245,7 +260,9 @@ class TestCancelChecks:
         from mergemate.domain.workflows.stage import WorkflowStage
 
         run = _make_run()
-        stage = WorkflowStage(name="test", current_stage=RunStage.DESIGN, checks_cancellation_before=True)
+        stage = WorkflowStage(
+            name="test", current_stage=RunStage.DESIGN, checks_cancellation_before=True
+        )
         deps = OrchestratorDependencies(
             run_repository=RunRepositoryStub(run),
             context_service=SimpleNamespace(),
@@ -259,8 +276,10 @@ class TestCancelChecks:
             settings=SimpleNamespace(),
         )
         result = _check_cancelled(
-            run_id="r1", deps=deps,
-            is_cancelled=lambda _: True, stage=stage,
+            run_id="r1",
+            deps=deps,
+            is_cancelled=lambda _: True,
+            stage=stage,
         )
         assert result is run
 
@@ -269,7 +288,9 @@ class TestCancelChecks:
         from mergemate.application.execution_plan import _check_after_cancelled
         from mergemate.domain.workflows.stage import WorkflowStage
 
-        stage = WorkflowStage(name="test", current_stage=RunStage.DESIGN, checks_cancellation_after=False)
+        stage = WorkflowStage(
+            name="test", current_stage=RunStage.DESIGN, checks_cancellation_after=False
+        )
         deps = OrchestratorDependencies(
             run_repository=SimpleNamespace(get=lambda _: None),
             context_service=SimpleNamespace(),
@@ -283,8 +304,10 @@ class TestCancelChecks:
             settings=SimpleNamespace(),
         )
         result = _check_after_cancelled(
-            run_id="r1", deps=deps,
-            is_cancelled=lambda _: True, stage=stage,
+            run_id="r1",
+            deps=deps,
+            is_cancelled=lambda _: True,
+            stage=stage,
         )
         assert result is None
 
@@ -294,7 +317,9 @@ class TestCancelChecks:
         from mergemate.domain.workflows.stage import WorkflowStage
 
         run = _make_run()
-        stage = WorkflowStage(name="test", current_stage=RunStage.DESIGN, checks_cancellation_after=True)
+        stage = WorkflowStage(
+            name="test", current_stage=RunStage.DESIGN, checks_cancellation_after=True
+        )
         deps = OrchestratorDependencies(
             run_repository=RunRepositoryStub(run),
             context_service=SimpleNamespace(),
@@ -308,8 +333,10 @@ class TestCancelChecks:
             settings=SimpleNamespace(),
         )
         result = _check_after_cancelled(
-            run_id="r1", deps=deps,
-            is_cancelled=lambda _: True, stage=stage,
+            run_id="r1",
+            deps=deps,
+            is_cancelled=lambda _: True,
+            stage=stage,
         )
         assert result is run
 
@@ -325,6 +352,7 @@ class TestDirectExecutionPlan:
         class CompletingRepo(RunRepositoryStub):
             def save_artifacts(self, *a, **kw):
                 return None
+
             def update_status(self, run_id, status, **kwargs):
                 run.status = status
                 return run
@@ -393,9 +421,12 @@ class TestMultiStageExecutionPlanMissingHandlers:
         from mergemate.domain.workflows.stage import WorkflowDefinition, WorkflowStage
 
         bad_stage = WorkflowStage(
-            name="nonexistent_stage", current_stage=RunStage.DESIGN,
-            handler="not_registered_handler", uses_tool_context=False,
-            checks_cancellation_before=False, checks_cancellation_after=False,
+            name="nonexistent_stage",
+            current_stage=RunStage.DESIGN,
+            handler="not_registered_handler",
+            uses_tool_context=False,
+            checks_cancellation_before=False,
+            checks_cancellation_after=False,
         )
         bad_wf = WorkflowDefinition(name="test_workflow", stages=(bad_stage,))
         run = _make_run()
@@ -410,7 +441,9 @@ class TestMultiStageExecutionPlanMissingHandlers:
     async def test_replan_handler_missing_raises_error(self) -> None:
         """Cover lines 319-323: replan handler None raises error."""
         run = _make_run()
-        plan = MultiStageExecutionPlan("test-agent", max_iterations=2, workflow_definition=_GENERATE_CODE_DEF)
+        plan = MultiStageExecutionPlan(
+            "test-agent", max_iterations=2, workflow_definition=_GENERATE_CODE_DEF
+        )
         runtime = _make_runtime(
             run,
             workflow_service=AsyncWorkflowServiceStub(has_high_concerns=lambda x: True),
@@ -429,7 +462,9 @@ class TestMultiStageExecutionPlanMissingHandlers:
         monkeypatch = pytest.MonkeyPatch()
         monkeypatch.setattr(ep_mod, "get_stage_handler", patched)
         try:
-            with pytest.raises(StageExecutionError, match="No handler registered for replanning stage"):
+            with pytest.raises(
+                StageExecutionError, match="No handler registered for replanning stage"
+            ):
                 await plan.execute(runtime, execution)
         finally:
             monkeypatch.undo()
@@ -448,9 +483,12 @@ class TestMultiStageExecutionPlanHappyPath:
                 run.status = status
                 return run
 
-        plan = MultiStageExecutionPlan("test-agent", max_iterations=2, workflow_definition=_GENERATE_CODE_DEF)
+        plan = MultiStageExecutionPlan(
+            "test-agent", max_iterations=2, workflow_definition=_GENERATE_CODE_DEF
+        )
         runtime = _make_runtime(
-            run, run_repository=CompletingRepo(run),
+            run,
+            run_repository=CompletingRepo(run),
             workflow_service=AsyncWorkflowServiceStub(has_high_concerns=lambda x: False),
         )
         execution = ExecutionContext(run=run, system_prompt="", context_text="")
@@ -469,9 +507,12 @@ class TestMultiStageExecutionPlanHappyPath:
                 run.status = status
                 return run
 
-        plan = MultiStageExecutionPlan("test-agent", max_iterations=1, workflow_definition=_GENERATE_CODE_DEF)
+        plan = MultiStageExecutionPlan(
+            "test-agent", max_iterations=1, workflow_definition=_GENERATE_CODE_DEF
+        )
         runtime = _make_runtime(
-            run, run_repository=CompletingRepo(run),
+            run,
+            run_repository=CompletingRepo(run),
             workflow_service=AsyncWorkflowServiceStub(has_high_concerns=lambda x: True),
         )
         execution = ExecutionContext(run=run, system_prompt="", context_text="")
@@ -488,9 +529,12 @@ class TestMultiStageExecutionPlanCancelledPaths:
     async def test_cancelled_before_core_stage(self) -> None:
         """Cover lines 277-284: cancellation before core stage returns early."""
         run = _make_run()
-        plan = MultiStageExecutionPlan("test-agent", max_iterations=2, workflow_definition=_GENERATE_CODE_DEF)
+        plan = MultiStageExecutionPlan(
+            "test-agent", max_iterations=2, workflow_definition=_GENERATE_CODE_DEF
+        )
         runtime = _make_runtime(
-            run, run_repository=CancelFlagRepo(run),
+            run,
+            run_repository=CancelFlagRepo(run),
             is_cancelled=lambda _: True,
         )
         execution = ExecutionContext(run=run, system_prompt="", context_text="")
@@ -511,9 +555,12 @@ class TestMultiStageExecutionPlanCancelledPaths:
         run = _make_run()
         calls = iter([False, True])
 
-        plan = MultiStageExecutionPlan("test-agent", max_iterations=2, workflow_definition=_GENERATE_CODE_DEF)
+        plan = MultiStageExecutionPlan(
+            "test-agent", max_iterations=2, workflow_definition=_GENERATE_CODE_DEF
+        )
         runtime = _make_runtime(
-            run, run_repository=CancelFlagRepo(run),
+            run,
+            run_repository=CancelFlagRepo(run),
             is_cancelled=lambda _: next(calls, False),
         )
         execution = ExecutionContext(run=run, system_prompt="", context_text="")
@@ -543,9 +590,12 @@ class TestMultiStageExecutionPlanCancelledPaths:
         calls = iter([False, False, False, False, False, False, True])
 
         run = _make_run()
-        plan = MultiStageExecutionPlan("test-agent", max_iterations=2, workflow_definition=_GENERATE_CODE_DEF)
+        plan = MultiStageExecutionPlan(
+            "test-agent", max_iterations=2, workflow_definition=_GENERATE_CODE_DEF
+        )
         runtime = _make_runtime(
-            run, run_repository=CancelFlagRepo(run),
+            run,
+            run_repository=CancelFlagRepo(run),
             workflow_service=AsyncWorkflowServiceStub(has_high_concerns=lambda x: True),
             is_cancelled=lambda _: next(calls, False),
         )
@@ -563,12 +613,16 @@ class TestMultiStageExecutionPlanCancelledPaths:
         class LateCancelRepo(RunRepositoryStub):
             def update_status(self, run_id, status, **kwargs):
                 return None
+
             def get(self, run_id):
                 return _make_run(run_id=run_id, status=RunStatus.CANCELLED)
 
-        plan = MultiStageExecutionPlan("test-agent", max_iterations=2, workflow_definition=_GENERATE_CODE_DEF)
+        plan = MultiStageExecutionPlan(
+            "test-agent", max_iterations=2, workflow_definition=_GENERATE_CODE_DEF
+        )
         runtime = _make_runtime(
-            run, run_repository=LateCancelRepo(run),
+            run,
+            run_repository=LateCancelRepo(run),
             workflow_service=AsyncWorkflowServiceStub(has_high_concerns=lambda x: False),
         )
         execution = ExecutionContext(run=run, system_prompt="", context_text="")
@@ -638,13 +692,16 @@ class TestDirectExecutionPlanCancelledAfterGather:
         class SaveRepo:
             def __init__(self) -> None:
                 self.run = run
+
             def get(self, run_id: str) -> AgentRun | None:
                 next_val = next(calls, False)
                 if next_val:
                     self.run = _make_run(run_id=run_id, status=RunStatus.CANCELLED)
                 return self.run
+
             def save_artifacts(self, *a, **kw):
                 return None
+
             def update_status(self, *a, **kw):
                 return self.run
 
@@ -659,7 +716,9 @@ class TestDirectExecutionPlanCancelledAfterGather:
                 write_lesson=lambda *a, **kw: Path("/tmp/doc.md"),
             ),
             learning_service=SimpleNamespace(remember_success=AsyncMock()),
-            planning_service=SimpleNamespace(extract_tasks=lambda x: [], build_progress_summary=lambda x, y: ""),
+            planning_service=SimpleNamespace(
+                extract_tasks=lambda x: [], build_progress_summary=lambda x, y: ""
+            ),
             prompt_service=SimpleNamespace(),
             tool_service=SimpleNamespace(),
             workflow_service=SimpleNamespace(execute_direct=lambda *a, **kw: "result"),

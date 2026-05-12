@@ -37,6 +37,7 @@ pytestmark = pytest.mark.integration
 # In-memory mock LLM
 # ---------------------------------------------------------------------------
 
+
 class MockLLM:
     """Deterministic mock that records calls."""
 
@@ -53,6 +54,7 @@ class MockLLM:
 # ---------------------------------------------------------------------------
 # Stubs
 # ---------------------------------------------------------------------------
+
 
 class LearningServiceStub:
     def __init__(self) -> None:
@@ -76,28 +78,45 @@ class DocumentationServiceStub:
         self.calls: list[dict[str, Any]] = []
 
     def write_architecture_design(
-        self, *, run_id: str, iteration: int, plan_text: str, design_text: str, role_name: str | None = None
+        self,
+        *,
+        run_id: str,
+        iteration: int,
+        plan_text: str,
+        design_text: str,
+        role_name: str | None = None,
     ) -> str:
-        self.calls.append({
-            "kind": "architecture",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "design_text": design_text,
-        })
+        self.calls.append(
+            {
+                "kind": "architecture",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "design_text": design_text,
+            }
+        )
         return f"docs/architecture/{plan_text[:10].replace(' ', '-')}.md"
 
     def write_test_plan(
-        self, *, run_id: str, iteration: int, plan_text: str, design_text: str, test_text: str, role_name: str | None = None
+        self,
+        *,
+        run_id: str,
+        iteration: int,
+        plan_text: str,
+        design_text: str,
+        test_text: str,
+        role_name: str | None = None,
     ) -> str:
-        self.calls.append({
-            "kind": "testing",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "design_text": design_text,
-            "test_text": test_text,
-        })
+        self.calls.append(
+            {
+                "kind": "testing",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "design_text": design_text,
+                "test_text": test_text,
+            }
+        )
         return f"docs/testing/{plan_text[:10].replace(' ', '-')}-test-plan.md"
 
     def write_review_report(
@@ -112,28 +131,38 @@ class DocumentationServiceStub:
         review_text: str,
         role_name: str | None = None,
     ) -> str:
-        self.calls.append({
-            "kind": "review",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "design_text": design_text,
-            "implementation_text": implementation_text,
-            "test_text": test_text,
-            "review_text": review_text,
-        })
+        self.calls.append(
+            {
+                "kind": "review",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "design_text": design_text,
+                "implementation_text": implementation_text,
+                "test_text": test_text,
+                "review_text": review_text,
+            }
+        )
         return f"docs/reviews/{plan_text[:10].replace(' ', '-')}-review-report.md"
 
     def write_lesson(
-        self, *, run_id: str, iteration: int, plan_text: str, lesson_text: str, role_name: str | None = None
+        self,
+        *,
+        run_id: str,
+        iteration: int,
+        plan_text: str,
+        lesson_text: str,
+        role_name: str | None = None,
     ) -> str:
-        self.calls.append({
-            "kind": "lessons",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "lesson_text": lesson_text,
-        })
+        self.calls.append(
+            {
+                "kind": "lessons",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "lesson_text": lesson_text,
+            }
+        )
         return f"docs/lessons/{plan_text[:10].replace(' ', '-')}.md"
 
 
@@ -182,6 +211,7 @@ class PromptServiceStub:
 # Settings stub with resolve_agent_name_for_workflow
 # ---------------------------------------------------------------------------
 
+
 @dataclass(slots=True)
 class WorkflowControlStub:
     max_review_iterations: int = 3
@@ -193,14 +223,30 @@ class SettingsStub:
     workflow_control: WorkflowControlStub = field(default_factory=WorkflowControlStub)
     agents: dict[str, object] = field(
         default_factory=lambda: {
-            "planner": SimpleNamespace(workflow="planning", parallel_mode="single", combine_strategy="sectioned"),
-            "coder": SimpleNamespace(workflow="generate_code", parallel_mode="single", combine_strategy="sectioned"),
-            "debugger": SimpleNamespace(workflow="debug_code", parallel_mode="single", combine_strategy="sectioned"),
-            "explainer": SimpleNamespace(workflow="explain_code", parallel_mode="single", combine_strategy="sectioned"),
-            "architect": SimpleNamespace(workflow="design", parallel_mode="single", combine_strategy="sectioned"),
-            "tester": SimpleNamespace(workflow="testing", parallel_mode="single", combine_strategy="sectioned"),
-            "reviewer": SimpleNamespace(workflow="review", parallel_mode="single", combine_strategy="sectioned"),
-            "chronicler": SimpleNamespace(workflow="learning", parallel_mode="single", combine_strategy="sectioned"),
+            "planner": SimpleNamespace(
+                workflow="planning", parallel_mode="single", combine_strategy="sectioned"
+            ),
+            "coder": SimpleNamespace(
+                workflow="generate_code", parallel_mode="single", combine_strategy="sectioned"
+            ),
+            "debugger": SimpleNamespace(
+                workflow="debug_code", parallel_mode="single", combine_strategy="sectioned"
+            ),
+            "explainer": SimpleNamespace(
+                workflow="explain_code", parallel_mode="single", combine_strategy="sectioned"
+            ),
+            "architect": SimpleNamespace(
+                workflow="design", parallel_mode="single", combine_strategy="sectioned"
+            ),
+            "tester": SimpleNamespace(
+                workflow="testing", parallel_mode="single", combine_strategy="sectioned"
+            ),
+            "reviewer": SimpleNamespace(
+                workflow="review", parallel_mode="single", combine_strategy="sectioned"
+            ),
+            "chronicler": SimpleNamespace(
+                workflow="learning", parallel_mode="single", combine_strategy="sectioned"
+            ),
         }
     )
 
@@ -223,6 +269,7 @@ class SettingsStub:
 # ---------------------------------------------------------------------------
 # Fixture: real SQLite database per test
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def sqlite_orchestrator(tmp_path):
@@ -312,6 +359,7 @@ def _create_run(
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestOrchestratorFullPipeline:
     """End-to-end test of the orchestrator through QUEUED→RUNNING→COMPLETED.
@@ -560,8 +608,8 @@ class TestOrchestratorFullPipeline:
             planning_service=sqlite_orchestrator["planning_service"],
             prompt_service=PromptServiceStub(),
             tool_service=tool_service,
-            workflow_service=sqlite_orchestrator['orchestrator']._deps.workflow_service,
-            llm_gateway=sqlite_orchestrator['orchestrator']._deps.llm_gateway,
+            workflow_service=sqlite_orchestrator["orchestrator"]._deps.workflow_service,
+            llm_gateway=sqlite_orchestrator["orchestrator"]._deps.llm_gateway,
             settings=sqlite_orchestrator["settings"],
         )
         orchestrator = AgentOrchestrator(deps)

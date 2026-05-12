@@ -73,7 +73,9 @@ class RunStub:
     result_text: str | None = "done"
     error_text: str | None = None
     chat_id: int = 5
-    created_at: object = field(default_factory=lambda: __import__("datetime").datetime.now(__import__("datetime").UTC))
+    created_at: object = field(
+        default_factory=lambda: __import__("datetime").datetime.now(__import__("datetime").UTC)
+    )
 
 
 class GetRunStatusStub:
@@ -81,7 +83,9 @@ class GetRunStatusStub:
         self.results = list(results or [])
         self.calls = []
 
-    def execute(self, run_id: str | None = None, chat_id: int | None = None, tool_event_limit: int = 5):
+    def execute(
+        self, run_id: str | None = None, chat_id: int | None = None, tool_event_limit: int = 5
+    ):
         self.calls.append((run_id, chat_id, tool_event_limit))
         if not self.results:
             return None
@@ -89,7 +93,15 @@ class GetRunStatusStub:
 
 
 class SubmitPromptStub:
-    def __init__(self, execute_result=None, revise_result=None, execute_error: Exception | None = None, complete_result=None, complete_error: Exception | None = None, approve_result=None) -> None:
+    def __init__(
+        self,
+        execute_result=None,
+        revise_result=None,
+        execute_error: Exception | None = None,
+        complete_result=None,
+        complete_error: Exception | None = None,
+        approve_result=None,
+    ) -> None:
         self.execute_result = execute_result
         self.revise_result = revise_result
         self.execute_error = execute_error
@@ -144,11 +156,21 @@ class CancelRunStub:
         return self.result
 
 
-def _runtime(*, latest=None, submit=None, approve=None, cancel=None, default_agent="coder", workflow="generate_code"):
+def _runtime(
+    *,
+    latest=None,
+    submit=None,
+    approve=None,
+    cancel=None,
+    default_agent="coder",
+    workflow="generate_code",
+):
     settings = SimpleNamespace(
         default_agent=default_agent,
         agents={default_agent: SimpleNamespace(workflow=workflow)},
-        resolve_agent_name_for_workflow=lambda requested_workflow: "planner" if requested_workflow == "planning" else default_agent,
+        resolve_agent_name_for_workflow=lambda requested_workflow: (
+            "planner" if requested_workflow == "planning" else default_agent
+        ),
     )
     if approve is not None and isinstance(approve, ApproveRunStub):
         approve_result = approve.result
@@ -187,8 +209,12 @@ async def test_start_and_status_commands_return_when_message_or_chat_missing() -
     application = ApplicationStub(runtime)
 
     await handlers.start_command(UpdateStub(None), ContextStub(application))
-    await handlers.status_command(UpdateStub(MessageStub("/status"), effective_chat=None), ContextStub(application))
-    await handlers.tools_command(UpdateStub(MessageStub("/tools"), effective_chat=None), ContextStub(application))
+    await handlers.status_command(
+        UpdateStub(MessageStub("/status"), effective_chat=None), ContextStub(application)
+    )
+    await handlers.tools_command(
+        UpdateStub(MessageStub("/tools"), effective_chat=None), ContextStub(application)
+    )
 
     assert application.bot.messages == []
 
@@ -203,7 +229,9 @@ async def test_status_command_handles_missing_and_existing_runs() -> None:
     assert missing_message.replies == ["No runs found for this chat."]
 
     status_message = MessageStub("/status run-1")
-    await handlers.status_command(UpdateStub(status_message), ContextStub(application, args=["run-1"]))
+    await handlers.status_command(
+        UpdateStub(status_message), ContextStub(application, args=["run-1"])
+    )
     assert "Run run-1 is running." in status_message.replies[0]
     assert runtime.services.get_run_status.calls == [(None, 5, 5), ("run-1", 5, 5)]
 
@@ -235,7 +263,9 @@ async def test_status_command_splits_oversized_messages() -> None:
     application = ApplicationStub(runtime)
     status_message = MessageStub("/status run-1")
 
-    await handlers.status_command(UpdateStub(status_message), ContextStub(application, args=["run-1"]))
+    await handlers.status_command(
+        UpdateStub(status_message), ContextStub(application, args=["run-1"])
+    )
 
     assert len(status_message.replies) == 2
     assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for reply in status_message.replies)
@@ -264,7 +294,9 @@ async def test_tools_command_handles_missing_existing_and_latest_runs() -> None:
     assert missing_message.replies == ["No runs found for this chat."]
 
     explicit_message = MessageStub("/tools run-1")
-    await handlers.tools_command(UpdateStub(explicit_message), ContextStub(application, args=["run-1"]))
+    await handlers.tools_command(
+        UpdateStub(explicit_message), ContextStub(application, args=["run-1"])
+    )
     assert "Tool activity for run run-1:" in explicit_message.replies[0]
     assert "syntax_checker check [ok]: done" in explicit_message.replies[0]
     assert "UTC (2m ago)" in explicit_message.replies[0]
@@ -294,7 +326,9 @@ async def test_tools_command_splits_oversized_messages() -> None:
     application = ApplicationStub(runtime)
     tools_message = MessageStub("/tools run-1")
 
-    await handlers.tools_command(UpdateStub(tools_message), ContextStub(application, args=["run-1"]))
+    await handlers.tools_command(
+        UpdateStub(tools_message), ContextStub(application, args=["run-1"])
+    )
 
     assert len(tools_message.replies) == 2
     assert all(len(reply) <= handlers.TELEGRAM_MESSAGE_LIMIT for reply in tools_message.replies)
@@ -323,7 +357,9 @@ async def test_tools_command_accepts_limit_with_or_without_run_id() -> None:
     assert "Tool activity for run run-1:" in latest_message.replies[0]
 
     explicit_message = MessageStub("/tools run-1 7")
-    await handlers.tools_command(UpdateStub(explicit_message), ContextStub(application, args=["run-1", "7"]))
+    await handlers.tools_command(
+        UpdateStub(explicit_message), ContextStub(application, args=["run-1", "7"])
+    )
     assert "Tool activity for run run-1:" in explicit_message.replies[0]
     assert runtime.services.get_run_status.calls == [(None, 5, 15), ("run-1", 5, 7)]
 
@@ -337,15 +373,21 @@ async def test_tools_command_rejects_invalid_limit_values() -> None:
     ]
 
     zero_only_message = MessageStub("/tools 0")
-    await handlers.tools_command(UpdateStub(zero_only_message), ContextStub(application, args=["0"]))
+    await handlers.tools_command(
+        UpdateStub(zero_only_message), ContextStub(application, args=["0"])
+    )
     assert zero_only_message.replies == expected
 
     bad_text_message = MessageStub("/tools run-1 many")
-    await handlers.tools_command(UpdateStub(bad_text_message), ContextStub(application, args=["run-1", "many"]))
+    await handlers.tools_command(
+        UpdateStub(bad_text_message), ContextStub(application, args=["run-1", "many"])
+    )
     assert bad_text_message.replies == expected
 
     zero_with_run_message = MessageStub("/tools run-1 0")
-    await handlers.tools_command(UpdateStub(zero_with_run_message), ContextStub(application, args=["run-1", "0"]))
+    await handlers.tools_command(
+        UpdateStub(zero_with_run_message), ContextStub(application, args=["run-1", "0"])
+    )
     assert zero_with_run_message.replies == expected
 
     too_large_message = MessageStub(f"/tools {handlers.MAX_TOOL_HISTORY_LIMIT + 1}")
@@ -356,7 +398,9 @@ async def test_tools_command_rejects_invalid_limit_values() -> None:
     assert too_large_message.replies == expected
 
     too_many_args_message = MessageStub("/tools run-1 5 extra")
-    await handlers.tools_command(UpdateStub(too_many_args_message), ContextStub(application, args=["run-1", "5", "extra"]))
+    await handlers.tools_command(
+        UpdateStub(too_many_args_message), ContextStub(application, args=["run-1", "5", "extra"])
+    )
     assert too_many_args_message.replies == ["Usage: /tools [run_id] [limit]."]
 
 
@@ -388,12 +432,20 @@ async def test_tools_command_accepts_missing_context_args() -> None:
 
 
 @pytest.mark.asyncio
-async def test_approve_command_handles_missing_failed_and_not_needed_runs(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_approve_command_handles_missing_failed_and_not_needed_runs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     started = []
-    monkeypatch.setattr(handlers, "start_progress_watcher", lambda _app, _runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    monkeypatch.setattr(
+        handlers,
+        "start_progress_watcher",
+        lambda _app, _runtime, chat_id, run_id: started.append((chat_id, run_id)),
+    )
     runtime = _runtime(
         latest=GetRunStatusStub([None, RunStub(run_id="run-2")]),
-        approve=ApproveRunStub(SimpleNamespace(run_id="run-3", dispatched=False, status="completed")),
+        approve=ApproveRunStub(
+            SimpleNamespace(run_id="run-3", dispatched=False, status="completed")
+        ),
     )
     application = ApplicationStub(runtime)
 
@@ -403,30 +455,51 @@ async def test_approve_command_handles_missing_failed_and_not_needed_runs(monkey
 
     fail_runtime = _runtime(approve=ApproveRunStub(None))
     fail_message = MessageStub("/approve run-1")
-    await handlers.approve_command(UpdateStub(fail_message), ContextStub(ApplicationStub(fail_runtime), args=["run-1"]))
+    await handlers.approve_command(
+        UpdateStub(fail_message), ContextStub(ApplicationStub(fail_runtime), args=["run-1"])
+    )
     assert fail_message.replies == ["Run approval failed."]
 
     failed_dispatch_runtime = _runtime(
-        approve=ApproveRunStub(SimpleNamespace(run_id="run-shutdown", dispatched=False, status="failed", error_text="Background worker is stopping and cannot accept new runs.")),
+        approve=ApproveRunStub(
+            SimpleNamespace(
+                run_id="run-shutdown",
+                dispatched=False,
+                status="failed",
+                error_text="Background worker is stopping and cannot accept new runs.",
+            )
+        ),
     )
     failed_dispatch_message = MessageStub("/approve run-shutdown")
     await handlers.approve_command(
         UpdateStub(failed_dispatch_message),
         ContextStub(ApplicationStub(failed_dispatch_runtime), args=["run-shutdown"]),
     )
-    assert failed_dispatch_message.replies == ["Background worker is stopping and cannot accept new runs."]
+    assert failed_dispatch_message.replies == [
+        "Background worker is stopping and cannot accept new runs."
+    ]
 
     noop_message = MessageStub("/approve run-3")
-    await handlers.approve_command(UpdateStub(noop_message), ContextStub(application, args=["run-3"]))
+    await handlers.approve_command(
+        UpdateStub(noop_message), ContextStub(application, args=["run-3"])
+    )
     assert "was not re-approved" in noop_message.replies[0]
     assert started == []
 
 
 @pytest.mark.asyncio
-async def test_approve_command_starts_watcher_when_dispatched(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_approve_command_starts_watcher_when_dispatched(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     started = []
-    monkeypatch.setattr(handlers, "start_progress_watcher", lambda _app, _runtime, chat_id, run_id: started.append((chat_id, run_id)))
-    runtime = _runtime(approve=ApproveRunStub(SimpleNamespace(run_id="run-4", dispatched=True, status="queued")))
+    monkeypatch.setattr(
+        handlers,
+        "start_progress_watcher",
+        lambda _app, _runtime, chat_id, run_id: started.append((chat_id, run_id)),
+    )
+    runtime = _runtime(
+        approve=ApproveRunStub(SimpleNamespace(run_id="run-4", dispatched=True, status="queued"))
+    )
     application = ApplicationStub(runtime)
     message = MessageStub("/approve run-4")
 
@@ -460,12 +533,20 @@ async def test_approve_command_reports_planning_in_progress_error() -> None:
 
 
 @pytest.mark.asyncio
-async def test_approve_command_uses_latest_run_when_no_argument(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_approve_command_uses_latest_run_when_no_argument(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     started = []
-    monkeypatch.setattr(handlers, "start_progress_watcher", lambda _app, _runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    monkeypatch.setattr(
+        handlers,
+        "start_progress_watcher",
+        lambda _app, _runtime, chat_id, run_id: started.append((chat_id, run_id)),
+    )
     runtime = _runtime(
         latest=GetRunStatusStub([RunStub(run_id="run-latest")]),
-        approve=ApproveRunStub(SimpleNamespace(run_id="run-latest", dispatched=True, status="queued")),
+        approve=ApproveRunStub(
+            SimpleNamespace(run_id="run-latest", dispatched=True, status="queued")
+        ),
     )
 
     message = MessageStub("/approve")
@@ -478,19 +559,29 @@ async def test_approve_command_uses_latest_run_when_no_argument(monkeypatch: pyt
 async def test_cancel_command_handles_missing_noop_and_successful_cancel() -> None:
     runtime = _runtime(cancel=CancelRunStub(None))
     missing_message = MessageStub("/cancel")
-    await handlers.cancel_command(UpdateStub(missing_message), ContextStub(ApplicationStub(runtime)))
+    await handlers.cancel_command(
+        UpdateStub(missing_message), ContextStub(ApplicationStub(runtime))
+    )
     assert missing_message.replies == ["No run could be cancelled."]
 
-    runtime = _runtime(cancel=CancelRunStub(SimpleNamespace(run_id="run-4", cancelled=False, status="running")))
+    runtime = _runtime(
+        cancel=CancelRunStub(SimpleNamespace(run_id="run-4", cancelled=False, status="running"))
+    )
     noop_message = MessageStub("/cancel run-4")
-    await handlers.cancel_command(UpdateStub(noop_message), ContextStub(ApplicationStub(runtime), args=["run-4"]))
+    await handlers.cancel_command(
+        UpdateStub(noop_message), ContextStub(ApplicationStub(runtime), args=["run-4"])
+    )
     assert noop_message.replies == [
         "Run run-4 cannot be cancelled because it is in status 'running'. Only runs awaiting confirmation can be cancelled."
     ]
 
-    runtime = _runtime(cancel=CancelRunStub(SimpleNamespace(run_id="run-5", cancelled=True, status="cancelled")))
+    runtime = _runtime(
+        cancel=CancelRunStub(SimpleNamespace(run_id="run-5", cancelled=True, status="cancelled"))
+    )
     message = MessageStub("/cancel run-5")
-    await handlers.cancel_command(UpdateStub(message), ContextStub(ApplicationStub(runtime), args=["run-5"]))
+    await handlers.cancel_command(
+        UpdateStub(message), ContextStub(ApplicationStub(runtime), args=["run-5"])
+    )
     assert message.replies == ["Run run-5 was cancelled."]
 
 
@@ -532,8 +623,14 @@ def test_build_request_returns_none_for_incomplete_update() -> None:
     runtime = _runtime()
 
     assert handlers._build_request(UpdateStub(None), runtime) is None
-    assert handlers._build_request(UpdateStub(MessageStub("hello"), effective_user=None), runtime) is None
-    assert handlers._build_request(UpdateStub(MessageStub("hello"), effective_chat=None), runtime) is None
+    assert (
+        handlers._build_request(UpdateStub(MessageStub("hello"), effective_user=None), runtime)
+        is None
+    )
+    assert (
+        handlers._build_request(UpdateStub(MessageStub("hello"), effective_chat=None), runtime)
+        is None
+    )
 
 
 def test_start_progress_watcher_creates_task(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -556,8 +653,12 @@ async def test_approve_and_cancel_commands_return_when_message_or_chat_missing()
     runtime = _runtime()
     application = ApplicationStub(runtime)
 
-    await handlers.approve_command(UpdateStub(MessageStub("/approve"), effective_chat=None), ContextStub(application))
-    await handlers.cancel_command(UpdateStub(MessageStub("/cancel"), effective_chat=None), ContextStub(application))
+    await handlers.approve_command(
+        UpdateStub(MessageStub("/approve"), effective_chat=None), ContextStub(application)
+    )
+    await handlers.cancel_command(
+        UpdateStub(MessageStub("/cancel"), effective_chat=None), ContextStub(application)
+    )
 
     assert application.bot.messages == []
 
@@ -567,8 +668,12 @@ async def test_handle_prompt_returns_when_user_or_chat_missing() -> None:
     runtime = _runtime()
     application = ApplicationStub(runtime)
 
-    await handlers.handle_prompt(UpdateStub(MessageStub("hello"), effective_user=None), ContextStub(application))
-    await handlers.handle_prompt(UpdateStub(MessageStub("hello"), effective_chat=None), ContextStub(application))
+    await handlers.handle_prompt(
+        UpdateStub(MessageStub("hello"), effective_user=None), ContextStub(application)
+    )
+    await handlers.handle_prompt(
+        UpdateStub(MessageStub("hello"), effective_chat=None), ContextStub(application)
+    )
 
     assert application.bot.messages == []
 
@@ -587,8 +692,20 @@ async def test_handle_prompt_rejects_internal_default_agent() -> None:
 
 @pytest.mark.asyncio
 async def test_handle_prompt_revises_existing_plan_and_handles_failure() -> None:
-    latest = GetRunStatusStub([RunStub(run_id="run-6", status=RunStatus.AWAITING_CONFIRMATION), RunStub(run_id="run-6", status=RunStatus.AWAITING_CONFIRMATION)])
-    runtime = _runtime(latest=latest, submit=SubmitPromptStub(revise_result=SimpleNamespace(run_id="run-6", plan_text="updated plan", estimate_seconds=10)))
+    latest = GetRunStatusStub(
+        [
+            RunStub(run_id="run-6", status=RunStatus.AWAITING_CONFIRMATION),
+            RunStub(run_id="run-6", status=RunStatus.AWAITING_CONFIRMATION),
+        ]
+    )
+    runtime = _runtime(
+        latest=latest,
+        submit=SubmitPromptStub(
+            revise_result=SimpleNamespace(
+                run_id="run-6", plan_text="updated plan", estimate_seconds=10
+            )
+        ),
+    )
     application = ApplicationStub(runtime)
     message = MessageStub("add tests")
 
@@ -602,7 +719,9 @@ async def test_handle_prompt_revises_existing_plan_and_handles_failure() -> None
         submit=SubmitPromptStub(revise_result=None),
     )
     failed_message = MessageStub("add logs")
-    await handlers.handle_prompt(UpdateStub(failed_message), ContextStub(ApplicationStub(failed_runtime)))
+    await handlers.handle_prompt(
+        UpdateStub(failed_message), ContextStub(ApplicationStub(failed_runtime))
+    )
     assert failed_message.replies == ["Could not revise the current plan."]
 
 
@@ -627,16 +746,22 @@ async def test_handle_prompt_splits_oversized_revised_plan() -> None:
 
 @pytest.mark.asyncio
 async def test_handle_prompt_replies_with_error_when_plan_revision_fails() -> None:
-    failed_run = RunStub(run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION, error_text="planner unavailable")
+    failed_run = RunStub(
+        run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION, error_text="planner unavailable"
+    )
     runtime = _runtime(
-        latest=GetRunStatusStub([
-            RunStub(run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION),
-            failed_run,
-        ]),
+        latest=GetRunStatusStub(
+            [
+                RunStub(run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION),
+                failed_run,
+            ]
+        ),
         submit=SubmitPromptStub(revise_result=None, execute_error=None),
     )
 
-    async def failing_revise_plan_for_chat(run_id: str, feedback: str, *, chat_id: int | None = None):
+    async def failing_revise_plan_for_chat(
+        run_id: str, feedback: str, *, chat_id: int | None = None
+    ):
         raise PromptSubmissionError(run_id, "planner unavailable")
 
     runtime.services.submit_prompt.revise_plan_for_chat = failing_revise_plan_for_chat
@@ -650,16 +775,22 @@ async def test_handle_prompt_replies_with_error_when_plan_revision_fails() -> No
 @pytest.mark.asyncio
 async def test_handle_prompt_splits_oversized_revision_error() -> None:
     long_error = "x" * (handlers.TELEGRAM_MESSAGE_LIMIT + 250)
-    failed_run = RunStub(run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION, error_text=long_error)
+    failed_run = RunStub(
+        run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION, error_text=long_error
+    )
     runtime = _runtime(
-        latest=GetRunStatusStub([
-            RunStub(run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION),
-            failed_run,
-        ]),
+        latest=GetRunStatusStub(
+            [
+                RunStub(run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION),
+                failed_run,
+            ]
+        ),
         submit=SubmitPromptStub(revise_result=None, execute_error=None),
     )
 
-    async def failing_revise_plan_for_chat(run_id: str, feedback: str, *, chat_id: int | None = None):
+    async def failing_revise_plan_for_chat(
+        run_id: str, feedback: str, *, chat_id: int | None = None
+    ):
         raise PromptSubmissionError(run_id, long_error)
 
     runtime.services.submit_prompt.revise_plan_for_chat = failing_revise_plan_for_chat
@@ -672,14 +803,24 @@ async def test_handle_prompt_splits_oversized_revision_error() -> None:
 
 
 @pytest.mark.asyncio
-async def test_handle_prompt_handles_auto_execution_and_confirmation(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_handle_prompt_handles_auto_execution_and_confirmation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     started = []
-    monkeypatch.setattr(handlers, "start_progress_watcher", lambda _app, _runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    monkeypatch.setattr(
+        handlers,
+        "start_progress_watcher",
+        lambda _app, _runtime, chat_id, run_id: started.append((chat_id, run_id)),
+    )
 
     auto_submit = SubmitPromptStub(
-        execute_result=SimpleNamespace(run_id="run-8", status="queued", plan_text=None, estimate_seconds=12),
+        execute_result=SimpleNamespace(
+            run_id="run-8", status="queued", plan_text=None, estimate_seconds=12
+        ),
     )
-    auto_runtime = _runtime(latest=GetRunStatusStub([None]), submit=auto_submit, workflow="debug_code")
+    auto_runtime = _runtime(
+        latest=GetRunStatusStub([None]), submit=auto_submit, workflow="debug_code"
+    )
     auto_message = MessageStub("debug it")
     auto_application = ApplicationStub(auto_runtime)
     await handlers.handle_prompt(UpdateStub(auto_message), ContextStub(auto_application))
@@ -690,7 +831,9 @@ async def test_handle_prompt_handles_auto_execution_and_confirmation(monkeypatch
     assert started == []
 
     confirm_submit = SubmitPromptStub(
-        execute_result=SimpleNamespace(run_id="run-9", status="awaiting_confirmation", plan_text=None, estimate_seconds=18),
+        execute_result=SimpleNamespace(
+            run_id="run-9", status="awaiting_confirmation", plan_text=None, estimate_seconds=18
+        ),
     )
     confirm_runtime = _runtime(latest=GetRunStatusStub([None]), submit=confirm_submit)
     confirm_message = MessageStub("build it")
@@ -702,14 +845,24 @@ async def test_handle_prompt_handles_auto_execution_and_confirmation(monkeypatch
 
 
 @pytest.mark.asyncio
-async def test_handle_prompt_splits_oversized_auto_execution_and_confirmation_messages(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_handle_prompt_splits_oversized_auto_execution_and_confirmation_messages(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     started = []
-    monkeypatch.setattr(handlers, "start_progress_watcher", lambda _app, _runtime, chat_id, run_id: started.append((chat_id, run_id)))
+    monkeypatch.setattr(
+        handlers,
+        "start_progress_watcher",
+        lambda _app, _runtime, chat_id, run_id: started.append((chat_id, run_id)),
+    )
 
     auto_submit = SubmitPromptStub(
-        execute_result=SimpleNamespace(run_id="run-8", status="queued", plan_text=None, estimate_seconds=12),
+        execute_result=SimpleNamespace(
+            run_id="run-8", status="queued", plan_text=None, estimate_seconds=12
+        ),
     )
-    auto_runtime = _runtime(latest=GetRunStatusStub([None]), submit=auto_submit, workflow="debug_code")
+    auto_runtime = _runtime(
+        latest=GetRunStatusStub([None]), submit=auto_submit, workflow="debug_code"
+    )
     auto_message = MessageStub("debug it")
     auto_application = ApplicationStub(auto_runtime)
     await handlers.handle_prompt(UpdateStub(auto_message), ContextStub(auto_application))
@@ -717,7 +870,9 @@ async def test_handle_prompt_splits_oversized_auto_execution_and_confirmation_me
     assert auto_application.bot.messages == []
 
     confirm_submit = SubmitPromptStub(
-        execute_result=SimpleNamespace(run_id="run-9", status="awaiting_confirmation", plan_text=None, estimate_seconds=18),
+        execute_result=SimpleNamespace(
+            run_id="run-9", status="awaiting_confirmation", plan_text=None, estimate_seconds=18
+        ),
     )
     confirm_runtime = _runtime(latest=GetRunStatusStub([None]), submit=confirm_submit)
     confirm_message = MessageStub("build it")
@@ -768,7 +923,11 @@ async def test_handle_prompt_splits_oversized_submission_error() -> None:
 
 @pytest.mark.asyncio
 async def test_handle_prompt_reports_planning_in_progress_before_plan_is_ready() -> None:
-    runtime = _runtime(latest=GetRunStatusStub([RunStub(run_id="run-12", status=RunStatus.AWAITING_CONFIRMATION, plan_text=None)]))
+    runtime = _runtime(
+        latest=GetRunStatusStub(
+            [RunStub(run_id="run-12", status=RunStatus.AWAITING_CONFIRMATION, plan_text=None)]
+        )
+    )
     message = MessageStub("more details")
 
     await handlers.handle_prompt(UpdateStub(message), ContextStub(ApplicationStub(runtime)))

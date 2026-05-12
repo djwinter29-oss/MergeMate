@@ -6,7 +6,12 @@ import logging
 
 from mergemate.domain.shared import RunStatus
 from mergemate.interfaces.telegram.message_utils import send_text_chunks
-from mergemate.interfaces.telegram.presenter import format_cancelled, format_completion, format_failure, format_progress_update
+from mergemate.interfaces.telegram.presenter import (
+    format_cancelled,
+    format_completion,
+    format_failure,
+    format_progress_update,
+)
 
 PROGRESS_WATCHERS_KEY = "progress_watchers"
 TERMINAL_DELIVERIES_KEY = "terminal_deliveries"
@@ -99,7 +104,12 @@ async def watch_run_progress(application, runtime, chat_id: int, run_id: str) ->
         if run.status in terminal_statuses and run.run_id in terminal_deliveries:
             return
 
-        snapshot = (run.status.value, run.current_stage, run.review_iterations, _tool_event_signature(run))
+        snapshot = (
+            run.status.value,
+            run.current_stage,
+            run.review_iterations,
+            _tool_event_signature(run),
+        )
         if snapshot == last_snapshot:
             if max_poll_iterations is not None and poll_count >= max_poll_iterations:
                 logger.warning(
