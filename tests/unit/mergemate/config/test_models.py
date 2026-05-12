@@ -187,6 +187,23 @@ def test_config_model_rejects_non_positive_concurrency() -> None:
         AppConfig.model_validate(payload)
 
 
+def test_config_model_accepts_optional_poll_limit() -> None:
+    payload = _build_config().model_dump()
+    payload["runtime"]["max_poll_iterations"] = 12
+
+    config = AppConfig.model_validate(payload)
+
+    assert config.runtime.max_poll_iterations == 12
+
+
+def test_config_model_rejects_non_positive_poll_limit() -> None:
+    payload = _build_config().model_dump()
+    payload["runtime"]["max_poll_iterations"] = 0
+
+    with pytest.raises(ValidationError, match="greater than or equal to 1"):
+        AppConfig.model_validate(payload)
+
+
 @pytest.mark.parametrize(
     ("section", "key"),
     [

@@ -84,12 +84,15 @@ async def stop_progress_watchers(application) -> None:
 
 async def watch_run_progress(application, runtime, chat_id: int, run_id: str) -> None:
     interval_seconds = max(runtime.settings.runtime.status_update_interval_seconds, 1)
+    max_poll_iterations = getattr(runtime.settings.runtime, "max_poll_iterations", None)
+    poll_count = 0
     last_snapshot: tuple[str, str, int, tuple[str, str, str, str] | None] | None = None
     terminal_statuses = RunStatus.terminal_statuses()
     terminal_deliveries = _terminal_delivery_registry(application)
 
     while True:
         await asyncio.sleep(interval_seconds)
+        poll_count += 1
         run = runtime.services.get_run_status.execute(run_id)
         if run is None:
             return
@@ -98,12 +101,26 @@ async def watch_run_progress(application, runtime, chat_id: int, run_id: str) ->
 
         snapshot = (run.status.value, run.current_stage, run.review_iterations, _tool_event_signature(run))
         if snapshot == last_snapshot:
+            if max_poll_iterations is not None and poll_count >= max_poll_iterations:
+                logger.warning(
+                    "Run %s progress watcher stopped after %s polls without progress",
+                    run_id,
+                    poll_count,
+                )
+                return
             continue
 
         try:
             if run.status in terminal_statuses:
                 delivered = await notify_terminal_update(application, chat_id, run)
                 if not delivered:
+                    if max_poll_iterations is not None and poll_count >= max_poll_iterations:
+                        logger.warning(
+                            "Run %s progress watcher stopped after %s polls without terminal delivery",
+                            run_id,
+                            poll_count,
+                        )
+                        return
                     continue
             else:
                 await send_text_chunks(
@@ -112,8 +129,18 @@ async def watch_run_progress(application, runtime, chat_id: int, run_id: str) ->
                 )
         except Exception as exc:
             logger.exception("Run %s progress update delivery failed: %s", run_id, exc)
+            if max_poll_iterations is not None and poll_count >= max_poll_iterations:
+                logger.warning("Run %s progress watcher stopped after %s polls", run_id, poll_count)
+                return
             continue
 
         last_snapshot = snapshot
         if run.status in terminal_statuses:
+            return
+        if max_poll_iterations is not None and poll_count >= max_poll_iterations:
+            logger.warning(
+                "Run %s progress watcher stopped after %s polls without terminal status",
+                run_id,
+                poll_count,
+            )
             return

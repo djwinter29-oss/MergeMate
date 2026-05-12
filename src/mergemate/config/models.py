@@ -234,6 +234,7 @@ class RuntimeConfig(BaseModel):
     default_request_timeout_seconds: int = Field(default=300, ge=1)
     job_lease_seconds: int = Field(default=30, ge=1)
     job_heartbeat_interval_seconds: int = Field(default=10, ge=1)
+    max_poll_iterations: int | None = Field(default=None, ge=1)
     llm_retry: RetryConfig = Field(default_factory=RetryConfig)
 
 

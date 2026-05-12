@@ -71,6 +71,7 @@ runtime:
   max_concurrent_runs: 2
   status_update_interval_seconds: 5
   default_request_timeout_seconds: 300
+  # max_poll_iterations: null  # optional safety cap for progress watchers
 
 workflow_control:
   require_confirmation: true
