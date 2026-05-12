@@ -30,6 +30,8 @@ from mergemate.infrastructure.persistence.sqlite import (
     SQLiteRunRepository,
 )
 
+pytestmark = pytest.mark.integration
+
 
 # ---------------------------------------------------------------------------
 # In-memory mock LLM

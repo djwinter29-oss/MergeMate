@@ -68,3 +68,9 @@ target-version = "py312"
 python_version = "3.12"
 packages = ["mergemate"]
 strict = false
+
+[tool.pytest.ini_options]
+markers = [
+  "integration: tests that exercise the application pipeline with real infrastructure",
+  "e2e: end-to-end tests that require Telegram bot wiring",
+]
