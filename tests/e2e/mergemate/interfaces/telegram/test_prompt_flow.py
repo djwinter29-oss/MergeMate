@@ -10,6 +10,8 @@ from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.shared import RunStatus
 from mergemate.interfaces.telegram import handlers
 
+pytestmark = pytest.mark.e2e
+
 
 class FakeMessage:
     def __init__(self, text: str) -> None:
@@ -138,8 +140,14 @@ def _build_update(message_text: str):
 
 
 def _build_runtime(*, latest_run=None, submit_prompt=None, approve_run=None):
+    prompt_service = submit_prompt or approve_run
     return SimpleNamespace(
         settings=RuntimeSettingsStub(),
+        services=SimpleNamespace(
+            get_run_status=GetRunStatusStub(latest_run=latest_run),
+            submit_prompt=prompt_service,
+            cancel_run=SimpleNamespace(execute=lambda *args, **kwargs: None),
+        ),
         get_run_status=GetRunStatusStub(latest_run=latest_run),
         submit_prompt=submit_prompt or approve_run,
         approve_run=approve_run,
@@ -288,5 +296,5 @@ async def test_status_command_hides_run_from_other_chat() -> None:
 
     await handlers.status_command(update, context)
 
-    assert runtime.get_run_status.calls == [("foreign-run", 11)]
+    assert runtime.services.get_run_status.calls == [("foreign-run", 11)]
     assert message.replies == ["No runs found for this chat."]
