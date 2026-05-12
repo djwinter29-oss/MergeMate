@@ -175,10 +175,6 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
     )
 
     repo_knowledge_repository_cls = SQLiteRepoKnowledgeRepository
-    if repo_knowledge_repository_cls is None:
-        from mergemate.infrastructure.persistence.sqlite import (
-            SQLiteRepoKnowledgeRepository as repo_knowledge_repository_cls,
-        )
 
     run_repository = SQLiteRunRepository(database)
     run_job_repository = SQLiteRunJobRepository(database)
