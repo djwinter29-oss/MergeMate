@@ -1,4 +1,5 @@
-.PHONY: install install-dev test test-all lint typecheck coverage clean run
+.PHONY: install install-dev test test-all lint typecheck coverage clean run \
+        branches-clean branches-list branches-merged
 
 # ── Installation ──────────────────────────────────────────────────────────────
 
@@ -24,6 +25,30 @@ test-all:
 
 coverage:
 	pytest -q --cov-report=term-missing --cov-report=xml -m "not integration and not e2e"
+
+# ── Branch maintenance ────────────────────────────────────────────────────────
+
+branches-merged:
+	@echo "=== Local branches merged into main (safe to delete) ==="
+	@git branch --merged main | grep -v "main\|*" | sed 's/^/  /'
+	@echo
+	@echo "=== Remote tracking branches merged into main (safe to prune) ==="
+	@git branch -r --merged origin/main | grep -v "origin/main\|origin/HEAD" | sed 's/^/  /'
+
+branches-list:
+	@echo "=== All local branches ==="
+	@git branch | sed 's/^/  /'
+	@echo
+	@echo "=== Stale branches (no remote tracking) ==="
+	@git branch -vv | grep ': gone]' | sed 's/^/  /'
+
+branches-clean: branches-merged
+	@echo
+	@echo "To delete merged local branches, run:"
+	@echo '  git branch --merged main | grep -v "main\|*" | xargs -r git branch -d'
+	@echo
+	@echo "To prune stale remote tracking, run:"
+	@echo '  git remote prune origin'
 
 # ── Cleanup ───────────────────────────────────────────────────────────────────
 
