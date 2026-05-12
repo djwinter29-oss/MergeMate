@@ -87,3 +87,6 @@ htmlcov/
 
 # Kanban worktrees
 .worktrees/
+
+# Ruff cache
+.ruff_cache/

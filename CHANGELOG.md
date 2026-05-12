@@ -22,6 +22,17 @@
 
 - `docs/implementation/cli-interactive-mode.md` - implementation notes.
 
+- **Makefile enhancement** — added `typecheck`, `install-dev`, `test-all`,
+  `coverage`, and `clean` targets. Renamed `install` to use production-only
+  dependencies. Separated `install-dev` for dev extras.
+
+- `.gitignore` added `.ruff_cache/` entry.
+
+- **Housekeeping** — removed 26 stale local branches that were fully merged
+  into main. Pruned 9 stale remote tracking branches. Deleted 3 merged remote
+  branches from origin. Removed 2 orphaned worktree directories, freeing ~20 MB
+  of disk space.
+
 - **`@register_document_kind` decorator** — refactored `_save_document()` from
   if/elif chain to decorator-based dispatch via `_DOCUMENT_KINDS` registry in
   `src/mergemate/domain/workflows/handlers.py`. Added 4 extracted saver
