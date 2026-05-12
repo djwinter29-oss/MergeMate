@@ -14,6 +14,12 @@ install-dev:
 lint:
 	ruff check src tests
 
+format:
+	ruff format src tests
+
+format-check:
+	ruff format --check src tests
+
 typecheck:
 	mypy src
 
