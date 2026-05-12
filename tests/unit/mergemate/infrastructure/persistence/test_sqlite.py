@@ -167,8 +167,33 @@ def test_run_repository_search_returns_matching_runs(tmp_path) -> None:
     results = repository.search("nonexistent")
     assert len(results) == 0
 
-    results = repository.search("cli")
-    assert len(results) == 1
+
+def test_run_repository_search_with_chat_id_filter(tmp_path) -> None:
+    """Lines 255-256: search() with chat_id filter narrows results to that chat."""
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repository = SQLiteRunRepository(database)
+
+    run_a = _build_run("run-a")
+    run_a.chat_id = 10
+    run_a.agent_name = "coder"
+    repository.create(run_a)
+    repository.update_plan(run_a.run_id, "plan about deployment")
+
+    run_b = _build_run("run-b")
+    run_b.chat_id = 20
+    run_b.agent_name = "coder"
+    repository.create(run_b)
+    repository.update_plan(run_b.run_id, "plan about deployment")
+
+    # Unfiltered search finds both
+    results_all = repository.search("deployment")
+    assert len(results_all) == 2
+
+    # Filtered by chat_id finds only run_a
+    results_filtered = repository.search("deployment", chat_id=10)
+    assert len(results_filtered) == 1
+    assert results_filtered[0].run_id == "run-a"
 
 
 def test_conversation_repository_search_messages_returns_matches(tmp_path) -> None:

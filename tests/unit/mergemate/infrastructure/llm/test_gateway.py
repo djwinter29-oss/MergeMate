@@ -507,6 +507,43 @@ class TestWithRetry:
 
         assert computed_delay == 10.0
 
+    def test_extract_retry_after_non_http_error_returns_none(self) -> None:
+        """Line 223: non-HTTPStatusError exc returns None."""
+        exc = RuntimeError("not an HTTP error")
+        assert _extract_retry_after(exc) is None
+
+    def test_extract_retry_after_no_header_returns_none(self) -> None:
+        """Line 226: HTTPStatusError without Retry-After header returns None."""
+        response = MagicMock(spec=httpx.Response)
+        response.status_code = 429
+        response.headers = {}
+        exc = httpx.HTTPStatusError("rate limited", request=MagicMock(), response=response)
+        assert _extract_retry_after(exc) is None
+
+    def test_extract_retry_after_unparseable_date_returns_none(self) -> None:
+        """Lines 234-235: unparseable Retry-After date returns None."""
+        response = MagicMock(spec=httpx.Response)
+        response.status_code = 429
+        response.headers = {"Retry-After": "not-a-valid-date-at-all"}
+        exc = httpx.HTTPStatusError("rate limited", request=MagicMock(), response=response)
+        assert _extract_retry_after(exc) is None
+
+    def test_extract_retry_after_date_without_tzinfo(self) -> None:
+        """Lines 237-242: Retry-After date without tzinfo is handled."""
+        from email.utils import formatdate
+
+        response = MagicMock(spec=httpx.Response)
+        response.status_code = 429
+        # Use formatdate (produces no tzinfo marker) to exercise tzinfo guards
+        retry_after_ts = time_module.time() + 30
+        response.headers = {"Retry-After": formatdate(retry_after_ts, usegmt=True)}
+        exc = httpx.HTTPStatusError("rate limited", request=MagicMock(), response=response)
+
+        computed_delay = _extract_retry_after(exc)
+        # Should compute a positive delay (approximately 30 seconds)
+        assert computed_delay is not None
+        assert computed_delay >= 0.0
+
     @pytest.mark.asyncio
     async def test_retry_count_on_retryable_errors_increments_budget(self) -> None:
         cfg = RetryConfig(max_retries=3, base_delay_seconds=0.001)

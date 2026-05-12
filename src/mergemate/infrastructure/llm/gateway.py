@@ -203,9 +203,6 @@ async def with_retry(
             )
             await asyncio.sleep(delay)
 
-    raise AllProvidersFailedError("All retry attempts exhausted.")
-
-
 def _is_rate_limit(exc: BaseException) -> bool:
     from httpx import HTTPStatusError
 
