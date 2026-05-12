@@ -181,11 +181,15 @@ class TestResolveAgentNameForWorkflow:
         # Remove roles so they don't provide a fallback
         config.roles.clear()
 
-        with pytest.raises(ConfigWorkflowNotFoundError, match="No configured agent found for workflow nonexistent"):
+        with pytest.raises(
+            ConfigWorkflowNotFoundError, match="No configured agent found for workflow nonexistent"
+        ):
             config.resolve_agent_name_for_workflow("nonexistent")
 
         # Also verify with a full config that the error includes configured workflows
         config2 = _build_config()
         config2.roles.clear()
-        with pytest.raises(ConfigWorkflowNotFoundError, match="No configured agent found for workflow nonexistent"):
+        with pytest.raises(
+            ConfigWorkflowNotFoundError, match="No configured agent found for workflow nonexistent"
+        ):
             config2.resolve_agent_name_for_workflow("nonexistent")
