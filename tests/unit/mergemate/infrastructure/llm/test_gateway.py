@@ -81,6 +81,17 @@ async def test_generate_raises_when_no_providers_available() -> None:
 
 
 @pytest.mark.asyncio
+async def test_generate_reports_missing_provider_aliases_when_none_are_available() -> None:
+    gateway = ParallelLLMGateway(SettingsStub(provider_names=["missing-one", "missing-two"]), {})
+
+    with pytest.raises(
+        AllProvidersFailedError,
+        match=r"Configured providers: missing-one, missing-two\. Missing clients: missing-one, missing-two\."
+    ):
+        await gateway.generate("coder", "system", "user")
+
+
+@pytest.mark.asyncio
 async def test_generate_uses_first_available_provider_for_single_mode() -> None:
     client = ClientStub("ok")
     settings = SettingsStub(provider_names=["one"], agents={"coder": AgentStub(parallel_mode="single")})

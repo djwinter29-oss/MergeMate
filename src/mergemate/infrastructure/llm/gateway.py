@@ -254,15 +254,21 @@ class ParallelLLMGateway:
         self._settings = settings
         self._clients = clients
 
-    def _resolve_available_provider_names(self, agent_name: str) -> list[str]:
-        provider_names = self._settings.resolve_agent_provider_names(agent_name)
-        unique_provider_names = dict.fromkeys(provider_names)
-        return [name for name in unique_provider_names if name in self._clients]
+    def _resolve_provider_names(self, agent_name: str) -> tuple[list[str], list[str]]:
+        provider_names = list(dict.fromkeys(self._settings.resolve_agent_provider_names(agent_name)))
+        available_names = [name for name in provider_names if name in self._clients]
+        missing_names = [name for name in provider_names if name not in self._clients]
+        return available_names, missing_names
 
     async def generate(self, agent_name: str, system_prompt: str, user_prompt: str) -> str:
-        available_names = self._resolve_available_provider_names(agent_name)
+        available_names, missing_names = self._resolve_provider_names(agent_name)
         if not available_names:
-            raise AllProvidersFailedError(f"No configured providers are available for agent {agent_name}")
+            configured_names = ", ".join(self._settings.resolve_agent_provider_names(agent_name))
+            missing_text = ", ".join(missing_names) if missing_names else "none"
+            raise AllProvidersFailedError(
+                f"No configured providers are available for agent {agent_name}. "
+                f"Configured providers: {configured_names}. Missing clients: {missing_text}."
+            )
 
         agent = self._settings.agents.get(agent_name)
         parallel_mode = agent.parallel_mode if agent is not None else "single"
