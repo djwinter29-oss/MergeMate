@@ -203,6 +203,7 @@ async def with_retry(
             )
             await asyncio.sleep(delay)
 
+
 def _is_rate_limit(exc: BaseException) -> bool:
     from httpx import HTTPStatusError
 
