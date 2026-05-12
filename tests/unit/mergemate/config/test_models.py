@@ -507,6 +507,17 @@ def test_config_model_rejects_internal_default_agent() -> None:
         AppConfig.model_validate(payload)
 
 
+def test_config_model_rejects_generate_code_workflow_without_required_multi_stage_agents() -> None:
+    payload = _build_config().model_dump()
+    payload["agents"].pop("tester")
+
+    with pytest.raises(
+        ValidationError,
+        match="Generate-code workflows require configured agents for: testing",
+    ):
+        AppConfig.model_validate(payload)
+
+
 def test_config_model_requires_planning_agent() -> None:
     payload = _build_config().model_dump()
     payload["agents"].pop("planner")
