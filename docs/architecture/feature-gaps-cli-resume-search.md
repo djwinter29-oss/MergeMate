@@ -12,7 +12,7 @@ The deep review identified 3 feature gaps that were documented in tickets but ne
 
 1. **Missing CLI commands** — `mergemate run` and `mergemate chat` were designed (see `docs/implementation/cli-interactive-mode.md`) but not landed in `src/mergemate/cli.py`.
 2. **Session resume capability** — The `--session <name>` CLI option exists as a design concept, but no resume-from-last-unsaved-session logic exists when the user re-enters a session whose last run was interrupted or incomplete.
-3. **Conversation search** — No mechanism to search past conversation history or runs exists. Users cannot look up previous prompts, results, or tool events by keyword.
+3. **Conversation search** — Basic keyword search now exists via `mergemate search-runs` and `mergemate search-conversations`, but the unified FTS-based search design from this review has not been implemented.
 
 All 3 gaps relate to the same CLI surface (`cli.py`) and conversation/session data model, so they are designed together here.
 
@@ -23,7 +23,7 @@ All 3 gaps relate to the same CLI surface (`cli.py`) and conversation/session da
 ### 2.1 CLI Framework
 
 - **Framework**: `typer` with subcommands
-- **Current commands**: `run-bot`, `validate-config`, `print-config-path`, `probe-readiness`, `install-package`, `repo-context`, `platform-auth`
+- **Current commands**: `run-bot`, `validate-config`, `print-config-path`, `probe-readiness`, `install-package`, `repo-context`, `platform-auth`, `search-runs`, `search-conversations`
 - **Missing (designed but not implemented)**: `mergemate run` (one-shot prompt execution) and `mergemate chat` (interactive REPL) — see `docs/implementation/cli-interactive-mode.md`
 - **Telegram bot handlers** (for reference): `/start`, `/status`, `/tools`, `/approve`, `/cancel` plus free-text prompt handling
 
@@ -54,10 +54,10 @@ Currently:
 ### 2.4 Search Gap
 
 Currently:
-- `mergemate status` shows the latest run's status
-- `mergemate tools` shows tool event history for a run
-- No command exists for keyword search across conversation messages, run prompts, or results
-- No SQLite FTS table exists
+- `mergemate search-runs` searches stored run prompts, results, and metadata with repository-level keyword matching
+- `mergemate search-conversations` searches saved chat messages with repository-level keyword matching
+- No unified search command exists that combines messages and runs in one result set
+- No SQLite FTS table exists to support relevance-ranked or phrase-aware search
 
 ---
 

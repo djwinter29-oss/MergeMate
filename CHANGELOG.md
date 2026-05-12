@@ -41,6 +41,10 @@
 
 ### Changed
 
+- **Docs refresh** — updated the `docs/architecture/feature-gaps-cli-resume-search.md`
+  architecture note to reflect the shipped `search-runs` and `search-conversations`
+  CLI commands and to narrow the remaining search gap to unified/FTS-backed search.
+
 - **MergeMateRuntime field grouping** — refactored from flat 18-field
   `@dataclass(slots=True)` to 6 fields with `PersistenceContext` (6 repository
   fields) and `ServiceContext` (8 service/use-case fields) sub-contexts. Added
