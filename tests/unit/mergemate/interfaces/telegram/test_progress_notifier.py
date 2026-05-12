@@ -53,6 +53,7 @@ class GetRunStatusStub:
 @dataclass(slots=True)
 class RuntimeConfigStub:
     status_update_interval_seconds: int = 1
+    max_poll_iterations: int | None = None
 
 
 @dataclass(slots=True)
@@ -148,6 +149,29 @@ async def test_watch_run_progress_skips_duplicate_snapshots_and_missing_runs(mon
     await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
 
     assert len(application.bot.messages) == 1
+
+
+@pytest.mark.asyncio
+async def test_watch_run_progress_stops_after_configured_poll_limit(monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
+    async def _sleep(_seconds: int) -> None:
+        return None
+
+    monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
+    application = ApplicationStub()
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+        ]
+    )
+    runtime.settings.runtime.max_poll_iterations = 2
+
+    with caplog.at_level("WARNING"):
+        await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
+
+    assert len(application.bot.messages) == 1
+    assert "progress watcher stopped after 2 polls" in caplog.text
 
 
 @pytest.mark.asyncio

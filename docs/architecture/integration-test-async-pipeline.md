@@ -1,12 +1,12 @@
 # Integration Tests for Async Execution Pipeline
 
-## Status: Architecture Proposal
+## Status: Implemented in progress notifier
 
 ## Motivation
 
 Current test coverage (374 unit tests) covers individual components in isolation but leaves three gaps in the async pipeline:
 
-1. **Progress notifier `watch_run_progress`** -- tested at the unit level with stubs, but no integration test verifies the real polling loop against a live run progressing through QUEUED -> RUNNING -> COMPLETED. The `while True` loop has no timeout guard and can run indefinitely if the run never terminates.
+1. **Progress notifier `watch_run_progress`** -- now has a configurable `max_poll_iterations` guard so a stuck run cannot keep the watcher alive indefinitely.
 
 2. **CI e2e marker** -- integration tests (test_orchestrator_integration.py, test_submit_prompt_flow.py) exist but run as regular `pytest -q`, indistinguishable from unit tests. A dedicated CI step with `--run-e2e` or an `integration` marker would catch regressions in the async pipeline separately.
 
