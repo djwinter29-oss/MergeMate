@@ -10,6 +10,7 @@ Covers:
 7.  fail_job returns None when job not found [line 608]
 8.  fail_job returns existing when already failed [line 610]
 """
+
 from datetime import UTC, datetime
 
 

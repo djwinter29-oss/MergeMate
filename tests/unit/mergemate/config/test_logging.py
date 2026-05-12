@@ -28,7 +28,9 @@ def test_log_startup_configuration_reports_polling_without_webhook_details(caplo
             webhook_healthcheck_listen_port=8081,
             webhook_healthcheck_path="/healthz",
         ),
-        resolve_telegram_webhook_url=lambda: (_ for _ in ()).throw(AssertionError("should not resolve webhook url")),
+        resolve_telegram_webhook_url=lambda: (_ for _ in ()).throw(
+            AssertionError("should not resolve webhook url")
+        ),
     )
 
     with caplog.at_level(logging.INFO):

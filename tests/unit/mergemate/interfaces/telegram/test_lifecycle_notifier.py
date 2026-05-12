@@ -6,7 +6,10 @@ from dataclasses import dataclass
 import pytest
 
 from mergemate.domain.shared import RunStatus
-from mergemate.interfaces.telegram.lifecycle_notifier import LifecycleNotifier, TelegramRunLifecycleNotifier
+from mergemate.interfaces.telegram.lifecycle_notifier import (
+    LifecycleNotifier,
+    TelegramRunLifecycleNotifier,
+)
 
 
 class BotStub:
@@ -94,7 +97,9 @@ async def test_notify_auto_execution_started_passes_awaitable_sender_to_send_tex
     started_watchers: list[tuple[object, object, int, str]] = []
     monkeypatch.setattr(
         "mergemate.interfaces.telegram.lifecycle_notifier.start_progress_watcher",
-        lambda application, runtime, chat_id, run_id: started_watchers.append((application, runtime, chat_id, run_id)),
+        lambda application, runtime, chat_id, run_id: started_watchers.append(
+            (application, runtime, chat_id, run_id)
+        ),
     )
 
     notifier = TelegramRunLifecycleNotifier(SettingsStub())
@@ -136,7 +141,9 @@ async def test_notify_plan_ready_returns_false_when_application_not_bound() -> N
 
 
 @pytest.mark.asyncio
-async def test_notify_plan_ready_returns_false_on_send_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_notify_plan_ready_returns_false_on_send_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     notifier = TelegramRunLifecycleNotifier(SettingsStub())
     application = ApplicationStub()
     notifier.bind_application(application)
@@ -160,7 +167,9 @@ async def test_notify_auto_execution_started_returns_true_and_sends_message_and_
     started_watchers: list[tuple[object, object, int, str]] = []
     monkeypatch.setattr(
         "mergemate.interfaces.telegram.lifecycle_notifier.start_progress_watcher",
-        lambda application, runtime, chat_id, run_id: started_watchers.append((application, runtime, chat_id, run_id)),
+        lambda application, runtime, chat_id, run_id: started_watchers.append(
+            (application, runtime, chat_id, run_id)
+        ),
     )
 
     notifier = TelegramRunLifecycleNotifier(SettingsStub())
@@ -206,7 +215,9 @@ async def test_notify_auto_execution_started_returns_false_on_send_failure(
     started_watchers: list[tuple[object, object, int, str]] = []
     monkeypatch.setattr(
         "mergemate.interfaces.telegram.lifecycle_notifier.start_progress_watcher",
-        lambda application, runtime, chat_id, run_id: started_watchers.append((application, runtime, chat_id, run_id)),
+        lambda application, runtime, chat_id, run_id: started_watchers.append(
+            (application, runtime, chat_id, run_id)
+        ),
     )
 
     notifier = TelegramRunLifecycleNotifier(SettingsStub())

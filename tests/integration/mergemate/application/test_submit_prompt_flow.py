@@ -100,7 +100,9 @@ async def test_submit_prompt_persists_run_plan_and_conversation(sqlite_runtime) 
     assert latest_run is not None
     assert latest_run.run_id == submit_result.run_id
     assert messages == [{"role": "user", "content": "build login flow"}]
-    queued_job = sqlite_runtime["run_job_repository"].get_active_for_run(submit_result.run_id, job_type=None)
+    queued_job = sqlite_runtime["run_job_repository"].get_active_for_run(
+        submit_result.run_id, job_type=None
+    )
     assert queued_job is not None
     assert sqlite_runtime["worker"].calls == [queued_job.job_id]
 
@@ -144,10 +146,13 @@ async def test_run_access_is_scoped_to_chat(sqlite_runtime) -> None:
 
     assert sqlite_runtime["get_run_status"].execute(submit_result.run_id, chat_id=999) is None
     assert sqlite_runtime["submit_prompt"].approve(submit_result.run_id, chat_id=999) is None
-    assert await sqlite_runtime["submit_prompt"].revise_plan_for_chat(
-        submit_result.run_id,
-        "change scope",
-        chat_id=999,
-    ) is None
+    assert (
+        await sqlite_runtime["submit_prompt"].revise_plan_for_chat(
+            submit_result.run_id,
+            "change scope",
+            chat_id=999,
+        )
+        is None
+    )
     assert sqlite_runtime["cancel_run"].execute(submit_result.run_id, chat_id=999) is None
     assert len(sqlite_runtime["worker"].calls) == 1

@@ -70,7 +70,11 @@ def test_validate_config_prints_resolved_paths(monkeypatch: pytest.MonkeyPatch) 
         preview_database_path=lambda _resolved: Path("/tmp/runtime.db"),
     )
     monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
-    monkeypatch.setattr(cli, "bootstrap", lambda _config: (_ for _ in ()).throw(AssertionError("bootstrap should not be called")))
+    monkeypatch.setattr(
+        cli,
+        "bootstrap",
+        lambda _config: (_ for _ in ()).throw(AssertionError("bootstrap should not be called")),
+    )
 
     result = runner.invoke(cli.app, ["validate-config"])
 
@@ -99,7 +103,13 @@ def test_validate_config_resolves_webhook_settings(monkeypatch: pytest.MonkeyPat
 
 
 def test_validate_config_fails_for_missing_explicit_path(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(cli, "resolve_config_path", lambda _config: (_ for _ in ()).throw(FileNotFoundError("Configuration file not found: /tmp/missing.yaml")))
+    monkeypatch.setattr(
+        cli,
+        "resolve_config_path",
+        lambda _config: (_ for _ in ()).throw(
+            FileNotFoundError("Configuration file not found: /tmp/missing.yaml")
+        ),
+    )
 
     result = runner.invoke(cli.app, ["validate-config", "--config", "/tmp/missing.yaml"])
 
@@ -107,11 +117,15 @@ def test_validate_config_fails_for_missing_explicit_path(monkeypatch: pytest.Mon
     assert isinstance(result.exception, FileNotFoundError)
 
 
-def test_validate_config_fails_when_telegram_token_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validate_config_fails_when_telegram_token_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(cli, "resolve_config_path", lambda _config: Path("/tmp/config.yaml"))
     settings = SimpleNamespace(
         telegram=SimpleNamespace(mode="polling"),
-        resolve_telegram_token=lambda: (_ for _ in ()).throw(ValueError("Telegram bot token not found in environment variable TELEGRAM_TOKEN")),
+        resolve_telegram_token=lambda: (_ for _ in ()).throw(
+            ValueError("Telegram bot token not found in environment variable TELEGRAM_TOKEN")
+        ),
         resolve_provider_api_key=lambda _provider_name=None: "provider-token",
         resolve_agent_provider_names=lambda _agent_name: ["primary"],
         agents={"coder": SimpleNamespace()},
@@ -125,7 +139,9 @@ def test_validate_config_fails_when_telegram_token_is_missing(monkeypatch: pytes
     assert isinstance(result.exception, ValueError)
 
 
-def test_validate_config_fails_when_provider_reference_is_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validate_config_fails_when_provider_reference_is_invalid(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(cli, "resolve_config_path", lambda _config: Path("/tmp/config.yaml"))
     settings = SimpleNamespace(
         telegram=SimpleNamespace(mode="polling"),
@@ -267,7 +283,9 @@ def test_probe_readiness_fails_for_http_error(monkeypatch: pytest.MonkeyPatch) -
 
     class ErrorStub(HTTPError):
         def __init__(self) -> None:
-            super().__init__("http://127.0.0.1:8081/healthz", 503, "Service Unavailable", hdrs=None, fp=None)
+            super().__init__(
+                "http://127.0.0.1:8081/healthz", 503, "Service Unavailable", hdrs=None, fp=None
+            )
 
         def read(self) -> bytes:
             return b'{"status": "starting"}'
@@ -293,7 +311,9 @@ def test_probe_readiness_fails_for_connection_error(monkeypatch: pytest.MonkeyPa
     )
 
     monkeypatch.setattr(cli, "load_runtime_settings", lambda _config: settings)
-    monkeypatch.setattr(cli, "urlopen", lambda url, timeout: (_ for _ in ()).throw(URLError("connection refused")))
+    monkeypatch.setattr(
+        cli, "urlopen", lambda url, timeout: (_ for _ in ()).throw(URLError("connection refused"))
+    )
 
     result = runner.invoke(cli.app, ["probe-readiness"])
 
@@ -426,7 +446,9 @@ def test_install_package_exits_nonzero_for_error(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(
         cli,
         "bootstrap",
-        lambda _config: _runtime(ToolServiceStub(install_result={"status": "error", "detail": "failed"})),
+        lambda _config: _runtime(
+            ToolServiceStub(install_result={"status": "error", "detail": "failed"})
+        ),
     )
 
     result = runner.invoke(cli.app, ["install-package", "requests"])
@@ -439,7 +461,9 @@ def test_install_package_allows_blocked_result(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(
         cli,
         "bootstrap",
-        lambda _config: _runtime(ToolServiceStub(install_result={"status": "blocked", "detail": "blocked"})),
+        lambda _config: _runtime(
+            ToolServiceStub(install_result={"status": "blocked", "detail": "blocked"})
+        ),
     )
 
     result = runner.invoke(cli.app, ["install-package", "requests"])
@@ -453,7 +477,12 @@ def test_repo_context_prints_each_tool_result(monkeypatch: pytest.MonkeyPatch) -
         cli,
         "bootstrap",
         lambda _config: _runtime(
-            ToolServiceStub(context_result={"git": {"status": "ok", "detail": "git detail"}, "github": {"status": "error", "detail": "gh detail"}})
+            ToolServiceStub(
+                context_result={
+                    "git": {"status": "ok", "detail": "git detail"},
+                    "github": {"status": "error", "detail": "gh detail"},
+                }
+            )
         ),
     )
 
@@ -470,7 +499,9 @@ def test_platform_auth_exits_nonzero_for_failure(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(
         cli,
         "bootstrap",
-        lambda _config: _runtime(ToolServiceStub(auth_result={"status": "error", "detail": "no auth"})),
+        lambda _config: _runtime(
+            ToolServiceStub(auth_result={"status": "error", "detail": "no auth"})
+        ),
     )
 
     result = runner.invoke(cli.app, ["platform-auth", "github"])
@@ -552,7 +583,12 @@ def test_search_conversations_prints_matches(monkeypatch: pytest.MonkeyPatch) ->
         "bootstrap",
         lambda _config: _search_runtime(
             search_msg_result=[
-                {"chat_id": 42, "role": "user", "content": "Hello bot", "created_at": "2026-01-01T00:00:00"}
+                {
+                    "chat_id": 42,
+                    "role": "user",
+                    "content": "Hello bot",
+                    "created_at": "2026-01-01T00:00:00",
+                }
             ]
         ),
     )

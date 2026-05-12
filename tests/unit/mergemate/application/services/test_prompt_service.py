@@ -46,7 +46,10 @@ def test_render_includes_recent_messages_and_learning(tmp_path: Path) -> None:
 
     system_prompt, user_prompt = service.render(
         "debug_code",
-        [{"role": "user", "content": "previous request"}, {"role": "assistant", "content": "previous answer"}],
+        [
+            {"role": "user", "content": "previous request"},
+            {"role": "assistant", "content": "previous answer"},
+        ],
         [{"workflow": "debug_code", "prompt": "older", "result_excerpt": "fix syntax"}],
         "latest prompt",
     )

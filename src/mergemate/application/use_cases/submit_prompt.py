@@ -189,7 +189,9 @@ class SubmitPromptUseCase:
         if chat_id is not None and existing.chat_id != chat_id:
             return None
         if existing.status in RunStatus.terminal_statuses():
-            return ApproveRunResult(run_id=existing.run_id, dispatched=False, status=existing.status.value)
+            return ApproveRunResult(
+                run_id=existing.run_id, dispatched=False, status=existing.status.value
+            )
         if existing.plan_text is None:
             return ApproveRunResult(
                 run_id=existing.run_id,
@@ -198,15 +200,21 @@ class SubmitPromptUseCase:
                 error_text="Run planning is still in progress and cannot be approved yet.",
             )
         if existing.approved or existing.status != RunStatus.AWAITING_CONFIRMATION:
-            return ApproveRunResult(run_id=existing.run_id, dispatched=False, status=existing.status.value)
+            return ApproveRunResult(
+                run_id=existing.run_id, dispatched=False, status=existing.status.value
+            )
 
         approval = self._run_repository.approve(run_id)
         approved_run = approval.run
         if approved_run is None:
             return None
         if not approval.transitioned:
-            return ApproveRunResult(run_id=approved_run.run_id, dispatched=False, status=approved_run.status.value)
-        error_text = self._dispatch_or_fail(run_id, job_type=RunJobType.EXECUTE_RUN, raise_on_error=False)
+            return ApproveRunResult(
+                run_id=approved_run.run_id, dispatched=False, status=approved_run.status.value
+            )
+        error_text = self._dispatch_or_fail(
+            run_id, job_type=RunJobType.EXECUTE_RUN, raise_on_error=False
+        )
         if error_text is not None:
             return ApproveRunResult(
                 run_id=run_id,
@@ -214,7 +222,9 @@ class SubmitPromptUseCase:
                 status=RunStatus.FAILED.value,
                 error_text=error_text,
             )
-        return ApproveRunResult(run_id=approved_run.run_id, dispatched=True, status=approved_run.status.value)
+        return ApproveRunResult(
+            run_id=approved_run.run_id, dispatched=True, status=approved_run.status.value
+        )
 
     def _dispatch_or_fail(
         self,
@@ -228,7 +238,9 @@ class SubmitPromptUseCase:
         except RuntimeError as exc:
             error_text = str(exc)
             current_stage = (
-                RunStage.PLANNING if job_type == RunJobType.PLAN_RUN else RunStage.QUEUED_FOR_EXECUTION
+                RunStage.PLANNING
+                if job_type == RunJobType.PLAN_RUN
+                else RunStage.QUEUED_FOR_EXECUTION
             )
             self._run_repository.update_status(
                 run_id,

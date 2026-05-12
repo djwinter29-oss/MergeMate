@@ -60,7 +60,9 @@ async def test_generate_posts_openai_compatible_request(monkeypatch: pytest.Monk
         async def __aexit__(self, exc_type, exc, tb) -> None:
             captured["exited"] = True
 
-        async def post(self, url: str, *, headers: dict[str, str], json: dict[str, object]) -> ResponseStub:
+        async def post(
+            self, url: str, *, headers: dict[str, str], json: dict[str, object]
+        ) -> ResponseStub:
             captured["url"] = url
             captured["headers"] = headers
             captured["json"] = json
@@ -101,7 +103,9 @@ async def test_generate_posts_openai_compatible_request(monkeypatch: pytest.Monk
 
 
 @pytest.mark.asyncio
-async def test_generate_supports_unprefixed_api_key_headers(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_generate_supports_unprefixed_api_key_headers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     captured_headers: dict[str, str] = {}
 
     class ResponseStub:
@@ -121,7 +125,9 @@ async def test_generate_supports_unprefixed_api_key_headers(monkeypatch: pytest.
         async def __aexit__(self, exc_type, exc, tb) -> None:
             return None
 
-        async def post(self, url: str, *, headers: dict[str, str], json: dict[str, object]) -> ResponseStub:
+        async def post(
+            self, url: str, *, headers: dict[str, str], json: dict[str, object]
+        ) -> ResponseStub:
             captured_headers.update(headers)
             return ResponseStub()
 
@@ -162,7 +168,9 @@ async def test_generate_rejects_invalid_provider_response(monkeypatch: pytest.Mo
         async def __aexit__(self, exc_type, exc, tb) -> None:
             return None
 
-        async def post(self, url: str, *, headers: dict[str, str], json: dict[str, object]) -> ResponseStub:
+        async def post(
+            self, url: str, *, headers: dict[str, str], json: dict[str, object]
+        ) -> ResponseStub:
             return ResponseStub()
 
     monkeypatch.setattr(openai_adapter.httpx, "AsyncClient", AsyncClientStub)

@@ -43,7 +43,10 @@ def test_write_test_and_review_documents_use_final_paths(tmp_path: Path) -> None
         review_text="review content",
     )
 
-    assert test_plan_path == tmp_path / "docs" / "testing" / "build-login-flow-test-plan-iteration-2.md"
+    assert (
+        test_plan_path
+        == tmp_path / "docs" / "testing" / "build-login-flow-test-plan-iteration-2.md"
+    )
     assert review_report_path == tmp_path / "docs" / "reviews" / "build-login-flow-review-report.md"
     assert "Test Plan" in test_plan_path.read_text(encoding="utf-8")
     assert "Review Report" in review_report_path.read_text(encoding="utf-8")

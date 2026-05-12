@@ -44,15 +44,21 @@ class LearningService:
             return []
         return self._learning_repository.list_recent(chat_id, limit=self._max_context_items)
 
-    def remember_repo_knowledge(self, *, chat_id: int, repo_name: str, topic: str, summary: str) -> None:
+    def remember_repo_knowledge(
+        self, *, chat_id: int, repo_name: str, topic: str, summary: str
+    ) -> None:
         if not self._enabled or self._repo_knowledge_repository is None:
             return
         self._repo_knowledge_repository.record(chat_id, repo_name, topic, summary)
 
-    def load_repo_knowledge(self, chat_id: int, repo_name: str | None = None) -> list[dict[str, str]]:
+    def load_repo_knowledge(
+        self, chat_id: int, repo_name: str | None = None
+    ) -> list[dict[str, str]]:
         if not self._enabled or self._repo_knowledge_repository is None:
             return []
-        return self._repo_knowledge_repository.list_recent(chat_id, repo_name=repo_name, limit=self._max_context_items)
+        return self._repo_knowledge_repository.list_recent(
+            chat_id, repo_name=repo_name, limit=self._max_context_items
+        )
 
     def load_grouped_learnings(self, chat_id: int, current_workflow: str) -> list[dict[str, str]]:
         if not self._enabled:

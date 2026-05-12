@@ -1,7 +1,11 @@
 # mypy: allow-untyped-defs
 """Workflow orchestration entrypoint."""
 
-from mergemate.application.execution_plan import ExecutionContext, ExecutionRuntime, OrchestratorDependencies
+from mergemate.application.execution_plan import (
+    ExecutionContext,
+    ExecutionRuntime,
+    OrchestratorDependencies,
+)
 from mergemate.domain.agents import get_soul
 from mergemate.domain.shared import RunStage, RunStatus
 from mergemate.domain.shared.exceptions import RunNotFoundError
@@ -43,13 +47,19 @@ class AgentOrchestrator:
             return run
 
         recent_messages = self._deps.context_service.load_recent_messages(run.chat_id)
-        if recent_messages and recent_messages[-1]["role"] == "user" and recent_messages[-1]["content"] == run.prompt:
+        if (
+            recent_messages
+            and recent_messages[-1]["role"] == "user"
+            and recent_messages[-1]["content"] == run.prompt
+        ):
             recent_messages = recent_messages[:-1]
         learned_items = self._deps.learning_service.load_grouped_learnings(
-            run.chat_id, current_workflow=run.workflow,
+            run.chat_id,
+            current_workflow=run.workflow,
         )
         repo_knowledge = self._deps.learning_service.load_repo_knowledge(
-            run.chat_id, repo_name=self._deps.settings.repo_name,
+            run.chat_id,
+            repo_name=self._deps.settings.repo_name,
         )
 
         system_prompt, context_text = self._deps.prompt_service.render(
@@ -79,7 +89,9 @@ class AgentOrchestrator:
             deps=self._deps,
             is_cancelled=self._is_cancelled,
         )
-        execution = ExecutionContext(run=run, system_prompt=system_prompt, context_text=context_text)
+        execution = ExecutionContext(
+            run=run, system_prompt=system_prompt, context_text=context_text
+        )
         return await execution_plan.execute(runtime, execution)
 
     @staticmethod

@@ -38,7 +38,9 @@ class _ReusableThreadingHTTPServer(ThreadingHTTPServer):
 
 
 class WebhookHealthServer:
-    def __init__(self, *, listen_host: str, listen_port: int, path: str, state: WebhookReadinessState) -> None:
+    def __init__(
+        self, *, listen_host: str, listen_port: int, path: str, state: WebhookReadinessState
+    ) -> None:
         self._listen_host = listen_host
         self._listen_port = listen_port
         self._path = path
@@ -82,7 +84,11 @@ class WebhookHealthServer:
                 if self.path != expected_path:
                     return None, None
                 payload = state.snapshot()
-                status_code = HTTPStatus.OK if payload["status"] == "ready" else HTTPStatus.SERVICE_UNAVAILABLE
+                status_code = (
+                    HTTPStatus.OK
+                    if payload["status"] == "ready"
+                    else HTTPStatus.SERVICE_UNAVAILABLE
+                )
                 return status_code, payload
 
             def _send_json_response(self, status_code: int, *, body: bytes | None = None) -> None:

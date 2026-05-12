@@ -213,8 +213,18 @@ def test_conversation_and_learning_repositories_preserve_order_and_limit(tmp_pat
     learning.record(1, "debug_code", "p2", "r2")
 
     assert learning.list_recent(1, limit=2) == [
-        {"workflow": "debug_code", "prompt": "p2", "result_excerpt": "r2", "learning_lessons": None},
-        {"workflow": "generate_code", "prompt": "p1", "result_excerpt": "r1", "learning_lessons": None},
+        {
+            "workflow": "debug_code",
+            "prompt": "p2",
+            "result_excerpt": "r2",
+            "learning_lessons": None,
+        },
+        {
+            "workflow": "generate_code",
+            "prompt": "p1",
+            "result_excerpt": "r1",
+            "learning_lessons": None,
+        },
     ]
 
 
@@ -412,7 +422,9 @@ def test_learning_repository_backward_compat_null_learning_lessons(tmp_path) -> 
     repo = SQLiteLearningRepository(database)
 
     # Record without learning_lessons (None default)
-    repo.record(chat_id=42, workflow="generate_code", prompt="old prompt", result_excerpt="old result")
+    repo.record(
+        chat_id=42, workflow="generate_code", prompt="old prompt", result_excerpt="old result"
+    )
 
     results = repo.list_recent(chat_id=42)
     assert len(results) == 1

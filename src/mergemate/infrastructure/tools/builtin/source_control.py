@@ -48,7 +48,10 @@ class _BaseCliTool:
         action = payload.get("action", self._default_action)
         args = self._command_map.get(action)
         if args is None:
-            return {"status": "error", "detail": f"Unsupported {self._unsupported_action_label} action: {action}"}
+            return {
+                "status": "error",
+                "detail": f"Unsupported {self._unsupported_action_label} action: {action}",
+            }
         return self._run(args)
 
 
@@ -112,4 +115,3 @@ class GitLabCliTool(_BaseCliTool):
         "repo_view": ["repo", "view"],
         "mr_status": ["mr", "status"],
     }
-

@@ -4,7 +4,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from mergemate.application.execution_plan import DirectExecutionPlan, MultiStageExecutionPlan, OrchestratorDependencies
+from mergemate.application.execution_plan import (
+    DirectExecutionPlan,
+    MultiStageExecutionPlan,
+    OrchestratorDependencies,
+)
 from mergemate.application.orchestrator import AgentOrchestrator
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.shared import RunStatus
@@ -135,7 +139,14 @@ class RunRepositoryStub:
             run.review_iterations = review_iterations
         return run
 
-    def update_plan(self, run_id: str, plan_text: str, prompt: str | None = None, *, current_stage: str | None = None):
+    def update_plan(
+        self,
+        run_id: str,
+        plan_text: str,
+        prompt: str | None = None,
+        *,
+        current_stage: str | None = None,
+    ):
         run = self.get(run_id)
         if run is None:
             return None
@@ -169,9 +180,18 @@ class LearningServiceStub:
 
     def load_grouped_learnings(self, chat_id: int, current_workflow: str) -> list[dict[str, str]]:
         self.grouped_calls.append((chat_id, current_workflow))
-        return [{"workflow": current_workflow, "prompt": "test", "result_excerpt": "x", "learning_lessons": "{}"}]
+        return [
+            {
+                "workflow": current_workflow,
+                "prompt": "test",
+                "result_excerpt": "x",
+                "learning_lessons": "{}",
+            }
+        ]
 
-    def load_repo_knowledge(self, chat_id: int, repo_name: str | None = None) -> list[dict[str, str]]:
+    def load_repo_knowledge(
+        self, chat_id: int, repo_name: str | None = None
+    ) -> list[dict[str, str]]:
         return []
 
     async def remember_success(self, **payload) -> None:
@@ -188,7 +208,9 @@ class ToolServiceStub:
         self.runtime_context = runtime_context
         self.calls = []
 
-    def build_runtime_tool_context(self, run_id: str, agent_name: str, *, resume_stage: str = "retrieve_context") -> str:
+    def build_runtime_tool_context(
+        self, run_id: str, agent_name: str, *, resume_stage: str = "retrieve_context"
+    ) -> str:
         self.calls.append((run_id, agent_name, resume_stage))
         return self.runtime_context
 
@@ -206,25 +228,46 @@ class DocumentationServiceStub:
     def __init__(self) -> None:
         self.calls = []
 
-    def write_architecture_design(self, *, run_id: str, iteration: int, plan_text: str, design_text: str, role_name: str | None = None):
-        self.calls.append({
-            "kind": "architecture",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "design_text": design_text,
-        })
+    def write_architecture_design(
+        self,
+        *,
+        run_id: str,
+        iteration: int,
+        plan_text: str,
+        design_text: str,
+        role_name: str | None = None,
+    ):
+        self.calls.append(
+            {
+                "kind": "architecture",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "design_text": design_text,
+            }
+        )
         return f"docs/architecture/{plan_text.replace(' ', '-').lower()}.md"
 
-    def write_test_plan(self, *, run_id: str, iteration: int, plan_text: str, design_text: str, test_text: str, role_name: str | None = None):
-        self.calls.append({
-            "kind": "testing",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "design_text": design_text,
-            "test_text": test_text,
-        })
+    def write_test_plan(
+        self,
+        *,
+        run_id: str,
+        iteration: int,
+        plan_text: str,
+        design_text: str,
+        test_text: str,
+        role_name: str | None = None,
+    ):
+        self.calls.append(
+            {
+                "kind": "testing",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "design_text": design_text,
+                "test_text": test_text,
+            }
+        )
         return f"docs/testing/{plan_text.replace(' ', '-').lower()}-test-plan.md"
 
     def write_review_report(
@@ -239,16 +282,18 @@ class DocumentationServiceStub:
         review_text: str,
         role_name: str | None = None,
     ):
-        self.calls.append({
-            "kind": "review",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "design_text": design_text,
-            "implementation_text": implementation_text,
-            "test_text": test_text,
-            "review_text": review_text,
-        })
+        self.calls.append(
+            {
+                "kind": "review",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "design_text": design_text,
+                "implementation_text": implementation_text,
+                "test_text": test_text,
+                "review_text": review_text,
+            }
+        )
         return f"docs/reviews/{plan_text.replace(' ', '-').lower()}-review-report.md"
 
     def write_lesson(
@@ -260,13 +305,15 @@ class DocumentationServiceStub:
         lesson_text: str,
         role_name: str | None = None,
     ) -> str:
-        self.calls.append({
-            "kind": "lessons",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "lesson_text": lesson_text,
-        })
+        self.calls.append(
+            {
+                "kind": "lessons",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "lesson_text": lesson_text,
+            }
+        )
         return f"docs/lessons/{plan_text.replace(' ', '-').lower()}.md"
 
 
@@ -309,11 +356,15 @@ class WorkflowServiceStub:
         self.generate_code_calls += 1
         return "implementation"
 
-    async def generate_tests(self, plan_text: str, design_text: str, implementation_text: str) -> str:
+    async def generate_tests(
+        self, plan_text: str, design_text: str, implementation_text: str
+    ) -> str:
         self.test_calls.append((plan_text, design_text, implementation_text))
         return "tests"
 
-    async def review(self, plan_text: str, design_text: str, implementation_text: str, test_text: str) -> str:
+    async def review(
+        self, plan_text: str, design_text: str, implementation_text: str, test_text: str
+    ) -> str:
         self.review_calls.append((plan_text, design_text, implementation_text, test_text))
         return "HIGH_CONCERNS: yes" if self.high_concerns else "HIGH_CONCERNS: no"
 
@@ -462,7 +513,12 @@ async def test_process_run_writes_all_document_artifacts() -> None:
 
     assert run is not None
     assert run.status == RunStatus.COMPLETED
-    assert [call["kind"] for call in documentation_service.calls] == ["architecture", "testing", "review", "lessons"]
+    assert [call["kind"] for call in documentation_service.calls] == [
+        "architecture",
+        "testing",
+        "review",
+        "lessons",
+    ]
     assert context_service.appended_messages
     final_message = context_service.appended_messages[0][2]
     assert "Design document:" in final_message
@@ -578,7 +634,9 @@ async def test_process_run_returns_early_for_cancelled_or_unapproved_runs() -> N
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("status", [RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.RUNNING, RunStatus.WAITING_TOOL])
+@pytest.mark.parametrize(
+    "status", [RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.RUNNING, RunStatus.WAITING_TOOL]
+)
 async def test_process_run_returns_early_for_terminal_or_active_runs(status) -> None:
     run = _build_run()
     run.status = status
@@ -668,7 +726,9 @@ async def test_process_run_includes_runtime_tool_context_for_direct_plans() -> N
 
     assert run is not None
     assert run.status == RunStatus.COMPLETED
-    assert workflow_service.direct_calls == [("debugger", "system", "context\n\nRuntime tool context:\ntool output")]
+    assert workflow_service.direct_calls == [
+        ("debugger", "system", "context\n\nRuntime tool context:\ntool output")
+    ]
     assert tool_service.calls == [("run-1", "debugger", "retrieve_context")]
 
 
@@ -682,7 +742,9 @@ async def test_process_run_includes_runtime_tool_context_for_direct_plans() -> N
         ([False, False, False, False, True], "review"),
     ],
 )
-async def test_process_run_returns_when_cancelled_at_intermediate_checkpoints(cancel_sequence, expected_stage) -> None:
+async def test_process_run_returns_when_cancelled_at_intermediate_checkpoints(
+    cancel_sequence, expected_stage
+) -> None:
     repository = RunRepositoryStub(_build_run())
     orchestrator = AgentOrchestrator(
         deps=_make_deps(
@@ -728,7 +790,9 @@ async def test_process_run_returns_latest_cancelled_run_after_loop() -> None:
     repository = RunRepositoryStub(_build_run())
 
     class CancellingWorkflowService(WorkflowServiceStub):
-        async def review(self, plan_text: str, design_text: str, implementation_text: str, test_text: str) -> str:
+        async def review(
+            self, plan_text: str, design_text: str, implementation_text: str, test_text: str
+        ) -> str:
             repository.run.status = RunStatus.CANCELLED
             return await super().review(plan_text, design_text, implementation_text, test_text)
 
@@ -751,7 +815,9 @@ async def test_process_run_returns_latest_cancelled_run_after_loop() -> None:
 @pytest.mark.asyncio
 async def test_process_run_appends_runtime_tool_context_to_execution_context() -> None:
     repository = RunRepositoryStub(_build_run(workflow="debug_code", agent_name="debugger"))
-    tool_service = ToolServiceStub("Enabled runtime tools:\n- git_repository\n\ngit_repository (ok):\nmain")
+    tool_service = ToolServiceStub(
+        "Enabled runtime tools:\n- git_repository\n\ngit_repository (ok):\nmain"
+    )
     workflow_service = WorkflowServiceStub()
     orchestrator = AgentOrchestrator(
         deps=_make_deps(

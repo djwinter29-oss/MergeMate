@@ -32,7 +32,10 @@ class PackageInstallerTool:
     def invoke(self, payload: dict[str, str]) -> dict[str, str]:
         package_name = payload.get("package_name", "").strip()
         if not self._allow_package_install:
-            return {"status": "blocked", "detail": "Package installation is disabled by configuration."}
+            return {
+                "status": "blocked",
+                "detail": "Package installation is disabled by configuration.",
+            }
         if not package_name:
             return {"status": "error", "detail": "package_name is required."}
         if self._allowed_packages and package_name not in self._allowed_packages:
@@ -63,7 +66,9 @@ class PackageInstallerTool:
         if completed.returncode != 0:
             return {
                 "status": "error",
-                "detail": completed.stderr.strip() or completed.stdout.strip() or "pip install failed",
+                "detail": completed.stderr.strip()
+                or completed.stdout.strip()
+                or "pip install failed",
             }
 
         return {

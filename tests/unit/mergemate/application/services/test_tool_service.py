@@ -114,7 +114,9 @@ class RunRepositoryStub:
         self.transitions.append((run_id, status.value, current_stage))
         run = self.runs.get(run_id)
         if run is None:
-            run = SimpleNamespace(run_id=run_id, status=status, current_stage=current_stage, error_text=error_text)
+            run = SimpleNamespace(
+                run_id=run_id, status=status, current_stage=current_stage, error_text=error_text
+            )
             self.runs[run_id] = run
         if expected_current_status is not None and run.status != expected_current_status:
             return run
@@ -164,7 +166,9 @@ def test_get_repository_context_uses_git_and_default_platform() -> None:
 
 
 def test_get_platform_auth_status_rejects_unknown_platform() -> None:
-    service = ToolService(RegistryStub({}), SettingsStub(source_control=SourceControlConfigStub(), agents={}))
+    service = ToolService(
+        RegistryStub({}), SettingsStub(source_control=SourceControlConfigStub(), agents={})
+    )
 
     result = service.get_platform_auth_status("bitbucket")
 
@@ -181,7 +185,9 @@ def test_list_enabled_tools_returns_only_registered_tools() -> None:
         ),
         SettingsStub(
             source_control=SourceControlConfigStub(),
-            agents={"coder": AgentConfigStub(tools=["syntax_checker", "code_formatter", "missing_tool"])} ,
+            agents={
+                "coder": AgentConfigStub(tools=["syntax_checker", "code_formatter", "missing_tool"])
+            },
         ),
     )
 
@@ -191,7 +197,9 @@ def test_list_enabled_tools_returns_only_registered_tools() -> None:
 
 
 def test_install_package_returns_blocked_when_tool_missing() -> None:
-    service = ToolService(RegistryStub({}), SettingsStub(source_control=SourceControlConfigStub(), agents={}))
+    service = ToolService(
+        RegistryStub({}), SettingsStub(source_control=SourceControlConfigStub(), agents={})
+    )
 
     result = service.install_package("requests")
 
@@ -236,7 +244,9 @@ def test_get_repository_context_uses_explicit_platform_when_available() -> None:
 
 
 def test_get_platform_auth_status_blocks_when_tool_missing() -> None:
-    service = ToolService(RegistryStub({}), SettingsStub(source_control=SourceControlConfigStub(), agents={}))
+    service = ToolService(
+        RegistryStub({}), SettingsStub(source_control=SourceControlConfigStub(), agents={})
+    )
 
     result = service.get_platform_auth_status("github")
 
@@ -244,7 +254,9 @@ def test_get_platform_auth_status_blocks_when_tool_missing() -> None:
 
 
 def test_list_enabled_tools_returns_empty_for_unknown_agent() -> None:
-    service = ToolService(RegistryStub({}), SettingsStub(source_control=SourceControlConfigStub(), agents={}))
+    service = ToolService(
+        RegistryStub({}), SettingsStub(source_control=SourceControlConfigStub(), agents={})
+    )
 
     assert service.list_enabled_tools("missing") == []
 
@@ -285,11 +297,22 @@ def test_get_platform_auth_status_uses_platform_tool_when_available() -> None:
 def test_execute_enabled_tool_rejects_unconfigured_or_missing_tools() -> None:
     service = ToolService(
         RegistryStub({}),
-        SettingsStub(source_control=SourceControlConfigStub(), agents={"coder": AgentConfigStub(tools=["syntax_checker"])}),
+        SettingsStub(
+            source_control=SourceControlConfigStub(),
+            agents={"coder": AgentConfigStub(tools=["syntax_checker"])},
+        ),
     )
 
-    assert service.execute_enabled_tool("coder", "package_installer", {"package_name": "requests"})["status"] == "blocked"
-    assert service.execute_enabled_tool("coder", "syntax_checker", {"source": "x = 1"})["status"] == "blocked"
+    assert (
+        service.execute_enabled_tool("coder", "package_installer", {"package_name": "requests"})[
+            "status"
+        ]
+        == "blocked"
+    )
+    assert (
+        service.execute_enabled_tool("coder", "syntax_checker", {"source": "x = 1"})["status"]
+        == "blocked"
+    )
 
 
 def test_execute_enabled_tool_invokes_tool_when_enabled() -> None:
@@ -304,7 +327,10 @@ def test_execute_enabled_tool_invokes_tool_when_enabled() -> None:
     )
     service = ToolService(
         RegistryStub({"syntax_checker": tool}),
-        SettingsStub(source_control=SourceControlConfigStub(), agents={"coder": AgentConfigStub(tools=["syntax_checker"])}),
+        SettingsStub(
+            source_control=SourceControlConfigStub(),
+            agents={"coder": AgentConfigStub(tools=["syntax_checker"])},
+        ),
     )
 
     result = service.execute_enabled_tool("coder", "syntax_checker", {"source": "x = 1"})
@@ -351,14 +377,18 @@ def test_build_runtime_tool_context_includes_enabled_tools_and_read_only_outputs
 def test_build_runtime_tool_context_returns_empty_for_agent_without_enabled_tools() -> None:
     service = ToolService(
         RegistryStub({}),
-        SettingsStub(source_control=SourceControlConfigStub(), agents={"coder": AgentConfigStub(tools=[])}),
+        SettingsStub(
+            source_control=SourceControlConfigStub(), agents={"coder": AgentConfigStub(tools=[])}
+        ),
     )
 
     assert service.build_runtime_tool_context("run-1", "coder") == ""
 
 
 @pytest.mark.asyncio
-async def test_build_runtime_tool_context_async_offloads_tool_invocation(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_build_runtime_tool_context_async_offloads_tool_invocation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     git_tool = ToolStub(
         {"status": "ok", "detail": "main"},
         ToolMetadata(
@@ -407,11 +437,19 @@ def test_execute_enabled_tool_records_tool_events_and_waiting_state() -> None:
     tool_event_repository = ToolEventRepositoryStub(events=[])
     service = ToolService(
         RegistryStub({"syntax_checker": tool}),
-        SettingsStub(source_control=SourceControlConfigStub(), agents={"coder": AgentConfigStub(tools=["syntax_checker"])}),
+        SettingsStub(
+            source_control=SourceControlConfigStub(),
+            agents={"coder": AgentConfigStub(tools=["syntax_checker"])},
+        ),
         run_repository=run_repository,
         tool_event_repository=tool_event_repository,
     )
-    run_repository.runs["run-1"] = SimpleNamespace(run_id="run-1", status=tool_service_module.RunStatus.RUNNING, current_stage="implementation", error_text=None)
+    run_repository.runs["run-1"] = SimpleNamespace(
+        run_id="run-1",
+        status=tool_service_module.RunStatus.RUNNING,
+        current_stage="implementation",
+        error_text=None,
+    )
 
     result = service.execute_enabled_tool(
         "coder",
@@ -458,11 +496,19 @@ def test_execute_enabled_tool_records_failure_and_restores_run_state_when_tool_r
     tool_event_repository = ToolEventRepositoryStub(events=[])
     service = ToolService(
         RegistryStub({"syntax_checker": tool}),
-        SettingsStub(source_control=SourceControlConfigStub(), agents={"coder": AgentConfigStub(tools=["syntax_checker"])}),
+        SettingsStub(
+            source_control=SourceControlConfigStub(),
+            agents={"coder": AgentConfigStub(tools=["syntax_checker"])},
+        ),
         run_repository=run_repository,
         tool_event_repository=tool_event_repository,
     )
-    run_repository.runs["run-1"] = SimpleNamespace(run_id="run-1", status=tool_service_module.RunStatus.RUNNING, current_stage="implementation", error_text=None)
+    run_repository.runs["run-1"] = SimpleNamespace(
+        run_id="run-1",
+        status=tool_service_module.RunStatus.RUNNING,
+        current_stage="implementation",
+        error_text=None,
+    )
 
     result = service.execute_enabled_tool(
         "coder",
@@ -525,7 +571,10 @@ def test_execute_enabled_tool_does_not_restore_running_after_terminal_transition
 
     service = ToolService(
         RegistryStub({"git_repository": TerminalDuringInvokeToolStub()}),
-        SettingsStub(source_control=SourceControlConfigStub(), agents={"coder": AgentConfigStub(tools=["git_repository"])}),
+        SettingsStub(
+            source_control=SourceControlConfigStub(),
+            agents={"coder": AgentConfigStub(tools=["git_repository"])},
+        ),
         run_repository=run_repository,
         tool_event_repository=ToolEventRepositoryStub(events=[]),
     )
@@ -567,7 +616,10 @@ def test_execute_enabled_tool_does_not_reenter_waiting_tool_after_concurrent_fai
     )
     service = ToolService(
         RegistryStub({"git_repository": tool}),
-        SettingsStub(source_control=SourceControlConfigStub(), agents={"coder": AgentConfigStub(tools=["git_repository"])}),
+        SettingsStub(
+            source_control=SourceControlConfigStub(),
+            agents={"coder": AgentConfigStub(tools=["git_repository"])},
+        ),
         run_repository=run_repository,
         tool_event_repository=ToolEventRepositoryStub(events=[]),
     )
@@ -587,7 +639,9 @@ def test_execute_enabled_tool_does_not_reenter_waiting_tool_after_concurrent_fai
 def test_get_repository_context_skips_listed_tools_without_instances() -> None:
     registry = RegistryStub({})
     registry._listed_tools = ["git_repository"]
-    service = ToolService(registry, SettingsStub(source_control=SourceControlConfigStub(), agents={}))
+    service = ToolService(
+        registry, SettingsStub(source_control=SourceControlConfigStub(), agents={})
+    )
 
     assert service.get_repository_context() == {}
 
@@ -602,7 +656,9 @@ def test_get_repository_context_skips_tool_when_metadata_exists_but_instance_mis
         read_only=True,
         context_key="git",
     )
-    service = ToolService(registry, SettingsStub(source_control=SourceControlConfigStub(), agents={}))
+    service = ToolService(
+        registry, SettingsStub(source_control=SourceControlConfigStub(), agents={})
+    )
 
     assert service.get_repository_context() == {}
 
@@ -741,7 +797,9 @@ def test_get_platform_auth_status_blocks_when_metadata_exists_but_tool_missing()
         platform="github",
         auth_action="auth_status",
     )
-    service = ToolService(registry, SettingsStub(source_control=SourceControlConfigStub(), agents={}))
+    service = ToolService(
+        registry, SettingsStub(source_control=SourceControlConfigStub(), agents={})
+    )
 
     result = service.get_platform_auth_status("github")
 

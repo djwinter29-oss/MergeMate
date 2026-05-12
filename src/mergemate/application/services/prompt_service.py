@@ -22,7 +22,9 @@ class PromptService:
         user_prompt: str,
         repo_knowledge: list[dict[str, str]] | None = None,
     ) -> tuple[str, str]:
-        context_lines = [f"{message['role'].upper()}: {message['content']}" for message in recent_messages]
+        context_lines = [
+            f"{message['role'].upper()}: {message['content']}" for message in recent_messages
+        ]
         contextual_user_prompt = user_prompt.strip()
         learning_lines = self._build_learning_lines(learned_items)
         if context_lines:
@@ -42,9 +44,7 @@ class PromptService:
         if repo_knowledge:
             repo_lines = ["\nCurrent repository knowledge:"]
             for item in repo_knowledge:
-                repo_lines.append(
-                    f"- [{item['repo_name']}] {item['topic']}: {item['summary']}"
-                )
+                repo_lines.append(f"- [{item['repo_name']}] {item['topic']}: {item['summary']}")
             contextual_user_prompt += "\n" + "\n".join(repo_lines)
 
         return self._load_system_prompt(workflow), contextual_user_prompt
@@ -68,9 +68,7 @@ class PromptService:
                             f"  Key technical points: {', '.join(lessons['technical_points'])}"
                         )
                     if lessons.get("pitfalls"):
-                        lines.append(
-                            f"  Known pitfalls: {', '.join(lessons['pitfalls'])}"
-                        )
+                        lines.append(f"  Known pitfalls: {', '.join(lessons['pitfalls'])}")
                     if lessons.get("conclusion"):
                         lines.append(f"  Conclusion: {lessons['conclusion']}")
                 except (json.JSONDecodeError, TypeError):

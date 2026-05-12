@@ -78,7 +78,9 @@ def format_planning_in_progress(run_id: str) -> str:
     return f"Run {run_id} is still planning. Wait for the drafted plan before revising or approving it."
 
 
-def format_plan_for_confirmation(run_id: str, agent: str, plan_text: str, estimate_seconds: int) -> str:
+def format_plan_for_confirmation(
+    run_id: str, agent: str, plan_text: str, estimate_seconds: int
+) -> str:
     return (
         f"Requirements captured for run {run_id}. Planning agent: {agent}. "
         f"Estimated execution time after approval: {estimate_seconds}s.\n\n"
@@ -98,7 +100,9 @@ def format_detailed_status(run) -> str:
     tool_events = _tool_events(run)
     tool_activity = ""
     if tool_events:
-        tool_activity = "\nRecent tool activity:\n" + "\n".join(_format_tool_event(event) for event in tool_events[:3])
+        tool_activity = "\nRecent tool activity:\n" + "\n".join(
+            _format_tool_event(event) for event in tool_events[:3]
+        )
     return (
         f"Run {run.run_id} is {run.status.value}.\n"
         f"Current stage: {run.current_stage}.\n"
@@ -173,5 +177,8 @@ def format_tool_history(run) -> str:
     if not tool_events:
         return f"No tool activity recorded for run {run.run_id}."
     lines = [f"Tool activity for run {run.run_id}:"]
-    lines.extend(f"- {_format_tool_event_timestamp(event)}{_format_tool_event(event)[2:]}" for event in tool_events)
+    lines.extend(
+        f"- {_format_tool_event_timestamp(event)}{_format_tool_event(event)[2:]}"
+        for event in tool_events
+    )
     return "\n".join(lines)

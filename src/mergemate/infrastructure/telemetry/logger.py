@@ -13,12 +13,8 @@ def log_startup_configuration(settings, *, config_path: Path, database_path: Pat
     telegram_settings = settings.telegram
     webhook_enabled = telegram_settings.mode == "webhook"
     webhook_url = settings.resolve_telegram_webhook_url() if webhook_enabled else "disabled"
-    secret_validation_enabled = bool(
-        webhook_enabled and telegram_settings.webhook_secret_token_env
-    )
-    readiness_enabled = bool(
-        webhook_enabled and telegram_settings.webhook_healthcheck_enabled
-    )
+    secret_validation_enabled = bool(webhook_enabled and telegram_settings.webhook_secret_token_env)
+    readiness_enabled = bool(webhook_enabled and telegram_settings.webhook_healthcheck_enabled)
     readiness_bind = (
         f"{telegram_settings.webhook_healthcheck_listen_host}:"
         f"{telegram_settings.webhook_healthcheck_listen_port}"

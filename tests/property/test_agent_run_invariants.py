@@ -214,7 +214,9 @@ def test_created_at_should_be_less_than_or_equal_updated_at_for_all_pairs() -> N
     for status in list(RunStatus):
         runs = _make_runs(
             status=status,
-            current_stage=RunStage.COMPLETED if status in RunStatus.terminal_statuses() else RunStage.PLANNING,
+            current_stage=RunStage.COMPLETED
+            if status in RunStatus.terminal_statuses()
+            else RunStage.PLANNING,
         )
         assert runs[0].created_at <= runs[0].updated_at
 

@@ -120,7 +120,15 @@ class RunRepositoryStub:
         self.calls: list[tuple[str, RunStatus, str | None]] = []
         self.runs: dict[str, RunStub] = {}
 
-    def update_status(self, run_id: str, status: RunStatus, *, error_text: str | None = None, current_stage=None, result_text=None):
+    def update_status(
+        self,
+        run_id: str,
+        status: RunStatus,
+        *,
+        error_text: str | None = None,
+        current_stage=None,
+        result_text=None,
+    ):
         self.calls.append((run_id, status, error_text))
         run = self.runs.get(run_id, RunStub(run_id=run_id, status=status, error_text=error_text))
         run.status = status
@@ -140,7 +148,14 @@ class RunJobRepositoryStub:
         self.claim_calls: list[tuple[str, str, int]] = []
         self.heartbeat_calls: list[tuple[str, str, int]] = []
 
-    def add(self, job_id: str, run_id: str, *, job_type: RunJobType = RunJobType.EXECUTE_RUN, status: RunJobStatus = RunJobStatus.QUEUED) -> None:
+    def add(
+        self,
+        job_id: str,
+        run_id: str,
+        *,
+        job_type: RunJobType = RunJobType.EXECUTE_RUN,
+        status: RunJobStatus = RunJobStatus.QUEUED,
+    ) -> None:
         now = datetime.now(UTC)
         self.jobs[job_id] = RunJob(
             job_id=job_id,
@@ -275,12 +290,20 @@ async def test_consume_propagates_system_exit_without_marking_run_failed() -> No
 @pytest.mark.asyncio
 async def test_consume_completes_planning_job_and_notifies_plan_ready() -> None:
     repository = RunRepositoryStub()
-    repository.runs["run-plan"] = RunStub(run_id="run-plan", status=RunStatus.AWAITING_CONFIRMATION, plan_text="plan")
+    repository.runs["run-plan"] = RunStub(
+        run_id="run-plan", status=RunStatus.AWAITING_CONFIRMATION, plan_text="plan"
+    )
     run_job_repository = RunJobRepositoryStub()
     run_job_repository.add("plan-job", "run-plan", job_type=RunJobType.PLAN_RUN)
     submit_prompt = SubmitPromptStub(result=object())
     notifier = LifecycleNotifierStub()
-    worker = _build_worker(OrchestratorStub(), repository, run_job_repository, submit_prompt=submit_prompt, notifier=notifier)
+    worker = _build_worker(
+        OrchestratorStub(),
+        repository,
+        run_job_repository,
+        submit_prompt=submit_prompt,
+        notifier=notifier,
+    )
 
     await worker._consume("plan-job")
 
@@ -292,11 +315,19 @@ async def test_consume_completes_planning_job_and_notifies_plan_ready() -> None:
 @pytest.mark.asyncio
 async def test_consume_planning_job_notifies_auto_start_for_queued_run() -> None:
     repository = RunRepositoryStub()
-    repository.runs["run-auto"] = RunStub(run_id="run-auto", status=RunStatus.QUEUED, plan_text="plan")
+    repository.runs["run-auto"] = RunStub(
+        run_id="run-auto", status=RunStatus.QUEUED, plan_text="plan"
+    )
     run_job_repository = RunJobRepositoryStub()
     run_job_repository.add("plan-job", "run-auto", job_type=RunJobType.PLAN_RUN)
     notifier = LifecycleNotifierStub()
-    worker = _build_worker(OrchestratorStub(), repository, run_job_repository, submit_prompt=SubmitPromptStub(result=object()), notifier=notifier)
+    worker = _build_worker(
+        OrchestratorStub(),
+        repository,
+        run_job_repository,
+        submit_prompt=SubmitPromptStub(result=object()),
+        notifier=notifier,
+    )
 
     await worker._consume("plan-job")
 
@@ -306,7 +337,9 @@ async def test_consume_planning_job_notifies_auto_start_for_queued_run() -> None
 @pytest.mark.asyncio
 async def test_consume_planning_job_notifies_terminal_on_failure() -> None:
     repository = RunRepositoryStub()
-    repository.runs["run-failed"] = RunStub(run_id="run-failed", status=RunStatus.FAILED, error_text="planner unavailable")
+    repository.runs["run-failed"] = RunStub(
+        run_id="run-failed", status=RunStatus.FAILED, error_text="planner unavailable"
+    )
     run_job_repository = RunJobRepositoryStub()
     run_job_repository.add("plan-job", "run-failed", job_type=RunJobType.PLAN_RUN)
     notifier = LifecycleNotifierStub()
@@ -314,7 +347,9 @@ async def test_consume_planning_job_notifies_terminal_on_failure() -> None:
         OrchestratorStub(),
         repository,
         run_job_repository,
-        submit_prompt=SubmitPromptStub(error=PromptSubmissionError("run-failed", "planner unavailable")),
+        submit_prompt=SubmitPromptStub(
+            error=PromptSubmissionError("run-failed", "planner unavailable")
+        ),
         notifier=notifier,
     )
 
@@ -332,7 +367,9 @@ async def test_enqueue_tracks_and_acknowledges_completed_task() -> None:
     run_job_repository = RunJobRepositoryStub()
     run_job_repository.add("job-3", "run-3")
     queue_backend = QueueBackendStub()
-    worker = _build_worker(orchestrator, repository, run_job_repository, queue_backend=queue_backend)
+    worker = _build_worker(
+        orchestrator, repository, run_job_repository, queue_backend=queue_backend
+    )
 
     worker.enqueue("job-3")
     assert len(worker._tasks) == 1

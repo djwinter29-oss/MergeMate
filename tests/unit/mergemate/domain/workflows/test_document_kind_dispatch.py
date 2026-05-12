@@ -91,11 +91,27 @@ def test_save_document_dispatches_to_registered_saver(
                 "run_id": "run-123",
                 "iteration": 2,
                 "plan_text": "Approved plan text",
-                **({"design_text": extra_kwargs["design_text"]} if "design_text" in extra_kwargs else {}),
+                **(
+                    {"design_text": extra_kwargs["design_text"]}
+                    if "design_text" in extra_kwargs
+                    else {}
+                ),
                 **({"test_text": extra_kwargs["test_text"]} if "test_text" in extra_kwargs else {}),
-                **({"implementation_text": extra_kwargs["implementation_text"]} if "implementation_text" in extra_kwargs else {}),
-                **({"review_text": extra_kwargs["review_text"]} if "review_text" in extra_kwargs else {}),
-                **({"lesson_text": extra_kwargs["lesson_text"]} if "lesson_text" in extra_kwargs else {}),
+                **(
+                    {"implementation_text": extra_kwargs["implementation_text"]}
+                    if "implementation_text" in extra_kwargs
+                    else {}
+                ),
+                **(
+                    {"review_text": extra_kwargs["review_text"]}
+                    if "review_text" in extra_kwargs
+                    else {}
+                ),
+                **(
+                    {"lesson_text": extra_kwargs["lesson_text"]}
+                    if "lesson_text" in extra_kwargs
+                    else {}
+                ),
                 "role_name": extra_kwargs["agent_name"],
             },
         )
@@ -111,7 +127,10 @@ def test_document_kind_registry_contains_expected_kinds() -> None:
 
 
 def test_save_document_unknown_kind_raises_value_error(runtime: SimpleNamespace) -> None:
-    with pytest.raises(ValueError, match=r"Unknown document kind 'unknown'\. Registered kinds: \['architecture', 'lessons', 'review', 'testing'\]"):
+    with pytest.raises(
+        ValueError,
+        match=r"Unknown document kind 'unknown'\. Registered kinds: \['architecture', 'lessons', 'review', 'testing'\]",
+    ):
         handlers._save_document(
             runtime,
             {"run_id": "run-123"},

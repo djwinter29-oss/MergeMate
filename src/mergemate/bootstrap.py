@@ -40,7 +40,10 @@ else:
 from mergemate.infrastructure.queue import JobQueueBackend
 from mergemate.infrastructure.queue.local_queue import LocalQueue
 from mergemate.infrastructure.telemetry.logger import configure_logging, log_startup_configuration
-from mergemate.interfaces.telegram.lifecycle_notifier import LifecycleNotifier, TelegramRunLifecycleNotifier
+from mergemate.interfaces.telegram.lifecycle_notifier import (
+    LifecycleNotifier,
+    TelegramRunLifecycleNotifier,
+)
 from mergemate.infrastructure.tools.registry import ToolRegistryBuilder
 
 # ── Workflow plugin discovery ───────────────────────────────────────────────
@@ -69,7 +72,9 @@ def discover_workflow_plugins() -> None:
             import logging
 
             logging.getLogger(__name__).warning(
-                "Failed to load workflow plugin: %s", ep.name, exc_info=True,
+                "Failed to load workflow plugin: %s",
+                ep.name,
+                exc_info=True,
             )
 
 
@@ -114,6 +119,7 @@ def _load_workflow_config_plugins(settings: AppConfig) -> None:
 @dataclass(slots=True)
 class PersistenceContext:
     """Persistence-related sub-context for MergeMateRuntime — groups all DB-backed repositories."""
+
     database: SQLiteDatabase
     run_repository: SQLiteRunRepository
     run_job_repository: SQLiteRunJobRepository
@@ -126,6 +132,7 @@ class PersistenceContext:
 @dataclass(slots=True)
 class ServiceContext:
     """Service-layer sub-context for MergeMateRuntime — groups logical services and use cases."""
+
     learning_service: LearningService
     tool_service: ToolService
     planning_service: PlanningService

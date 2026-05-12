@@ -53,7 +53,11 @@ class DocumentationService:
         if soul is None:
             return  # unknown role → allow (backward compat)
         if section not in soul.doc_permissions.write:
-            allowed = ", ".join(sorted(soul.doc_permissions.write)) if soul.doc_permissions.write else "(none)"
+            allowed = (
+                ", ".join(sorted(soul.doc_permissions.write))
+                if soul.doc_permissions.write
+                else "(none)"
+            )
             raise PermissionError(
                 f"Soul {soul.name!r} does not have write permission for docs/{section}/. "
                 f"Allowed write sections: {allowed}"
@@ -251,7 +255,13 @@ class DocumentationService:
             line = re.sub(r"^[-*+]\s+", "", line)
             line = re.sub(r"^\d+[.)]\s+", "", line)
             normalized = line.lower().rstrip(":")
-            if normalized in {"approved plan", "plan", "implementation plan", "requirements", "scope"}:
+            if normalized in {
+                "approved plan",
+                "plan",
+                "implementation plan",
+                "requirements",
+                "scope",
+            }:
                 continue
             return line[:80].rstrip()
         return "Work Item"

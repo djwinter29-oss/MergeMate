@@ -30,8 +30,10 @@ from mergemate.infrastructure.persistence.sqlite import (
 
 def _async_return(value):
     """Create an async function that returns the given value."""
+
     async def _fn(*args, **kwargs):
         return value
+
     return _fn
 
 
@@ -65,7 +67,12 @@ class TestSQLiteRepoKnowledgeRepository:
         database.initialize()
         repo = SQLiteRepoKnowledgeRepository(database)
 
-        repo.record(chat_id=1, repo_name="mergemate", topic="architecture", summary="Uses SQLite for persistence")
+        repo.record(
+            chat_id=1,
+            repo_name="mergemate",
+            topic="architecture",
+            summary="Uses SQLite for persistence",
+        )
 
         with database.connection() as conn:
             rows = conn.execute(
@@ -152,16 +159,16 @@ class TestLearningServiceRepoKnowledge:
             chat_id=1, repo_name="mergemate", topic="testing", summary="Uses pytest"
         )
 
-        repo_knowledge_repo.record.assert_called_once_with(
-            1, "mergemate", "testing", "Uses pytest"
-        )
+        repo_knowledge_repo.record.assert_called_once_with(1, "mergemate", "testing", "Uses pytest")
 
     def test_load_repo_knowledge_delegates_to_repository(self) -> None:
         """6. load_repo_knowledge() delegates to repository."""
         repo_knowledge_repo = MagicMock()
-        repo_knowledge_repo.list_recent = MagicMock(return_value=[
-            {"repo_name": "mergemate", "topic": "architecture", "summary": "SQLite"},
-        ])
+        repo_knowledge_repo.list_recent = MagicMock(
+            return_value=[
+                {"repo_name": "mergemate", "topic": "architecture", "summary": "SQLite"},
+            ]
+        )
         service = _make_learning_service(repo_knowledge_repository=repo_knowledge_repo)
 
         result = service.load_repo_knowledge(chat_id=1, repo_name="mergemate")
@@ -179,9 +186,7 @@ class TestLearningServiceRepoKnowledge:
 
         result = service.load_repo_knowledge(chat_id=1)
 
-        repo_knowledge_repo.list_recent.assert_called_once_with(
-            1, repo_name=None, limit=5
-        )
+        repo_knowledge_repo.list_recent.assert_called_once_with(1, repo_name=None, limit=5)
         assert result == []
 
     def test_remember_repo_knowledge_is_noop_when_repo_knowledge_repo_is_none(self) -> None:
@@ -299,7 +304,9 @@ class TestPromptServiceRepoKnowledge:
         assert "Current repository knowledge:" in user_prompt
         assert "[mergemate] arch: Uses SQLite" in user_prompt
         # repo knowledge should appear after learning section
-        assert user_prompt.index("Current repository knowledge:") > user_prompt.index("Previously successful patterns:")
+        assert user_prompt.index("Current repository knowledge:") > user_prompt.index(
+            "Previously successful patterns:"
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -367,7 +374,15 @@ async def test_orchestrator_passes_repo_knowledge_to_render() -> None:
                 return self.run
             return None
 
-        def try_update_status(self, run_id, status, expected_current_status=None, current_stage=None, result_text=None, error_text=None):
+        def try_update_status(
+            self,
+            run_id,
+            status,
+            expected_current_status=None,
+            current_stage=None,
+            result_text=None,
+            error_text=None,
+        ):
             return SimpleNamespace(run=self.run, transitioned=True)
 
     class PromptServiceTracker:
@@ -375,17 +390,21 @@ async def test_orchestrator_passes_repo_knowledge_to_render() -> None:
             self.render_calls = []
 
         def render(self, workflow, recent_messages, learned_items, prompt, repo_knowledge=None):
-            self.render_calls.append({
-                "workflow": workflow,
-                "recent_messages": recent_messages,
-                "learned_items": learned_items,
-                "prompt": prompt,
-                "repo_knowledge": repo_knowledge,
-            })
+            self.render_calls.append(
+                {
+                    "workflow": workflow,
+                    "recent_messages": recent_messages,
+                    "learned_items": learned_items,
+                    "prompt": prompt,
+                    "repo_knowledge": repo_knowledge,
+                }
+            )
             return ("system", "context")
 
     class ToolServiceStub:
-        async def build_runtime_tool_context_async(self, run_id, agent_name, resume_stage="retrieve_context"):
+        async def build_runtime_tool_context_async(
+            self, run_id, agent_name, resume_stage="retrieve_context"
+        ):
             return ""
 
     learning_service = TrackingLearningService()
@@ -484,17 +503,24 @@ async def test_orchestrator_passes_none_repo_name_when_settings_missing() -> Non
         deps=OrchestratorDependencies(
             run_repository=SimpleNamespace(
                 get=lambda run_id: run,
-                try_update_status=lambda run_id, status, **kw: SimpleNamespace(run=run, transitioned=True),
+                try_update_status=lambda run_id, status, **kw: SimpleNamespace(
+                    run=run, transitioned=True
+                ),
             ),
             context_service=SimpleNamespace(load_recent_messages=lambda chat_id: []),
             documentation_service=SimpleNamespace(),
             learning_service=learning_service,
             planning_service=SimpleNamespace(),
             prompt_service=SimpleNamespace(
-                render=lambda workflow, recent_messages, learned_items, prompt, repo_knowledge=None: ("system", "context")
+                render=lambda workflow, recent_messages, learned_items, prompt, repo_knowledge=None: (
+                    "system",
+                    "context",
+                )
             ),
             tool_service=SimpleNamespace(
-                build_runtime_tool_context_async=lambda run_id, agent_name, resume_stage="retrieve_context": "",
+                build_runtime_tool_context_async=lambda run_id, agent_name, resume_stage="retrieve_context": (
+                    ""
+                ),
             ),
             workflow_service=SimpleNamespace(
                 build_execution_plan=lambda workflow, agent_name: SimpleNamespace(
@@ -542,17 +568,30 @@ def test_bootstrap_wires_repo_knowledge_repository(monkeypatch, tmp_path: Path) 
             captured_kwargs.update(kwargs)
 
     monkeypatch.setattr(bootstrap_module, "LearningService", LearningServiceRecorder)
-    monkeypatch.setattr(bootstrap_module, "resolve_config_path", lambda _explicit=None: tmp_path / "config.yaml")
+    monkeypatch.setattr(
+        bootstrap_module, "resolve_config_path", lambda _explicit=None: tmp_path / "config.yaml"
+    )
     monkeypatch.setattr(
         bootstrap_module,
         "load_runtime_settings",
         lambda _explicit=None: SimpleNamespace(
             logging=SimpleNamespace(level="INFO"),
-            learning=SimpleNamespace(enabled=True, max_context_items=3, max_result_chars=200, extraction_agent=None),
-            tools=SimpleNamespace(allow_package_install=False, allowed_packages=[], pip_executable="python3"),
-            source_control=SimpleNamespace(enable_git=False, enable_github=False, enable_gitlab=False),
+            learning=SimpleNamespace(
+                enabled=True, max_context_items=3, max_result_chars=200, extraction_agent=None
+            ),
+            tools=SimpleNamespace(
+                allow_package_install=False, allowed_packages=[], pip_executable="python3"
+            ),
+            source_control=SimpleNamespace(
+                enable_git=False, enable_github=False, enable_gitlab=False
+            ),
             providers={},
-            runtime=SimpleNamespace(max_concurrent_runs=1, default_request_timeout_seconds=90, job_lease_seconds=30, job_heartbeat_interval_seconds=10),
+            runtime=SimpleNamespace(
+                max_concurrent_runs=1,
+                default_request_timeout_seconds=90,
+                job_lease_seconds=30,
+                job_heartbeat_interval_seconds=10,
+            ),
             workflow_control=SimpleNamespace(),
             workflow_plugins=[],
             resolve_database_path=lambda _resolved: tmp_path / "db.sqlite",
@@ -563,12 +602,18 @@ def test_bootstrap_wires_repo_knowledge_repository(monkeypatch, tmp_path: Path) 
     )
     monkeypatch.setattr(bootstrap_module, "configure_logging", lambda _level: None)
     monkeypatch.setattr(bootstrap_module, "log_startup_configuration", lambda *a, **kw: None)
-    monkeypatch.setattr(bootstrap_module, "SQLiteDatabase", lambda path: SimpleNamespace(path=path, initialize=lambda: None))
+    monkeypatch.setattr(
+        bootstrap_module,
+        "SQLiteDatabase",
+        lambda path: SimpleNamespace(path=path, initialize=lambda: None),
+    )
     monkeypatch.setattr(bootstrap_module, "SQLiteRunRepository", lambda _db: "run_repo")
     monkeypatch.setattr(bootstrap_module, "SQLiteRunJobRepository", lambda _db: "run_job_repo")
     monkeypatch.setattr(bootstrap_module, "SQLiteConversationRepository", lambda _db: "conv_repo")
     monkeypatch.setattr(bootstrap_module, "SQLiteLearningRepository", lambda _db: "learning_repo")
-    monkeypatch.setattr(bootstrap_module, "SQLiteToolEventRepository", lambda _db: "tool_event_repo")
+    monkeypatch.setattr(
+        bootstrap_module, "SQLiteToolEventRepository", lambda _db: "tool_event_repo"
+    )
     monkeypatch.setattr(bootstrap_module, "ContextService", lambda _repo: "context_service")
     monkeypatch.setattr(bootstrap_module, "DocumentationService", lambda _dr: "doc_service")
     monkeypatch.setattr(bootstrap_module, "PromptService", lambda _pr: "prompt_service")
@@ -577,7 +622,11 @@ def test_bootstrap_wires_repo_knowledge_repository(monkeypatch, tmp_path: Path) 
     monkeypatch.setattr(bootstrap_module, "PlanningService", lambda *a, **kw: "planning_service")
     monkeypatch.setattr(bootstrap_module, "WorkflowService", lambda *a, **kw: "workflow_service")
     monkeypatch.setattr(bootstrap_module, "LocalQueue", lambda: "queue")
-    monkeypatch.setattr(bootstrap_module, "TelegramRunLifecycleNotifier", lambda _s: SimpleNamespace(bind_runtime=lambda _r: None))
+    monkeypatch.setattr(
+        bootstrap_module,
+        "TelegramRunLifecycleNotifier",
+        lambda _s: SimpleNamespace(bind_runtime=lambda _r: None),
+    )
     monkeypatch.setattr(bootstrap_module, "AgentOrchestrator", lambda **kw: "orchestrator")
     monkeypatch.setattr(bootstrap_module, "BackgroundRunWorker", lambda **kw: "worker")
     monkeypatch.setattr(bootstrap_module, "RunDispatcher", lambda *a, **kw: "dispatcher")
@@ -599,9 +648,9 @@ def test_bootstrap_wires_repo_knowledge_repository(monkeypatch, tmp_path: Path) 
     # LearningService should have received repo_knowledge_repository
     rk_repo = captured_kwargs.get("repo_knowledge_repository")
     assert rk_repo is not None, "LearningService was not wired with repo_knowledge_repository"
-    assert isinstance(
-        rk_repo, RepoKnowledgeRepositoryRecorder
-    ), f"Expected RepoKnowledgeRepositoryRecorder, got {type(rk_repo)}"
+    assert isinstance(rk_repo, RepoKnowledgeRepositoryRecorder), (
+        f"Expected RepoKnowledgeRepositoryRecorder, got {type(rk_repo)}"
+    )
 
     # The repo knowledge repository should be a real instance
     assert len(RepoKnowledgeRepositoryRecorder.instances) == 1
@@ -641,16 +690,20 @@ class TestAppConfigRepoName:
 
     def test_repo_name_accepts_string_value(self) -> None:
         """14. AppConfig.repo_name accepts a string value."""
-        config = AppConfig.model_validate({
-            **self._minimal_config(),
-            "repo_name": "MergeMate",
-        })
+        config = AppConfig.model_validate(
+            {
+                **self._minimal_config(),
+                "repo_name": "MergeMate",
+            }
+        )
         assert config.repo_name == "MergeMate"
 
     def test_repo_name_accessible_via_settings_property(self) -> None:
         """repo_name is accessible via settings.repo_name in orchestrator."""
-        config = AppConfig.model_validate({
-            **self._minimal_config(),
-            "repo_name": "my-repo",
-        })
+        config = AppConfig.model_validate(
+            {
+                **self._minimal_config(),
+                "repo_name": "my-repo",
+            }
+        )
         assert config.repo_name == "my-repo"

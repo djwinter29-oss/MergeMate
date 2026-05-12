@@ -10,7 +10,9 @@ from mergemate.domain.shared import RunStage, RunStatus, tool_stage
 
 
 class ToolService:
-    def __init__(self, tool_registry, settings, *, run_repository=None, tool_event_repository=None) -> None:
+    def __init__(
+        self, tool_registry, settings, *, run_repository=None, tool_event_repository=None
+    ) -> None:
         self._tool_registry = tool_registry
         self._settings = settings
         self._run_repository = run_repository
@@ -20,7 +22,11 @@ class ToolService:
         agent = self._settings.agents.get(agent_name)
         if agent is None:
             return []
-        return [tool_name for tool_name in agent.tools if self._tool_registry.get_tool(tool_name) is not None]
+        return [
+            tool_name
+            for tool_name in agent.tools
+            if self._tool_registry.get_tool(tool_name) is not None
+        ]
 
     def install_package(self, package_name: str) -> dict[str, str]:
         installer = self._tool_registry.get_tool("package_installer")
@@ -56,7 +62,11 @@ class ToolService:
         resume_stage: str | RunStage,
         entering: bool,
     ) -> None:
-        if run_id is None or self._run_repository is None or blocks_run_state != RunStatus.WAITING_TOOL.value:
+        if (
+            run_id is None
+            or self._run_repository is None
+            or blocks_run_state != RunStatus.WAITING_TOOL.value
+        ):
             return
         current_run = self._run_repository.get(run_id)
         if current_run is not None and current_run.status in RunStatus.terminal_statuses():
@@ -88,9 +98,15 @@ class ToolService:
 
     @staticmethod
     def _is_runtime_context_metadata(metadata: ToolMetadata) -> bool:
-        return metadata.runtime_mode == "context" and metadata.default_action is not None and metadata.read_only
+        return (
+            metadata.runtime_mode == "context"
+            and metadata.default_action is not None
+            and metadata.read_only
+        )
 
-    def _iter_repository_context_metadata(self, platform: str) -> Iterator[tuple[str, ToolMetadata]]:
+    def _iter_repository_context_metadata(
+        self, platform: str
+    ) -> Iterator[tuple[str, ToolMetadata]]:
         for tool_name, metadata in self._iter_platform_tool_metadata():
             if not self._is_runtime_context_metadata(metadata):
                 continue
@@ -116,12 +132,16 @@ class ToolService:
                 "status": "blocked",
                 "detail": f"Tool {tool_name} is not enabled for agent {agent_name}.",
             }
-            self._record_tool_event(run_id, tool_name, action=action, status="blocked", detail=blocked_result["detail"])
+            self._record_tool_event(
+                run_id, tool_name, action=action, status="blocked", detail=blocked_result["detail"]
+            )
             return blocked_result
         tool: ToolInvoker | None = self._tool_registry.get_tool(tool_name)
         if tool is None:
             blocked_result = {"status": "blocked", "detail": f"Tool {tool_name} is not available."}
-            self._record_tool_event(run_id, tool_name, action=action, status="blocked", detail=blocked_result["detail"])
+            self._record_tool_event(
+                run_id, tool_name, action=action, status="blocked", detail=blocked_result["detail"]
+            )
             return blocked_result
 
         blocks_run_state = metadata.blocks_run_state if metadata is not None else None
@@ -132,7 +152,9 @@ class ToolService:
             resume_stage=resume_stage,
             entering=True,
         )
-        self._record_tool_event(run_id, tool_name, action=action, status="started", detail="Invoking tool.")
+        self._record_tool_event(
+            run_id, tool_name, action=action, status="started", detail="Invoking tool."
+        )
         try:
             result = tool.invoke(payload)
         except Exception as error:
@@ -199,7 +221,9 @@ class ToolService:
             resume_stage=resume_stage,
         )
 
-    def _iter_platform_tool_metadata(self, platform: str | None = None) -> Iterator[tuple[str, ToolMetadata]]:
+    def _iter_platform_tool_metadata(
+        self, platform: str | None = None
+    ) -> Iterator[tuple[str, ToolMetadata]]:
         for tool_name in self._tool_registry.list_tools():
             metadata = self._tool_registry.get_tool_metadata(tool_name)
             if metadata is None:

@@ -14,6 +14,7 @@ Covers:
 11. config/loader.py line 19: no pyproject.toml found -> falls back to cwd
 12. soul.py line 272: all_souls returns all built-in souls
 """
+
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, AsyncMock, MagicMock
@@ -32,6 +33,7 @@ from mergemate.application.use_cases.submit_prompt import (
 
 # ── dispatcher.py ─────────────────────────────────────────────────────
 
+
 class TestDispatcher:
     def test_dispatch_raises_when_ensure_queued_job_returns_none(self) -> None:
         """Line 31: ensure_queued_job returns job=None -> JobQueueError."""
@@ -47,6 +49,7 @@ class TestDispatcher:
 
 
 # ── orchestrator.py ───────────────────────────────────────────────────
+
 
 class TestOrchestrator:
     @pytest.fixture
@@ -92,7 +95,9 @@ class TestOrchestrator:
             approved=True,
         )
         deps.run_repository.get.return_value = run
-        deps.run_repository.try_update_status.return_value = SimpleNamespace(run=run, transitioned=False)
+        deps.run_repository.try_update_status.return_value = SimpleNamespace(
+            run=run, transitioned=False
+        )
 
         orchestrator = AgentOrchestrator(deps)
 
@@ -102,6 +107,7 @@ class TestOrchestrator:
 
 
 # ── tool_service.py ───────────────────────────────────────────────────
+
 
 class TestToolService:
     def test_transition_run_returns_when_current_run_is_none(self) -> None:
@@ -152,6 +158,7 @@ class TestToolService:
 
 # ── workflow_service.py ───────────────────────────────────────────────
 
+
 class TestWorkflowService:
     @pytest.mark.asyncio
     async def test_record_lesson_includes_error_text(self) -> None:
@@ -193,6 +200,7 @@ class TestWorkflowService:
 
 # ── cancel_run.py ────────────────────────────────────────────────────
 
+
 class TestCancelRun:
     def test_execute_returns_none_when_run_not_found(self) -> None:
         """Line 29: run_id provided but not found -> returns None."""
@@ -207,6 +215,7 @@ class TestCancelRun:
 
 
 # ── submit_prompt.py ─────────────────────────────────────────────────
+
 
 class TestSubmitPromptUseCase:
     @pytest.mark.asyncio
@@ -278,13 +287,16 @@ class TestSubmitPromptUseCase:
 
 # ── config/loader.py ─────────────────────────────────────────────────
 
+
 def test_discover_default_local_config_path_fallback(tmp_path) -> None:
     """Line 19: no pyproject.toml found -> returns <cwd>/config/config.yaml."""
     original_cwd = Path.cwd()
     try:
         import os
+
         os.chdir(tmp_path)
         import importlib
+
         importlib.reload(config_loader)
         path = config_loader.DEFAULT_LOCAL_CONFIG_PATH
         assert str(path).endswith("config/config.yaml")
@@ -293,6 +305,7 @@ def test_discover_default_local_config_path_fallback(tmp_path) -> None:
 
 
 # ── soul.py ──────────────────────────────────────────────────────────
+
 
 class TestSoul:
     def test_all_souls_returns_all_builtin_souls(self) -> None:

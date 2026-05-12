@@ -66,7 +66,9 @@ class RuntimeSettingsStub:
         default_factory=lambda: {"coder": SimpleNamespace(workflow="generate_code")}
     )
 
-    def resolve_agent_name_for_workflow(self, workflow: str, *, preferred_agent_name: str | None = None) -> str:
+    def resolve_agent_name_for_workflow(
+        self, workflow: str, *, preferred_agent_name: str | None = None
+    ) -> str:
         if workflow == "planning":
             return "planner"
         return preferred_agent_name or self.default_agent
@@ -83,7 +85,13 @@ class GetRunStatusStub:
 
 
 class SubmitPromptStub:
-    def __init__(self, result: SubmitPromptResult, revised_result: SubmitPromptResult | None = None, complete_result: SubmitPromptResult | None = None, approve_result: ApproveRunResult | None = None) -> None:
+    def __init__(
+        self,
+        result: SubmitPromptResult,
+        revised_result: SubmitPromptResult | None = None,
+        complete_result: SubmitPromptResult | None = None,
+        approve_result: ApproveRunResult | None = None,
+    ) -> None:
         self.result = result
         self.revised_result = revised_result
         self.complete_result = complete_result or result
@@ -180,7 +188,9 @@ def _awaiting_run(run_id: str = "run-1") -> AgentRun:
 
 
 @pytest.mark.asyncio
-async def test_handle_prompt_returns_confirmation_plan_for_new_request(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_handle_prompt_returns_confirmation_plan_for_new_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     started_watchers: list[tuple[int, str]] = []
     submit_prompt = SubmitPromptStub(
         SubmitPromptResult(
@@ -194,7 +204,7 @@ async def test_handle_prompt_returns_confirmation_plan_for_new_request(monkeypat
             status=RunStatus.AWAITING_CONFIRMATION.value,
             estimate_seconds=30,
             plan_text="# Approved Plan\n1. build login flow",
-        )
+        ),
     )
     runtime = _build_runtime(latest_run=None, submit_prompt=submit_prompt, approve_run=None)
     application = FakeApplication(runtime)
@@ -260,7 +270,9 @@ async def test_handle_prompt_revises_existing_plan(monkeypatch: pytest.MonkeyPat
 
 
 @pytest.mark.asyncio
-async def test_approve_command_replies_and_starts_progress_watcher(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_approve_command_replies_and_starts_progress_watcher(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     started_watchers: list[tuple[int, str]] = []
     latest_run = _awaiting_run("run-789")
     approve_run = ApproveRunStub(

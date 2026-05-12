@@ -25,10 +25,14 @@ class GetRunStatusUseCase:
     def _build_snapshot(self, run, *, tool_event_limit: int = 5):
         tool_events = []
         if self._tool_event_repository is not None:
-            tool_events = self._tool_event_repository.list_for_run(run.run_id, limit=tool_event_limit)
+            tool_events = self._tool_event_repository.list_for_run(
+                run.run_id, limit=tool_event_limit
+            )
         return RunStatusSnapshot(run=run, tool_events=tool_events)
 
-    def execute(self, run_id: str | None = None, *, chat_id: int | None = None, tool_event_limit: int = 5):
+    def execute(
+        self, run_id: str | None = None, *, chat_id: int | None = None, tool_event_limit: int = 5
+    ):
         if run_id is not None:
             run = self._run_repository.get(run_id)
             if run is None:

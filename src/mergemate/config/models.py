@@ -19,11 +19,13 @@ _WORKFLOW_TESTING = "testing"
 _WORKFLOW_REVIEW = "review"
 _WORKFLOW_LEARNING = "learning"
 
-_USER_FACING_WORKFLOWS: frozenset[str] = frozenset({
-    _WORKFLOW_GENERATE_CODE,
-    _WORKFLOW_DEBUG_CODE,
-    _WORKFLOW_EXPLAIN_CODE,
-})
+_USER_FACING_WORKFLOWS: frozenset[str] = frozenset(
+    {
+        _WORKFLOW_GENERATE_CODE,
+        _WORKFLOW_DEBUG_CODE,
+        _WORKFLOW_EXPLAIN_CODE,
+    }
+)
 
 # ── Config-local exception classes (mirrors domain exceptions, no import) ──
 
@@ -80,7 +82,9 @@ class ProviderConfig(BaseModel):
 
     @model_validator(mode="after")
     def validate_provider_url(self) -> Self:
-        _validate_absolute_url(url=self.provider_url, label="Provider URL", allow_query_or_fragment=True)
+        _validate_absolute_url(
+            url=self.provider_url, label="Provider URL", allow_query_or_fragment=True
+        )
         return self
 
 
@@ -248,6 +252,7 @@ class WorkerConfig(BaseModel):
 
     Multiple workers means parallel LLM invocations for the same role.
     """
+
     name: str
     provider_names: list[str] = Field(default_factory=list)
     tools: list[str] = Field(default_factory=list)
@@ -255,6 +260,7 @@ class WorkerConfig(BaseModel):
 
 class RoleConfig(BaseModel):
     """Configuration for a role with its Soul, workflow, and parallel workers."""
+
     soul: str = ""
     workflow: str
     workers: list[WorkerConfig] = Field(default_factory=list)
@@ -287,7 +293,9 @@ class AppConfig(BaseModel):
     roles: dict[str, RoleConfig] = Field(default_factory=dict)
     workflow_plugins: list[str | dict] = Field(default_factory=list)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
-    repo_name: str | None = Field(default=None, description="Current repo name for session-scoped knowledge")
+    repo_name: str | None = Field(
+        default=None, description="Current repo name for session-scoped knowledge"
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -300,10 +308,16 @@ class AppConfig(BaseModel):
                 name: {
                     "soul": name,
                     "workflow": cfg["workflow"] if isinstance(cfg, dict) else cfg.workflow,
-                    "provider_names": cfg.get("provider_names", []) if isinstance(cfg, dict) else cfg.provider_names,
+                    "provider_names": cfg.get("provider_names", [])
+                    if isinstance(cfg, dict)
+                    else cfg.provider_names,
                     "tools": cfg.get("tools", []) if isinstance(cfg, dict) else cfg.tools,
-                    "parallel_mode": cfg.get("parallel_mode", "single") if isinstance(cfg, dict) else cfg.parallel_mode,
-                    "combine_strategy": cfg.get("combine_strategy", "sectioned") if isinstance(cfg, dict) else cfg.combine_strategy,
+                    "parallel_mode": cfg.get("parallel_mode", "single")
+                    if isinstance(cfg, dict)
+                    else cfg.parallel_mode,
+                    "combine_strategy": cfg.get("combine_strategy", "sectioned")
+                    if isinstance(cfg, dict)
+                    else cfg.combine_strategy,
                 }
                 for name, cfg in agents.items()
             }
@@ -322,7 +336,9 @@ class AppConfig(BaseModel):
             )
 
         if self.default_provider not in self.providers:
-            raise ConfigProviderNotFoundError(f"Default provider {self.default_provider} is not configured")
+            raise ConfigProviderNotFoundError(
+                f"Default provider {self.default_provider} is not configured"
+            )
 
         for agent_name, agent in self.agents.items():
             for provider_name in agent.provider_names:
@@ -361,8 +377,7 @@ class AppConfig(BaseModel):
             if missing_workflows:
                 missing_text = ", ".join(missing_workflows)
                 raise ValueError(
-                    "Generate-code workflows require configured agents for: "
-                    f"{missing_text}"
+                    f"Generate-code workflows require configured agents for: {missing_text}"
                 )
         return self
 
@@ -414,7 +429,9 @@ class AppConfig(BaseModel):
                 f"No configured agent found for workflow {resolved_workflow}. "
                 f"Configured workflows: {available_text}"
             )
-        raise ConfigWorkflowNotFoundError(f"No configured agent found for workflow {resolved_workflow}")
+        raise ConfigWorkflowNotFoundError(
+            f"No configured agent found for workflow {resolved_workflow}"
+        )
 
     def resolve_telegram_token(self) -> str:
         token = os.getenv(self.telegram.bot_token_env)
@@ -439,8 +456,7 @@ class AppConfig(BaseModel):
         token = os.getenv(env_name)
         if not token:
             raise ValueError(
-                "Telegram webhook secret token not found in environment variable "
-                f"{env_name}"
+                f"Telegram webhook secret token not found in environment variable {env_name}"
             )
         return token
 

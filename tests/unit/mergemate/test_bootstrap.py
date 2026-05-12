@@ -23,7 +23,9 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
             max_result_chars=1200,
             extraction_agent="lesson-extractor",
         ),
-        tools=SimpleNamespace(allow_package_install=True, allowed_packages=["requests"], pip_executable="python3"),
+        tools=SimpleNamespace(
+            allow_package_install=True, allowed_packages=["requests"], pip_executable="python3"
+        ),
         source_control=SimpleNamespace(
             enable_git=True,
             enable_github=True,
@@ -130,7 +132,11 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
 
     monkeypatch.setattr(bootstrap_module, "resolve_config_path", lambda _explicit=None: config_path)
     monkeypatch.setattr(bootstrap_module, "load_runtime_settings", lambda _explicit=None: settings)
-    monkeypatch.setattr(bootstrap_module, "configure_logging", lambda level: recorded.record("configure_logging", level))
+    monkeypatch.setattr(
+        bootstrap_module,
+        "configure_logging",
+        lambda level: recorded.record("configure_logging", level),
+    )
     monkeypatch.setattr(
         bootstrap_module,
         "log_startup_configuration",
@@ -139,30 +145,59 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
         ),
     )
     monkeypatch.setattr(bootstrap_module, "SQLiteDatabase", DatabaseStub)
-    monkeypatch.setattr(bootstrap_module, "SQLiteRunRepository", type("SQLiteRunRepositoryStub", (RepositoryStub,), {}))
-    monkeypatch.setattr(bootstrap_module, "SQLiteRunJobRepository", type("SQLiteRunJobRepositoryStub", (RepositoryStub,), {}))
-    monkeypatch.setattr(bootstrap_module, "SQLiteConversationRepository", type("SQLiteConversationRepositoryStub", (RepositoryStub,), {}))
-    monkeypatch.setattr(bootstrap_module, "SQLiteLearningRepository", type("SQLiteLearningRepositoryStub", (RepositoryStub,), {}))
-    monkeypatch.setattr(bootstrap_module, "SQLiteRepoKnowledgeRepository", type("SQLiteRepoKnowledgeRepositoryStub", (RepositoryStub,), {}))
-    monkeypatch.setattr(bootstrap_module, "SQLiteToolEventRepository", type("SQLiteToolEventRepositoryStub", (RepositoryStub,), {}))
+    monkeypatch.setattr(
+        bootstrap_module,
+        "SQLiteRunRepository",
+        type("SQLiteRunRepositoryStub", (RepositoryStub,), {}),
+    )
+    monkeypatch.setattr(
+        bootstrap_module,
+        "SQLiteRunJobRepository",
+        type("SQLiteRunJobRepositoryStub", (RepositoryStub,), {}),
+    )
+    monkeypatch.setattr(
+        bootstrap_module,
+        "SQLiteConversationRepository",
+        type("SQLiteConversationRepositoryStub", (RepositoryStub,), {}),
+    )
+    monkeypatch.setattr(
+        bootstrap_module,
+        "SQLiteLearningRepository",
+        type("SQLiteLearningRepositoryStub", (RepositoryStub,), {}),
+    )
+    monkeypatch.setattr(
+        bootstrap_module,
+        "SQLiteRepoKnowledgeRepository",
+        type("SQLiteRepoKnowledgeRepositoryStub", (RepositoryStub,), {}),
+    )
+    monkeypatch.setattr(
+        bootstrap_module,
+        "SQLiteToolEventRepository",
+        type("SQLiteToolEventRepositoryStub", (RepositoryStub,), {}),
+    )
     monkeypatch.setattr(bootstrap_module, "ContextService", lambda repo: SimpleNamespace(repo=repo))
     monkeypatch.setattr(bootstrap_module, "LearningService", LearningServiceStub)
     monkeypatch.setattr(bootstrap_module, "DocumentationService", DocumentationServiceStub)
     monkeypatch.setattr(bootstrap_module, "PromptService", PromptServiceStub)
     monkeypatch.setattr(bootstrap_module, "OpenAIAdapter", OpenAIAdapterStub)
     monkeypatch.setattr(bootstrap_module, "ParallelLLMGateway", GatewayStub)
+
     class ToolRegistryBuilderStub:
         def __init__(self, *args, **kwargs):
             self._captured_tools = []
+
         def with_git(self):
             self._captured_tools.append("git")
             return self
+
         def with_github_cli(self):
             self._captured_tools.append("github")
             return self
+
         def with_gitlab_cli(self):
             self._captured_tools.append("gitlab")
             return self
+
         def build(self):
             tools = {
                 "code_formatter": "formatter",
@@ -184,19 +219,27 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
     monkeypatch.setattr(bootstrap_module, "BackgroundRunWorker", WorkerStub)
     monkeypatch.setattr(bootstrap_module, "RunDispatcher", DispatcherStub)
     monkeypatch.setattr(bootstrap_module, "SubmitPromptUseCase", SubmitPromptStub)
-    monkeypatch.setattr(bootstrap_module, "GetRunStatusUseCase", lambda repo, tool_event_repo: ("status", repo, tool_event_repo))
+    monkeypatch.setattr(
+        bootstrap_module,
+        "GetRunStatusUseCase",
+        lambda repo, tool_event_repo: ("status", repo, tool_event_repo),
+    )
     monkeypatch.setattr(bootstrap_module, "CancelRunUseCase", lambda repo: ("cancel", repo))
 
     runtime = bootstrap_module.bootstrap()
 
     assert runtime.config_path == config_path
     assert runtime.persistence.database.path == tmp_path / "workspace" / ".state" / "runtime.db"
-    startup_log_call = next(args for args, _ in recorded.calls if args and args[0] == "log_startup_configuration")
+    startup_log_call = next(
+        args for args, _ in recorded.calls if args and args[0] == "log_startup_configuration"
+    )
     assert startup_log_call[2] == config_path
     assert startup_log_call[3] == tmp_path / "workspace" / ".state" / "runtime.db"
     # ToolRegistryBuilder replaces the old ToolRegistry(tools) direct call,
     # so the "tool_registry" recorded call is no longer produced.
-    tool_service_call = next(args for args, _ in recorded.calls if args and args[0] == "tool_service")
+    tool_service_call = next(
+        args for args, _ in recorded.calls if args and args[0] == "tool_service"
+    )
     assert set(tool_service_call[1]) == {
         "code_formatter",
         "package_installer",
@@ -210,13 +253,15 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
 def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Path) -> None:
     settings = SimpleNamespace(
         logging=SimpleNamespace(level="INFO"),
-learning=SimpleNamespace(
+        learning=SimpleNamespace(
             enabled=False,
             max_context_items=1,
             max_result_chars=100,
             extraction_agent=None,
         ),
-        tools=SimpleNamespace(allow_package_install=False, allowed_packages=[], pip_executable="python3"),
+        tools=SimpleNamespace(
+            allow_package_install=False, allowed_packages=[], pip_executable="python3"
+        ),
         source_control=SimpleNamespace(
             enable_git=False,
             enable_github=False,
@@ -241,7 +286,9 @@ learning=SimpleNamespace(
     )
     captured = {}
 
-    monkeypatch.setattr(bootstrap_module, "resolve_config_path", lambda _explicit=None: tmp_path / "config.yaml")
+    monkeypatch.setattr(
+        bootstrap_module, "resolve_config_path", lambda _explicit=None: tmp_path / "config.yaml"
+    )
     monkeypatch.setattr(bootstrap_module, "load_runtime_settings", lambda _explicit=None: settings)
     monkeypatch.setattr(bootstrap_module, "configure_logging", lambda _level: None)
     monkeypatch.setattr(
@@ -249,21 +296,49 @@ learning=SimpleNamespace(
         "log_startup_configuration",
         lambda _wired_settings, *, config_path, database_path: None,
     )
-    monkeypatch.setattr(bootstrap_module, "SQLiteDatabase", lambda path: SimpleNamespace(path=path, initialize=lambda: None))
+    monkeypatch.setattr(
+        bootstrap_module,
+        "SQLiteDatabase",
+        lambda path: SimpleNamespace(path=path, initialize=lambda: None),
+    )
     monkeypatch.setattr(bootstrap_module, "SQLiteRunRepository", lambda _database: "run_repo")
-    monkeypatch.setattr(bootstrap_module, "SQLiteRunJobRepository", lambda _database: "run_job_repo")
-    monkeypatch.setattr(bootstrap_module, "SQLiteConversationRepository", lambda _database: "conversation_repo")
-    monkeypatch.setattr(bootstrap_module, "SQLiteLearningRepository", lambda _database: "learning_repo")
-    monkeypatch.setattr(bootstrap_module, "SQLiteRepoKnowledgeRepository", lambda _database: "repo_knowledge_repo")
-    monkeypatch.setattr(bootstrap_module, "SQLiteToolEventRepository", lambda _database: "tool_event_repo")
+    monkeypatch.setattr(
+        bootstrap_module, "SQLiteRunJobRepository", lambda _database: "run_job_repo"
+    )
+    monkeypatch.setattr(
+        bootstrap_module, "SQLiteConversationRepository", lambda _database: "conversation_repo"
+    )
+    monkeypatch.setattr(
+        bootstrap_module, "SQLiteLearningRepository", lambda _database: "learning_repo"
+    )
+    monkeypatch.setattr(
+        bootstrap_module, "SQLiteRepoKnowledgeRepository", lambda _database: "repo_knowledge_repo"
+    )
+    monkeypatch.setattr(
+        bootstrap_module, "SQLiteToolEventRepository", lambda _database: "tool_event_repo"
+    )
     monkeypatch.setattr(bootstrap_module, "ContextService", lambda _repo: "context_service")
-    monkeypatch.setattr(bootstrap_module, "LearningService", lambda *_args, **_kwargs: "learning_service")
-    monkeypatch.setattr(bootstrap_module, "DocumentationService", lambda _docs_root: "documentation_service")
+    monkeypatch.setattr(
+        bootstrap_module, "LearningService", lambda *_args, **_kwargs: "learning_service"
+    )
+    monkeypatch.setattr(
+        bootstrap_module, "DocumentationService", lambda _docs_root: "documentation_service"
+    )
     monkeypatch.setattr(bootstrap_module, "PromptService", lambda _prompts_root: "prompt_service")
-    monkeypatch.setattr(bootstrap_module, "ParallelLLMGateway", lambda _wired_settings, _llm_clients: "gateway")
-    monkeypatch.setattr(bootstrap_module, "ToolService", lambda _registry, _wired_settings, **_kwargs: "tool_service")
-    monkeypatch.setattr(bootstrap_module, "PlanningService", lambda _gateway, _wired_settings: "planning_service")
-    monkeypatch.setattr(bootstrap_module, "WorkflowService", lambda _gateway, _wired_settings: "workflow_service")
+    monkeypatch.setattr(
+        bootstrap_module, "ParallelLLMGateway", lambda _wired_settings, _llm_clients: "gateway"
+    )
+    monkeypatch.setattr(
+        bootstrap_module,
+        "ToolService",
+        lambda _registry, _wired_settings, **_kwargs: "tool_service",
+    )
+    monkeypatch.setattr(
+        bootstrap_module, "PlanningService", lambda _gateway, _wired_settings: "planning_service"
+    )
+    monkeypatch.setattr(
+        bootstrap_module, "WorkflowService", lambda _gateway, _wired_settings: "workflow_service"
+    )
     monkeypatch.setattr(bootstrap_module, "LocalQueue", lambda: "queue_backend")
     monkeypatch.setattr(
         bootstrap_module,
@@ -272,9 +347,13 @@ learning=SimpleNamespace(
     )
     monkeypatch.setattr(bootstrap_module, "AgentOrchestrator", lambda **_kwargs: "orchestrator")
     monkeypatch.setattr(bootstrap_module, "BackgroundRunWorker", lambda **_kwargs: "worker")
-    monkeypatch.setattr(bootstrap_module, "RunDispatcher", lambda _run_job_repository, _queue_backend: "dispatcher")
+    monkeypatch.setattr(
+        bootstrap_module, "RunDispatcher", lambda _run_job_repository, _queue_backend: "dispatcher"
+    )
     monkeypatch.setattr(bootstrap_module, "SubmitPromptUseCase", lambda *_args: "submit_prompt")
-    monkeypatch.setattr(bootstrap_module, "GetRunStatusUseCase", lambda _repo, _tool_event_repo: "get_run_status")
+    monkeypatch.setattr(
+        bootstrap_module, "GetRunStatusUseCase", lambda _repo, _tool_event_repo: "get_run_status"
+    )
     monkeypatch.setattr(bootstrap_module, "CancelRunUseCase", lambda _repo: "cancel_run")
     # These tool imports were removed from bootstrap.py (replaced by ToolRegistryBuilder lazy imports),
     # so clean them up from the monkeypatch too.
@@ -284,12 +363,16 @@ learning=SimpleNamespace(
         def __init__(self, settings, working_directory):
             self._settings = settings
             self._wd = working_directory
+
         def with_git(self):
             return self
+
         def with_github_cli(self):
             return self
+
         def with_gitlab_cli(self):
             return self
+
         def build(self):
             captured["tools"] = "built"
             return SimpleNamespace(list_tools=lambda: [])

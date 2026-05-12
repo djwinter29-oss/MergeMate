@@ -131,8 +131,12 @@ def test_has_high_concerns_returns_false_for_blank_output() -> None:
 def test_build_execution_plan_returns_expected_plan_types() -> None:
     service = WorkflowService(GatewayStub(), SettingsStub())
 
-    assert isinstance(service.build_execution_plan("generate_code", agent_name="coder"), MultiStageExecutionPlan)
-    assert isinstance(service.build_execution_plan("debug_code", agent_name="debugger"), DirectExecutionPlan)
+    assert isinstance(
+        service.build_execution_plan("generate_code", agent_name="coder"), MultiStageExecutionPlan
+    )
+    assert isinstance(
+        service.build_execution_plan("debug_code", agent_name="debugger"), DirectExecutionPlan
+    )
 
 
 def test_build_execution_plan_accepts_workflow_enum() -> None:
@@ -161,6 +165,7 @@ def test_execution_plans_report_tool_context_requirement_from_shared_base() -> N
 def test_build_execution_plan_rejects_non_positive_review_iterations() -> None:
     """MultiStageExecutionPlan constructors validate max_iterations >= 1."""
     from mergemate.application.execution_plan import MultiStageExecutionPlan
+
     with pytest.raises(StageExecutionError, match="max_iterations must be at least 1"):
         MultiStageExecutionPlan(
             agent_name="coder",
@@ -389,11 +394,11 @@ async def test_parallel_mode_skips_single_worker() -> None:
                 "coder": SimpleNamespace(workflow="generate_code"),
             }
         )
-        roles: dict[str, object] = field(
-            default_factory=lambda: {"coder": SingleWorkerRoleStub()}
-        )
+        roles: dict[str, object] = field(default_factory=lambda: {"coder": SingleWorkerRoleStub()})
 
-        def resolve_agent_name_for_workflow(self, workflow: str, *, preferred_agent_name: str | None = None) -> str:
+        def resolve_agent_name_for_workflow(
+            self, workflow: str, *, preferred_agent_name: str | None = None
+        ) -> str:
             return "coder"
 
     service = WorkflowService(gateway, SingleWorkerSettings())

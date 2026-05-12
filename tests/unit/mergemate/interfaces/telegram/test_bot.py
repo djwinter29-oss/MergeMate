@@ -72,13 +72,17 @@ class RuntimeStub:
 def test_build_application_registers_handlers(monkeypatch: pytest.MonkeyPatch) -> None:
     builder = BuilderStub()
     runtime = RuntimeStub(
-        settings=SimpleNamespace(telegram=SimpleNamespace(mode="polling"), resolve_telegram_token=lambda: "token"),
+        settings=SimpleNamespace(
+            telegram=SimpleNamespace(mode="polling"), resolve_telegram_token=lambda: "token"
+        ),
         worker=SimpleNamespace(),
         lifecycle_notifier=SimpleNamespace(bind_application=lambda _application: None),
     )
 
     monkeypatch.setattr(telegram_bot, "ApplicationBuilder", lambda: builder)
-    monkeypatch.setattr(telegram_bot, "CommandHandler", lambda name, fn: ("command", name, fn.__name__))
+    monkeypatch.setattr(
+        telegram_bot, "CommandHandler", lambda name, fn: ("command", name, fn.__name__)
+    )
     monkeypatch.setattr(telegram_bot, "MessageHandler", lambda _filt, fn: ("message", fn.__name__))
     monkeypatch.setattr(
         telegram_bot,
@@ -274,7 +278,9 @@ async def test_start_runtime_tasks_binds_application_starts_worker_and_marks_rea
 
 
 @pytest.mark.asyncio
-async def test_stop_runtime_tasks_stops_watchers_and_worker(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_stop_runtime_tasks_stops_watchers_and_worker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     stopped = []
 
     async def fake_stop_progress_watchers(application) -> None:

@@ -36,6 +36,7 @@ _GENERATE_CODE_DEF = get_workflow_definitions()[WorkflowName.GENERATE_CODE]
 # In-memory mock LLM -- records prompts and returns deterministic responses
 # ---------------------------------------------------------------------------
 
+
 class InMemoryMockLLM:
     """Mock LLM that returns deterministic responses based on the stage name.
 
@@ -74,6 +75,7 @@ class InMemoryMockLLMWithReview(InMemoryMockLLM):
 # Stubs for ExecutionRuntime dependencies
 # ---------------------------------------------------------------------------
 
+
 class RunRepositorySpy:
     """Stores all mutations for verification."""
 
@@ -102,16 +104,18 @@ class RunRepositorySpy:
         review_iterations: int | None = None,
         lesson_text: str | None = None,
     ) -> AgentRun | None:
-        self.save_artifacts_calls.append({
-            "run_id": run_id,
-            "current_stage": current_stage,
-            "design_text": design_text,
-            "test_text": test_text,
-            "review_text": review_text,
-            "result_text": result_text,
-            "review_iterations": review_iterations,
-            "lesson_text": lesson_text,
-        })
+        self.save_artifacts_calls.append(
+            {
+                "run_id": run_id,
+                "current_stage": current_stage,
+                "design_text": design_text,
+                "test_text": test_text,
+                "review_text": review_text,
+                "result_text": result_text,
+                "review_iterations": review_iterations,
+                "lesson_text": lesson_text,
+            }
+        )
         if current_stage is not None:
             self.run.current_stage = current_stage
         if design_text is not None:
@@ -136,11 +140,13 @@ class RunRepositorySpy:
         result_text: str | None = None,
         error_text: str | None = None,
     ) -> AgentRun | None:
-        self.update_status_calls.append({
-            "run_id": run_id,
-            "status": status,
-            "current_stage": current_stage,
-        })
+        self.update_status_calls.append(
+            {
+                "run_id": run_id,
+                "status": status,
+                "current_stage": current_stage,
+            }
+        )
         self.run.status = status
         if current_stage is not None:
             self.run.current_stage = current_stage
@@ -158,11 +164,13 @@ class RunRepositorySpy:
         *,
         current_stage: str | None = None,
     ) -> AgentRun | None:
-        self.update_plan_calls.append({
-            "run_id": run_id,
-            "plan_text": plan_text,
-            "current_stage": current_stage,
-        })
+        self.update_plan_calls.append(
+            {
+                "run_id": run_id,
+                "plan_text": plan_text,
+                "current_stage": current_stage,
+            }
+        )
         self.run.plan_text = plan_text
         if current_stage is not None:
             self.run.current_stage = current_stage
@@ -193,13 +201,15 @@ class DocumentationServiceSpy:
         design_text: str,
         role_name: str | None = None,
     ) -> Path:
-        self.calls.append({
-            "kind": "architecture",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "design_text": design_text,
-        })
+        self.calls.append(
+            {
+                "kind": "architecture",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "design_text": design_text,
+            }
+        )
         return Path(f"/tmp/docs/architecture/{plan_text[:10].replace(' ', '-')}.md")
 
     def write_test_plan(
@@ -212,14 +222,16 @@ class DocumentationServiceSpy:
         test_text: str,
         role_name: str | None = None,
     ) -> Path:
-        self.calls.append({
-            "kind": "testing",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "design_text": design_text,
-            "test_text": test_text,
-        })
+        self.calls.append(
+            {
+                "kind": "testing",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "design_text": design_text,
+                "test_text": test_text,
+            }
+        )
         return Path(f"/tmp/docs/testing/{plan_text[:10].replace(' ', '-')}-test-plan.md")
 
     def write_review_report(
@@ -234,16 +246,18 @@ class DocumentationServiceSpy:
         review_text: str,
         role_name: str | None = None,
     ) -> Path:
-        self.calls.append({
-            "kind": "review",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "design_text": design_text,
-            "implementation_text": implementation_text,
-            "test_text": test_text,
-            "review_text": review_text,
-        })
+        self.calls.append(
+            {
+                "kind": "review",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "design_text": design_text,
+                "implementation_text": implementation_text,
+                "test_text": test_text,
+                "review_text": review_text,
+            }
+        )
         return Path(f"/tmp/docs/reviews/{plan_text[:10].replace(' ', '-')}-review-report.md")
 
     def write_lesson(
@@ -255,13 +269,15 @@ class DocumentationServiceSpy:
         lesson_text: str,
         role_name: str | None = None,
     ) -> Path:
-        self.calls.append({
-            "kind": "lessons",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "lesson_text": lesson_text,
-        })
+        self.calls.append(
+            {
+                "kind": "lessons",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "lesson_text": lesson_text,
+            }
+        )
         return Path(f"/tmp/docs/lessons/{plan_text[:10].replace(' ', '-')}.md")
 
 
@@ -288,6 +304,7 @@ class PlanningServiceSpy:
 # ---------------------------------------------------------------------------
 # Settings and helpers
 # ---------------------------------------------------------------------------
+
 
 @dataclass(slots=True)
 class WorkflowControlStub:
@@ -347,7 +364,9 @@ def _make_run(
     )
 
 
-def _make_multistage_plan(agent_name: str = "coder", max_iterations: int = 3) -> MultiStageExecutionPlan:
+def _make_multistage_plan(
+    agent_name: str = "coder", max_iterations: int = 3
+) -> MultiStageExecutionPlan:
     """Convenience: build a MultiStageExecutionPlan for the generate_code workflow."""
     return MultiStageExecutionPlan(
         agent_name=agent_name,
@@ -376,7 +395,8 @@ def _make_deps(
         planning_service=planning_service or PlanningServiceSpy(),
         prompt_service=None,
         tool_service=None,
-        workflow_service=workflow_service or WorkflowService(llm_gateway, settings or SettingsStub()),
+        workflow_service=workflow_service
+        or WorkflowService(llm_gateway, settings or SettingsStub()),
         llm_gateway=llm_gateway,
         settings=settings or SettingsStub(),
     )
@@ -420,6 +440,7 @@ def _make_runtime(
 # ---------------------------------------------------------------------------
 # Tests: MultiStageExecutionPlan.execute()
 # ---------------------------------------------------------------------------
+
 
 class TestMultiStageExecutionPlanIntegration:
     """Integration tests for MultiStageExecutionPlan.execute().
@@ -752,6 +773,7 @@ class TestMultiStageExecutionPlanIntegration:
 # Tests: DirectExecutionPlan.execute()
 # ---------------------------------------------------------------------------
 
+
 class TestDirectExecutionPlanIntegration:
     """Integration tests for DirectExecutionPlan.execute().
 
@@ -888,6 +910,7 @@ class TestDirectExecutionPlanIntegration:
 # Tests: Execution plan construction via WorkflowService
 # ---------------------------------------------------------------------------
 
+
 class TestWorkflowServicePlanConstruction:
     """Verify that WorkflowService.build_execution_plan returns the correct
     plan type based on the workflow.
@@ -937,6 +960,7 @@ class TestWorkflowServicePlanConstruction:
 # ---------------------------------------------------------------------------
 # Tests: has_high_concerns and WorkflowService method contracts
 # ---------------------------------------------------------------------------
+
 
 class TestWorkflowServiceStageMethods:
     """Verifies the WorkflowService stage methods route correctly through

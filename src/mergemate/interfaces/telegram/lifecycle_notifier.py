@@ -11,7 +11,10 @@ from mergemate.interfaces.telegram.presenter import (
     format_auto_execution_started,
     format_plan_for_confirmation,
 )
-from mergemate.interfaces.telegram.progress_notifier import notify_terminal_update, start_progress_watcher
+from mergemate.interfaces.telegram.progress_notifier import (
+    notify_terminal_update,
+    start_progress_watcher,
+)
 
 __all__ = ["LifecycleNotifier", "TelegramRunLifecycleNotifier"]
 
