@@ -423,14 +423,10 @@ class AppConfig(BaseModel):
             {str(role.workflow) for role in self.roles.values()}
             | {str(agent.workflow) for agent in self.agents.values()}
         )
-        if configured_workflows:
-            available_text = ", ".join(configured_workflows)
-            raise ConfigWorkflowNotFoundError(
-                f"No configured agent found for workflow {resolved_workflow}. "
-                f"Configured workflows: {available_text}"
-            )
+        available_text = ", ".join(configured_workflows)
         raise ConfigWorkflowNotFoundError(
-            f"No configured agent found for workflow {resolved_workflow}"
+            f"No configured agent found for workflow {resolved_workflow}. "
+            f"Configured workflows: {available_text}"
         )
 
     def resolve_telegram_token(self) -> str:
