@@ -203,6 +203,10 @@ async def with_retry(
             )
             await asyncio.sleep(delay)
 
+    # The loop always returns or raises, but mypy cannot prove this because
+    # the termination condition depends on a runtime value (cfg.max_retries >= 0).
+    raise AssertionError("unreachable: loop always raises or returns")
+
 
 def _is_rate_limit(exc: BaseException) -> bool:
     from httpx import HTTPStatusError
