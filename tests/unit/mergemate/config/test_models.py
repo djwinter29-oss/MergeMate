@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from mergemate.config.models import AppConfig, TelegramConfig
+from mergemate.config.models import AppConfig, ConfigWorkflowNotFoundError, TelegramConfig
 from mergemate.domain.shared import WorkflowName
 
 
@@ -159,7 +159,7 @@ def test_config_model_resolves_agent_name_for_workflow() -> None:
 def test_config_model_raises_for_unknown_workflow() -> None:
     config = _build_config()
 
-    with pytest.raises(ValueError, match="No configured agent found"):
+    with pytest.raises(ConfigWorkflowNotFoundError, match="No configured agent found for workflow debug_code"):
         config.resolve_agent_name_for_workflow("debug_code")
 
 
