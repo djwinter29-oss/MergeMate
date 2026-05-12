@@ -374,3 +374,94 @@ async def test_stop_progress_watchers_clears_terminal_delivery_registry() -> Non
     await stop_progress_watchers(application)
 
     assert application.bot_data["terminal_deliveries"] == set()
+
+
+# ── Additional coverage: max_poll_iterations guard branches ───────────
+
+
+@pytest.mark.asyncio
+async def test_watch_run_progress_poll_limit_after_terminal_delivery_failure(monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
+    """Lines 117-123: terminal delivery fails repeatedly and poll limit is hit."""
+    async def _sleep(_seconds: int) -> None:
+        return None
+
+    monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
+
+    class AlwaysFailingBot:
+        async def send_message(self, chat_id: int, text: str) -> None:
+            raise RuntimeError("always failing")
+
+    application = ApplicationStub()
+    application.bot = AlwaysFailingBot()
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+        ]
+    )
+    runtime.settings.runtime.max_poll_iterations = 2
+
+    with caplog.at_level("WARNING"):
+        await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
+
+    assert "without terminal delivery" in caplog.text
+    assert "stopped after 2 polls" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_watch_run_progress_poll_limit_after_send_failure(monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
+    """Lines 132-134: send_text_chunks raises and poll limit is hit."""
+    async def _sleep(_seconds: int) -> None:
+        return None
+
+    monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
+    application = ApplicationStub()
+
+    class FailingBot:
+        def __init__(self) -> None:
+            self.calls: list[tuple[int, str]] = []
+
+        async def send_message(self, chat_id: int, text: str) -> None:
+            self.calls.append((chat_id, text))
+            raise RuntimeError("persistent telegram failure")
+
+    application.bot = FailingBot()
+
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+        ]
+    )
+    runtime.settings.runtime.max_poll_iterations = 2
+
+    with caplog.at_level("WARNING"):
+        await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
+
+    assert "progress watcher stopped after 2 polls" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_watch_run_progress_poll_limit_after_non_terminal_progress(monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
+    """Lines 140-146: non-terminal progress made but poll limit reached before terminal status."""
+    async def _sleep(_seconds: int) -> None:
+        return None
+
+    monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
+    application = ApplicationStub()
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "implementation")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "implementation")),
+        ]
+    )
+    runtime.settings.runtime.max_poll_iterations = 2
+
+    with caplog.at_level("WARNING"):
+        await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
+
+    assert "without terminal status" in caplog.text
+    assert "stopped after 2 polls" in caplog.text
