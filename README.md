@@ -86,19 +86,20 @@ Current limitations:
 ## Commands
 
 The list below mirrors `mergemate --help` and should stay in sync with the CLI.
+Use `validate-config` before starting the bot, `probe-readiness` when running webhook mode,
+and the search and context commands when you need to inspect persisted state locally.
 
-- `mergemate run-bot`
-- `mergemate validate-config`
-- `mergemate print-config-path`
-- `mergemate probe-readiness`
-- `mergemate install-package <package-name>`
-- `mergemate repo-context [--platform github|gitlab]`
-- `mergemate platform-auth github|gitlab`
-- `mergemate search-runs <query> [--limit N]`
-- `mergemate search-conversations <query> [--limit N]`
+- `mergemate run-bot` — start the Telegram bot runtime.
+- `mergemate validate-config` — verify the resolved config, provider aliases, secrets, and database path before startup.
+- `mergemate print-config-path` — show the default project-local config path.
+- `mergemate probe-readiness` — check the local webhook readiness endpoint; use `--wait` to poll until ready.
+- `mergemate install-package <package-name>` — install an extra Python package when package installs are allowed by config.
+- `mergemate repo-context [--platform github|gitlab]` — inspect repository context through local `git` plus an authenticated platform CLI.
+- `mergemate platform-auth github|gitlab` — verify the selected GitHub or GitLab CLI is authenticated.
+- `mergemate search-runs <query> [--limit N]` — search stored run prompts, results, and metadata.
+- `mergemate search-conversations <query> [--limit N]` — search saved chat message history.
 
-`search-runs` looks through stored run prompts, results, and metadata. `search-conversations`
-searches the saved chat message history.
+The search commands are useful when you want to recover prior requirements or compare a current run with similar past work without opening the database directly.
 
 ## GitHub Automation
 
