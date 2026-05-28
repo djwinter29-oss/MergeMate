@@ -14,10 +14,12 @@ The repository includes branch maintenance helpers in the `Makefile`:
 - `make branches-clean` — print the exact cleanup commands that would delete merged local
   branches and prune stale remote tracking refs
 - `make branches-prune` — prune stale remote tracking refs and delete merged local branches
+  while leaving the currently checked-out branch untouched
 
 `branches-list`, `branches-merged`, and `branches-clean` are intentionally safe to run during routine
 maintenance because they only inspect branch state or print suggested cleanup commands. `branches-prune`
-is the execution target for when you are ready to apply the cleanup locally.
+is the execution target for when you are ready to apply the cleanup locally, and it is safe to run
+from a feature branch because it will not try to delete the current checkout.
 
 ## Recommended Routine
 

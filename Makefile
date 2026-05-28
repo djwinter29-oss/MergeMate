@@ -60,8 +60,12 @@ branches-prune:
 	@echo "=== Pruning stale remote tracking refs ==="
 	@git remote prune origin
 	@echo
-	@echo "=== Deleting merged local branches ==="
-	@git branch --merged main | grep -v "main\|*" | xargs -r git branch -d
+	@echo "=== Deleting merged local branches (excluding the current branch) ==="
+	@current_branch=$$(git branch --show-current); \
+	git branch --merged main --format='%(refname:short)' \
+		| grep -v '^main$$' \
+		| { if [ -n "$$current_branch" ]; then grep -v "^$${current_branch}$$"; else cat; fi; } \
+		| xargs -r git branch -d
 
 # ── Cleanup ───────────────────────────────────────────────────────────────────
 
