@@ -1,5 +1,5 @@
 .PHONY: install install-dev test test-all lint typecheck coverage clean run \
-        branches-clean branches-list branches-merged
+        branches-clean branches-list branches-merged branches-prune
 
 # ── Installation ──────────────────────────────────────────────────────────────
 
@@ -53,8 +53,15 @@ branches-clean: branches-merged
 	@echo "To delete merged local branches, run:"
 	@echo '  git branch --merged main | grep -v "main\|*" | xargs -r git branch -d'
 	@echo
-	@echo "To prune stale remote tracking, run:"
+	@echo "To prune stale remote tracking refs locally, run:"
 	@echo '  git remote prune origin'
+
+branches-prune:
+	@echo "=== Pruning stale remote tracking refs ==="
+	@git remote prune origin
+	@echo
+	@echo "=== Deleting merged local branches ==="
+	@git branch --merged main | grep -v "main\|*" | xargs -r git branch -d
 
 # ── Cleanup ───────────────────────────────────────────────────────────────────
 
