@@ -16,6 +16,9 @@ from mergemate.infrastructure.persistence.sqlite import (
 )
 
 
+pytestmark = pytest.mark.integration
+
+
 class QueueBackendStub:
     def __init__(self) -> None:
         self.calls: list[str] = []

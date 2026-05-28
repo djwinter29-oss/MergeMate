@@ -28,6 +28,9 @@ from mergemate.domain.shared import WorkflowName
 from mergemate.domain.workflows.stage import get_workflow_definitions
 
 
+pytestmark = pytest.mark.integration
+
+
 # Shared workflow definition for multi-stage tests
 _GENERATE_CODE_DEF = get_workflow_definitions()[WorkflowName.GENERATE_CODE]
 
