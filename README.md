@@ -112,6 +112,8 @@ The publish workflow builds the wheel and source distribution, checks them with 
 
 The PyPI workflow is configured for GitHub trusted publishing through the `id-token: write` permission. Configure the project on PyPI to trust this repository before using release tags.
 
+For repository hygiene and branch cleanup, see `docs/operations/repository-maintenance.md`. The `Makefile` also exposes `branches-list`, `branches-merged`, and `branches-clean` helpers for day-to-day maintenance.
+
 ## Local State
 
 By default, runtime state is stored in a SQLite database at `.state/mergemate.db` under the configured workspace root. The default workspace root is `./workspace` relative to the active config file, and MergeMate creates that directory automatically if needed.
