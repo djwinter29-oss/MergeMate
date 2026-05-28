@@ -64,8 +64,7 @@ branches-prune:
 	@echo "=== Deleting merged local branches (excluding the current branch) ==="
 	@current_branch=$$(git branch --show-current); \
 	git branch --merged main --format='%(refname:short)' \
-		| grep -v '^main$$' \
-		| { if [ -n "$$current_branch" ]; then grep -v "^$${current_branch}$$"; else cat; fi; } \
+		| { if [ -n "$$current_branch" ]; then grep -Fvx -e main -e "$$current_branch"; else grep -Fvx -e main; fi; } \
 		| xargs -r git branch -d
 
 # ── Pre-commit ────────────────────────────────────────────────────────────────

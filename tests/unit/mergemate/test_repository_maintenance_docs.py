@@ -26,6 +26,7 @@ def test_repository_maintenance_prune_target_skips_the_current_branch() -> None:
 
     assert "git branch --show-current" in makefile_text
     assert "excluding the current branch" in makefile_text
+    assert 'grep -Fvx -e main -e "$$current_branch"' in makefile_text
     assert (
         "from a feature branch because it will not try to delete the current checkout"
         in maintenance_text
