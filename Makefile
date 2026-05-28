@@ -1,5 +1,6 @@
 .PHONY: install install-dev test test-all lint typecheck coverage clean run \
-        branches-clean branches-list branches-merged branches-prune
+        branches-clean branches-list branches-merged branches-prune \
+        pre-commit-install format format-check
 
 # ── Installation ──────────────────────────────────────────────────────────────
 
@@ -66,6 +67,11 @@ branches-prune:
 		| grep -v '^main$$' \
 		| { if [ -n "$$current_branch" ]; then grep -v "^$${current_branch}$$"; else cat; fi; } \
 		| xargs -r git branch -d
+
+# ── Pre-commit ────────────────────────────────────────────────────────────────
+
+pre-commit-install:
+	pre-commit install
 
 # ── Cleanup ───────────────────────────────────────────────────────────────────
 
