@@ -9,7 +9,7 @@ Thank you for your interest in MergeMate! This guide explains how to contribute 
 git clone https://github.com/djwinter29-oss/MergeMate
 cd MergeMate
 
-# Create a virtual environment and install in editable mode with dev extras
+# Create a virtual environment and install the dev tooling stack
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
