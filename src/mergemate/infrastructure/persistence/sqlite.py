@@ -547,8 +547,9 @@ class SQLiteConversationRepository:
         # Build AND-clauses: each term must appear in the content field.
         term_clauses = ["lower(coalesce(content, '')) LIKE ?" for _ in terms]
         where_sql = " AND ".join(term_clauses)
-        where_params: list[object] = [f"%{t}%" for t in terms]
-
+        where_params: list[object] = []
+        for term in terms:
+            where_params.append(f"%{term}%")
         if chat_id is not None:
             where_sql += " AND chat_id = ?"
             where_params.append(chat_id)
@@ -560,7 +561,7 @@ class SQLiteConversationRepository:
         phrase_bonus = "CASE WHEN lower(coalesce(content, '')) LIKE ? THEN 1 ELSE 0 END"
         relevance_score = f"({term_score} + {phrase_bonus})"
 
-        score_params: list[object] = [f"%{t}%" for t in terms] + [f"%{query.lower()}%"]
+        score_params = [f"%{t}%" for t in terms] + [f"%{query.lower()}%"]
 
         query_sql = f"""
                 SELECT chat_id, role, content, created_at, ({relevance_score}) AS _score
