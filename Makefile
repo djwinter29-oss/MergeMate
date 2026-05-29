@@ -1,6 +1,6 @@
 .PHONY: install install-dev test test-all lint typecheck coverage clean run \
         branches-clean branches-list branches-merged branches-prune \
-        pre-commit-install format format-check
+        pre-commit-install format format-check ci check
 
 # ── Installation ──────────────────────────────────────────────────────────────
 
@@ -13,13 +13,17 @@ install-dev:
 # ── Quality ───────────────────────────────────────────────────────────────────
 
 lint:
-	ruff check src tests
+	ruff check .
 
 format:
-	ruff format src tests
+	ruff format .
 
 format-check:
-	ruff format --check src tests
+	ruff format --check .
+
+ci: lint format-check typecheck test
+
+check: ci
 
 typecheck:
 	mypy src

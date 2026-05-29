@@ -18,10 +18,9 @@ pip install -e ".[dev]"
 make pre-commit-install
 
 # Run the quality checks locally
-make lint       # ruff check
+make ci         # ruff lint, format check, mypy, and unit tests
 make format     # auto-format with ruff
-make typecheck  # mypy
-make test       # unit tests only
+make test-all   # all tests, including integration and e2e
 ```
 
 ## Development Workflow
@@ -39,7 +38,7 @@ MergeMate uses a **branch → commit → push → PR → CI → merge** workflow
 
 3. **Run quality checks locally** before committing:
    ```bash
-   make lint typecheck test
+   make ci
    ```
 
 4. **Commit** using conventional commit messages (see below).
