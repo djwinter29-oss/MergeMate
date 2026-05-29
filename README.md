@@ -117,6 +117,22 @@ The PyPI workflow is configured for GitHub trusted publishing through the `id-to
 
 For repository hygiene and branch cleanup, see `docs/operations/repository-maintenance.md`. The `Makefile` also exposes `branches-list`, `branches-merged`, `branches-clean`, and `branches-prune` helpers for day-to-day maintenance. The `branches-prune` target skips the currently checked-out branch so it can be run safely from a feature branch.
 
+## Development Workflow
+
+The `Makefile` mirrors the common contributor workflow and is the fastest way to run the local quality checks:
+
+- `make install-dev` — install MergeMate in editable mode with the dev tooling set
+- `make format` — apply Ruff formatting
+- `make format-check` — verify formatting without changing files
+- `make lint` — run Ruff linting
+- `make typecheck` — run mypy against `src`
+- `make test` — run the unit test suite used by PR validation
+- `make test-all` — run the full test suite, including integration and e2e tests
+- `make ci` — run lint, format check, typecheck, and unit tests in one pass
+- `make clean` — remove local caches and generated coverage artifacts
+
+If you are contributing changes, `make ci` is the closest local approximation of the PR checks workflow, and `make test-all` is the best option before larger merges.
+
 ## Local State
 
 By default, runtime state is stored in a SQLite database at `.state/mergemate.db` under the configured workspace root. The default workspace root is `./workspace` relative to the active config file, and MergeMate creates that directory automatically if needed.
