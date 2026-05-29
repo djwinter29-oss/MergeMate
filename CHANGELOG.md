@@ -4,6 +4,11 @@
 
 ### Changed
 
+- **Bootstrap repo knowledge import fix** — `bootstrap()` now imports
+  `SQLiteRepoKnowledgeRepository` at runtime instead of leaving the symbol as
+  `None` outside type-checking context. This restores the real bootstrap path
+  for repo-scoped learning and removes a hidden production failure mode.
+
 - **Run repo scope consistency** — `AgentRun` now stores the `repo_name`
   that was in effect when the run was submitted. The SQLite run repository
   persists it, and orchestration prefers the run's own repository scope when

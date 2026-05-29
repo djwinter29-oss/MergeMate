@@ -17,7 +17,6 @@ from mergemate.application.services.workflow_service import WorkflowService
 from mergemate.application.use_cases.cancel_run import CancelRunUseCase
 from mergemate.application.use_cases.get_run_status import GetRunStatusUseCase
 from mergemate.application.use_cases.submit_prompt import SubmitPromptUseCase
-from typing import TYPE_CHECKING
 
 from mergemate.config.loader import load_runtime_settings, resolve_config_path
 from mergemate.config.models import AppConfig
@@ -27,15 +26,11 @@ from mergemate.infrastructure.persistence.sqlite import (
     SQLiteConversationRepository,
     SQLiteDatabase,
     SQLiteLearningRepository,
+    SQLiteRepoKnowledgeRepository,
     SQLiteRunJobRepository,
     SQLiteRunRepository,
     SQLiteToolEventRepository,
 )
-
-if TYPE_CHECKING:
-    from mergemate.infrastructure.persistence.sqlite import SQLiteRepoKnowledgeRepository
-else:
-    SQLiteRepoKnowledgeRepository = None
 
 from mergemate.infrastructure.queue import JobQueueBackend
 from mergemate.infrastructure.queue.local_queue import LocalQueue

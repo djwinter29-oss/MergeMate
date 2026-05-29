@@ -12,6 +12,12 @@ class Recorder:
         self.calls.append((args, kwargs))
 
 
+def test_bootstrap_imports_repo_knowledge_repository_class() -> None:
+    assert (
+        bootstrap_module.SQLiteRepoKnowledgeRepository.__name__ == "SQLiteRepoKnowledgeRepository"
+    )
+
+
 def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> None:
     recorded = Recorder()
     config_path = tmp_path / "config.yaml"
