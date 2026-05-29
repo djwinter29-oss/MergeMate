@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+import shlex
 import sqlite3
 from uuid import uuid4
 from typing import Any
@@ -152,6 +153,19 @@ class SQLiteDatabase:
             self._ensure_column(connection, "run_jobs", "last_heartbeat_at", "TEXT")
             self._ensure_column(connection, "agent_runs", "repo_name", "TEXT")
 
+            if not self._table_exists(connection, "agent_runs_fts"):
+                connection.execute(
+                    "CREATE VIRTUAL TABLE agent_runs_fts USING fts5(search_text, tokenize='porter')"
+                )
+                self._rebuild_agent_runs_search_index(connection)
+            if not self._table_exists(connection, "conversation_messages_fts"):
+                connection.execute(
+                    "CREATE VIRTUAL TABLE conversation_messages_fts USING fts5(search_text, tokenize='porter')"
+                )
+                self._rebuild_conversation_messages_search_index(connection)
+
+            self._ensure_search_triggers(connection)
+
     @staticmethod
     def _ensure_column(
         connection: sqlite3.Connection, table_name: str, column_name: str, definition: str
@@ -162,6 +176,98 @@ class SQLiteDatabase:
         if column_name in existing_columns:
             return
         connection.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {definition}")
+
+    @staticmethod
+    def _table_exists(connection: sqlite3.Connection, table_name: str) -> bool:
+        row = connection.execute(
+            "SELECT 1 FROM sqlite_master WHERE name = ? AND type = 'table'",
+            (table_name,),
+        ).fetchone()
+        return row is not None
+
+    @staticmethod
+    def _agent_runs_search_text_sql(prefix: str) -> str:
+        return (
+            f"coalesce({prefix}.run_id, '') || ' ' || coalesce({prefix}.agent_name, '') || ' ' || "
+            f"coalesce({prefix}.workflow, '') || ' ' || coalesce({prefix}.repo_name, '') || ' ' || "
+            f"coalesce({prefix}.status, '') || ' ' || coalesce({prefix}.current_stage, '') || ' ' || "
+            f"coalesce({prefix}.prompt, '') || ' ' || coalesce({prefix}.plan_text, '') || ' ' || "
+            f"coalesce({prefix}.design_text, '') || ' ' || coalesce({prefix}.test_text, '') || ' ' || "
+            f"coalesce({prefix}.review_text, '') || ' ' || coalesce({prefix}.result_text, '') || ' ' || "
+            f"coalesce({prefix}.error_text, '')"
+        )
+
+    @staticmethod
+    def _conversation_messages_search_text_sql(prefix: str) -> str:
+        return f"coalesce({prefix}.content, '')"
+
+    @staticmethod
+    def _fts_quote(token: str) -> str:
+        return '"' + token.replace('"', '""') + '"'
+
+    @classmethod
+    def _build_fts_query(cls, query: str) -> str | None:
+        try:
+            tokens = shlex.split(query)
+        except ValueError:
+            tokens = query.split()
+        normalized = [token.strip() for token in tokens if token.strip()]
+        if not normalized:
+            return None
+        return " AND ".join(cls._fts_quote(token) for token in normalized)
+
+    def _ensure_search_triggers(self, connection: sqlite3.Connection) -> None:
+        connection.executescript(
+            f"""
+            CREATE TRIGGER IF NOT EXISTS agent_runs_ai AFTER INSERT ON agent_runs BEGIN
+                INSERT INTO agent_runs_fts(rowid, search_text)
+                VALUES (new.rowid, {self._agent_runs_search_text_sql("new")});
+            END;
+
+            CREATE TRIGGER IF NOT EXISTS agent_runs_ad AFTER DELETE ON agent_runs BEGIN
+                DELETE FROM agent_runs_fts WHERE rowid = old.rowid;
+            END;
+
+            CREATE TRIGGER IF NOT EXISTS agent_runs_au AFTER UPDATE ON agent_runs BEGIN
+                DELETE FROM agent_runs_fts WHERE rowid = old.rowid;
+                INSERT INTO agent_runs_fts(rowid, search_text)
+                VALUES (new.rowid, {self._agent_runs_search_text_sql("new")});
+            END;
+
+            CREATE TRIGGER IF NOT EXISTS conversation_messages_ai AFTER INSERT ON conversation_messages BEGIN
+                INSERT INTO conversation_messages_fts(rowid, search_text)
+                VALUES (new.rowid, {self._conversation_messages_search_text_sql("new")});
+            END;
+
+            CREATE TRIGGER IF NOT EXISTS conversation_messages_ad AFTER DELETE ON conversation_messages BEGIN
+                DELETE FROM conversation_messages_fts WHERE rowid = old.rowid;
+            END;
+
+            CREATE TRIGGER IF NOT EXISTS conversation_messages_au AFTER UPDATE ON conversation_messages BEGIN
+                DELETE FROM conversation_messages_fts WHERE rowid = old.rowid;
+                INSERT INTO conversation_messages_fts(rowid, search_text)
+                VALUES (new.rowid, {self._conversation_messages_search_text_sql("new")});
+            END;
+            """
+        )
+
+    def _rebuild_agent_runs_search_index(self, connection: sqlite3.Connection) -> None:
+        connection.execute(
+            f"""
+            INSERT INTO agent_runs_fts(rowid, search_text)
+            SELECT rowid, {self._agent_runs_search_text_sql("agent_runs")}
+            FROM agent_runs
+            """
+        )
+
+    def _rebuild_conversation_messages_search_index(self, connection: sqlite3.Connection) -> None:
+        connection.execute(
+            f"""
+            INSERT INTO conversation_messages_fts(rowid, search_text)
+            SELECT rowid, {self._conversation_messages_search_text_sql("conversation_messages")}
+            FROM conversation_messages
+            """
+        )
 
     @contextmanager
     def connection(self):
@@ -235,12 +341,38 @@ class SQLiteRunRepository:
         return [self._row_to_run(row) for row in rows]
 
     def search(self, query: str, limit: int = 10, *, chat_id: int | None = None) -> list[AgentRun]:
+        fts_query = SQLiteDatabase._build_fts_query(query)
+        if fts_query is None:
+            return []
+
+        with self._database.connection() as connection:
+            try:
+                query_sql = """
+                    SELECT agent_runs.*, bm25(agent_runs_fts) AS _score
+                    FROM agent_runs_fts
+                    JOIN agent_runs ON agent_runs.rowid = agent_runs_fts.rowid
+                    WHERE agent_runs_fts MATCH ?
+                """
+                parameters: list[object] = [fts_query]
+                if chat_id is not None:
+                    query_sql += " AND agent_runs.chat_id = ?"
+                    parameters.append(chat_id)
+                query_sql += " ORDER BY _score ASC, agent_runs.updated_at DESC LIMIT ?"
+                parameters.append(limit)
+                rows = connection.execute(query_sql, tuple(parameters)).fetchall()
+                return [self._row_to_run(row) for row in rows]
+            except sqlite3.OperationalError:
+                pass
+
+        return self._search_with_like(query, limit, chat_id=chat_id)
+
+    def _search_with_like(
+        self, query: str, limit: int = 10, *, chat_id: int | None = None
+    ) -> list[AgentRun]:
         terms = [t.strip().lower() for t in query.split() if t.strip()]
         if not terms:
             return []
 
-        # Build a LIKE clause for each term so every individual term must appear
-        # somewhere in the searched fields (OR across fields, AND across terms).
         search_fields = [
             "lower(coalesce(run_id, ''))",
             "lower(coalesce(agent_name, ''))",
@@ -256,7 +388,6 @@ class SQLiteRunRepository:
             "lower(coalesce(error_text, ''))",
         ]
 
-        # For each term we require: (field1 LIKE ? OR … OR field12 LIKE ?)
         term_clauses: list[str] = []
         for term in terms:
             parts = " OR ".join(f"{fld} LIKE ?" for fld in search_fields)
@@ -264,25 +395,17 @@ class SQLiteRunRepository:
 
         where_sql = " AND ".join(term_clauses)
         chat_where = ""
-
         if chat_id is not None:
             chat_where = " AND chat_id = ?"
 
-        # Relevance score: sum across fields of (term matches + exact-phrase bonus).
-        # For each field we count how many terms match, then add +1 for the field
-        # if the full phrase also matches that field (bonus for exact match).
         score_parts: list[str] = []
         for fld in search_fields:
-            # count of matching terms for this field
             term_counts = " + ".join(f"CASE WHEN {fld} LIKE ? THEN 1 ELSE 0 END" for _ in terms)
-            # exact phrase bonus
             full_phrase_bonus = f"CASE WHEN {fld} LIKE ? THEN 1 ELSE 0 END"
             score_parts.append(f"({term_counts} + {full_phrase_bonus})")
 
         relevance_score = " + ".join(score_parts)
 
-        # Parameter order must match SQL text order: SELECT (score params) then
-        # WHERE (term params + chat_id), then LIMIT.
         score_params: list[object] = []
         for fld in search_fields:
             for term in terms:
@@ -298,7 +421,6 @@ class SQLiteRunRepository:
             where_params.append(chat_id)
 
         parameters: list[object] = score_params + where_params + [limit]
-
         query_sql = f"""
                 SELECT *, ({relevance_score}) AS _score
                 FROM agent_runs
@@ -540,11 +662,54 @@ class SQLiteConversationRepository:
         *,
         chat_id: int | None = None,
     ) -> list[dict[str, str | int]]:
+        fts_query = SQLiteDatabase._build_fts_query(query)
+        if fts_query is None:
+            return []
+
+        with self._database.connection() as connection:
+            try:
+                query_sql = """
+                    SELECT conversation_messages.chat_id,
+                           conversation_messages.role,
+                           conversation_messages.content,
+                           conversation_messages.created_at,
+                           bm25(conversation_messages_fts) AS _score
+                    FROM conversation_messages_fts
+                    JOIN conversation_messages ON conversation_messages.rowid = conversation_messages_fts.rowid
+                    WHERE conversation_messages_fts MATCH ?
+                """
+                parameters: list[object] = [fts_query]
+                if chat_id is not None:
+                    query_sql += " AND conversation_messages.chat_id = ?"
+                    parameters.append(chat_id)
+                query_sql += " ORDER BY _score ASC, conversation_messages.created_at DESC LIMIT ?"
+                parameters.append(limit)
+                rows = connection.execute(query_sql, tuple(parameters)).fetchall()
+                return [
+                    {
+                        "chat_id": row["chat_id"],
+                        "role": row["role"],
+                        "content": row["content"],
+                        "created_at": row["created_at"],
+                    }
+                    for row in rows
+                ]
+            except sqlite3.OperationalError:
+                pass
+
+        return self._search_messages_with_like(query, limit, chat_id=chat_id)
+
+    def _search_messages_with_like(
+        self,
+        query: str,
+        limit: int = 10,
+        *,
+        chat_id: int | None = None,
+    ) -> list[dict[str, str | int]]:
         terms = [t.strip().lower() for t in query.split() if t.strip()]
         if not terms:
             return []
 
-        # Build AND-clauses: each term must appear in the content field.
         term_clauses = ["lower(coalesce(content, '')) LIKE ?" for _ in terms]
         where_sql = " AND ".join(term_clauses)
         where_params: list[object] = []
@@ -554,7 +719,6 @@ class SQLiteConversationRepository:
             where_sql += " AND chat_id = ?"
             where_params.append(chat_id)
 
-        # Relevance score: each term match + exact phrase bonus
         term_score = " + ".join(
             "CASE WHEN lower(coalesce(content, '')) LIKE ? THEN 1 ELSE 0 END" for _ in terms
         )

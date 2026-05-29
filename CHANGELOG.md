@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+### Added
+
+- **FTS5-backed search** — both `search-runs` and `search-conversations` (and
+  the unified `search` command) now use SQLite FTS5 virtual tables with phrase-aware
+  MATCH queries. Quoted multi-word phrases (e.g. `"CI/CD pipeline"`) work as shell-style
+  tokens.  Triggers keep the FTS indexes in sync with the data tables automatically.
+  Falls back to LIKE-based search if FTS5 is unavailable or returns an error.
+
 ### Changed
 
 - **Bootstrap repo knowledge import fix** — `bootstrap()` now imports

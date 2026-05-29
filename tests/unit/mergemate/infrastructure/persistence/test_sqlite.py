@@ -208,7 +208,7 @@ def test_conversation_repository_search_messages_returns_matches(tmp_path) -> No
 
     results = conversations.search_messages("CLI")
     assert len(results) == 2
-    assert results[0]["role"] == "assistant"
+    assert {r["role"] for r in results} == {"user", "assistant"}
     assert all(r["content"] for r in results)
 
     results = conversations.search_messages("CLI", chat_id=1)
@@ -463,7 +463,7 @@ def test_learning_repository_backward_compat_null_learning_lessons(tmp_path) -> 
 
 
 def test_run_repository_search_ranks_exact_phrase_higher(tmp_path) -> None:
-    """Multi-term search: results matching the exact phrase rank first."""
+    """Quoted phrase searches match only runs containing the exact phrase."""
     database = SQLiteDatabase(tmp_path / "state.db")
     database.initialize()
     repository = SQLiteRunRepository(database)
@@ -477,13 +477,10 @@ def test_run_repository_search_ranks_exact_phrase_higher(tmp_path) -> None:
     repository.create(run_b)
     repository.update_plan("run-b", "staging deployment pipeline")
 
-    # "staging deploy" — run_a has "deploy to staging", run_b has "staging deployment"
-    results = repository.search("staging deploy")
-    assert len(results) == 2
-    # run_b has both "staging" AND "deploy*" in its prompt/plan
-    # run_a has both "staging" AND "deploy" (exact "deploy" in prompt)
-    # Both match both terms, so they should appear; exact phrase bonus may differ
-    assert {r.run_id for r in results} == {"run-a", "run-b"}
+    # Quoted exact phrase "deploy to staging" only matches run_a
+    results = repository.search('"deploy to staging"')
+    assert len(results) == 1
+    assert results[0].run_id == "run-a"
 
 
 def test_run_repository_search_requires_all_terms(tmp_path) -> None:
@@ -531,7 +528,7 @@ def test_run_repository_search_single_term_still_works(tmp_path) -> None:
 
 
 def test_conversation_search_ranks_phrase_match_first(tmp_path) -> None:
-    """Messages containing the exact phrase rank higher."""
+    """Quoted phrase searches match only messages containing the exact phrase."""
     database = SQLiteDatabase(tmp_path / "state.db")
     database.initialize()
     conversations = SQLiteConversationRepository(database)
@@ -539,11 +536,10 @@ def test_conversation_search_ranks_phrase_match_first(tmp_path) -> None:
     conversations.append_message(1, "user", "I need help with CI pipeline setup")
     conversations.append_message(2, "user", "CI is broken and pipeline needs fixing")
 
-    # Exact phrase "CI pipeline" should rank first
-    results = conversations.search_messages("CI pipeline")
-    assert len(results) == 2
+    # Exact phrase "CI pipeline" in quotes only matches message 1
+    results = conversations.search_messages('"CI pipeline"')
+    assert len(results) == 1
     assert results[0]["chat_id"] == 1  # exact phrase match
-    assert results[1]["chat_id"] == 2
 
 
 def test_conversation_search_multi_term_and_semantics(tmp_path) -> None:
@@ -593,3 +589,24 @@ def test_search_empty_query_returns_empty(tmp_path) -> None:
     conversations = SQLiteConversationRepository(database)
     assert conversations.search_messages("") == []
     assert conversations.search_messages("   ") == []
+
+
+def test_fts_schema_created_and_searchable(tmp_path) -> None:
+    """FTS5 virtual tables are created on initialize and search existing rows."""
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repository = SQLiteRunRepository(database)
+
+    run = _build_run("run-1")
+    run.prompt = "build a chatbot with CI/CD pipeline"
+    repository.create(run)
+
+    results = repository.search("chatbot CI/CD")
+    assert len(results) >= 1
+    assert results[0].run_id == "run-1"
+
+    conversations = SQLiteConversationRepository(database)
+    conversations.append_message(1, "user", "I need help with the CI/CD pipeline")
+    msg_results = conversations.search_messages('"CI/CD pipeline"')
+    assert len(msg_results) >= 1
+    assert msg_results[0]["chat_id"] == 1
