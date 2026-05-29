@@ -221,7 +221,7 @@ class SQLiteDatabase:
             f"""
             CREATE TRIGGER IF NOT EXISTS agent_runs_ai AFTER INSERT ON agent_runs BEGIN
                 INSERT INTO agent_runs_fts(rowid, search_text)
-                VALUES (new.rowid, {self._agent_runs_search_text_sql('new')});
+                VALUES (new.rowid, {self._agent_runs_search_text_sql("new")});
             END;
 
             CREATE TRIGGER IF NOT EXISTS agent_runs_ad AFTER DELETE ON agent_runs BEGIN
@@ -231,12 +231,12 @@ class SQLiteDatabase:
             CREATE TRIGGER IF NOT EXISTS agent_runs_au AFTER UPDATE ON agent_runs BEGIN
                 DELETE FROM agent_runs_fts WHERE rowid = old.rowid;
                 INSERT INTO agent_runs_fts(rowid, search_text)
-                VALUES (new.rowid, {self._agent_runs_search_text_sql('new')});
+                VALUES (new.rowid, {self._agent_runs_search_text_sql("new")});
             END;
 
             CREATE TRIGGER IF NOT EXISTS conversation_messages_ai AFTER INSERT ON conversation_messages BEGIN
                 INSERT INTO conversation_messages_fts(rowid, search_text)
-                VALUES (new.rowid, {self._conversation_messages_search_text_sql('new')});
+                VALUES (new.rowid, {self._conversation_messages_search_text_sql("new")});
             END;
 
             CREATE TRIGGER IF NOT EXISTS conversation_messages_ad AFTER DELETE ON conversation_messages BEGIN
@@ -246,7 +246,7 @@ class SQLiteDatabase:
             CREATE TRIGGER IF NOT EXISTS conversation_messages_au AFTER UPDATE ON conversation_messages BEGIN
                 DELETE FROM conversation_messages_fts WHERE rowid = old.rowid;
                 INSERT INTO conversation_messages_fts(rowid, search_text)
-                VALUES (new.rowid, {self._conversation_messages_search_text_sql('new')});
+                VALUES (new.rowid, {self._conversation_messages_search_text_sql("new")});
             END;
             """
         )
@@ -255,7 +255,7 @@ class SQLiteDatabase:
         connection.execute(
             f"""
             INSERT INTO agent_runs_fts(rowid, search_text)
-            SELECT rowid, {self._agent_runs_search_text_sql('agent_runs')}
+            SELECT rowid, {self._agent_runs_search_text_sql("agent_runs")}
             FROM agent_runs
             """
         )
@@ -264,7 +264,7 @@ class SQLiteDatabase:
         connection.execute(
             f"""
             INSERT INTO conversation_messages_fts(rowid, search_text)
-            SELECT rowid, {self._conversation_messages_search_text_sql('conversation_messages')}
+            SELECT rowid, {self._conversation_messages_search_text_sql("conversation_messages")}
             FROM conversation_messages
             """
         )
@@ -366,7 +366,9 @@ class SQLiteRunRepository:
 
         return self._search_with_like(query, limit, chat_id=chat_id)
 
-    def _search_with_like(self, query: str, limit: int = 10, *, chat_id: int | None = None) -> list[AgentRun]:
+    def _search_with_like(
+        self, query: str, limit: int = 10, *, chat_id: int | None = None
+    ) -> list[AgentRun]:
         terms = [t.strip().lower() for t in query.split() if t.strip()]
         if not terms:
             return []
