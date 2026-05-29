@@ -1,6 +1,7 @@
 """CLI entrypoints for running MergeMate."""
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
 import time
 from typing import Sequence
@@ -11,6 +12,7 @@ import typer
 
 from mergemate.bootstrap import bootstrap
 from mergemate.config.loader import load_runtime_settings, resolve_config_path
+from mergemate.domain.shared import RunStatus
 from mergemate.interfaces.telegram.bot import TelegramBotRuntime
 
 app = typer.Typer(help="MergeMate command line interface")
@@ -224,3 +226,233 @@ def _print_message_search_results(messages: list[dict[str, str | int]]) -> None:
     for msg in messages:
         content = str(msg["content"])[:100].replace("\n", " ")
         typer.echo(f"[chat:{msg['chat_id']} {msg['role']}] {content}")
+
+
+# ── CLI run + chat commands ────────────────────────────────────────────
+
+_CLI_USER_ID = 0  # synthetic user ID for CLI sessions
+
+
+def _resolve_session_chat_id(session_name: str | None) -> int:
+    """Derive a deterministic chat_id from a session name, or use a unique one-shot ID."""
+    if session_name is None:
+        import random
+
+        return -abs(random.getrandbits(31))
+    return abs(hash(f"cli:{session_name}")) % (2**31 - 1)
+
+
+def _resolve_workflow(
+    agent_name: str,
+    workflow: str | None,
+    runtime,
+) -> str:
+    """Resolve the workflow for an agent, defaulting to the configured one."""
+    from mergemate.config.models import ConfigWorkflowNotFoundError
+
+    if workflow is not None:
+        return workflow
+    agent_cfg = runtime.settings.agents.get(agent_name)
+    if agent_cfg is not None and agent_cfg.workflow is not None:
+        return agent_cfg.workflow
+    raise ConfigWorkflowNotFoundError(
+        f"Agent {agent_name!r} has no default workflow. Use --workflow to specify one."
+    )
+
+
+def _print_run_result(
+    run,
+    *,
+    quiet: bool = False,
+) -> None:
+    """Print the result of a completed run."""
+    if quiet:
+        if run.result_text:
+            typer.echo(run.result_text.rstrip())
+        elif run.error_text:
+            typer.echo(run.error_text.rstrip(), err=True)
+        return
+
+    typer.echo(f"Status: {run.status.value}")
+    if run.plan_text:
+        preview = run.plan_text[:200].replace("\n", " ")
+        typer.echo(f"Plan: {preview}...")
+    if run.result_text:
+        typer.echo(f"Result:\n{run.result_text.rstrip()}")
+    elif run.error_text:
+        typer.echo(f"Error: {run.error_text}", err=True)
+
+
+def _print_conversation_history(runtime, chat_id: int, *, limit: int = 10) -> None:
+    """Print recent conversation history for a session."""
+    messages = runtime.persistence.conversation_repository.load_recent_messages(
+        chat_id, limit=limit
+    )
+    if not messages:
+        return
+    typer.echo("--- Previous conversation ---")
+    for msg in messages[-limit:]:
+        role = (
+            getattr(msg, "role", msg.get("role", "unknown")) if isinstance(msg, dict) else msg.role
+        )
+        content = (
+            getattr(msg, "content", str(msg.get("content", "")))[:120].replace("\n", " ")
+            if isinstance(msg, dict)
+            else msg.content[:120].replace("\n", " ")
+        )
+        typer.echo(f"  [{role}] {content}")
+    typer.echo("----------------------------")
+
+
+def _poll_run(runtime, run_id: str, *, timeout: float | None, poll_interval: float) -> object:
+    """Poll for run completion. Returns the terminal run or raises typer.Exit."""
+    import time as _time
+
+    deadline = (_time.monotonic() + timeout) if timeout is not None else float("inf")
+
+    while _time.monotonic() < deadline:
+        snapshot = runtime.services.get_run_status.execute(run_id)
+        if snapshot is None:
+            typer.echo("Run not found.", err=True)
+            raise typer.Exit(code=2)
+        if snapshot.status in RunStatus.terminal_statuses():
+            return snapshot
+        _time.sleep(poll_interval)
+
+    typer.echo("Timed out waiting for run to complete.", err=True)
+    raise typer.Exit(code=1)
+
+
+def _temporary_auto_approve(runtime):
+    """Context manager that temporarily disables confirmation requirements."""
+    import contextlib
+
+    @contextlib.contextmanager
+    def _manager():
+        original = runtime.settings.workflow_control.require_confirmation
+        runtime.settings.workflow_control.require_confirmation = False
+        try:
+            yield
+        finally:
+            runtime.settings.workflow_control.require_confirmation = original
+
+    return _manager()
+
+
+@dataclass
+class _ConfigOption:
+    """Helper to share the --config option across commands."""
+
+    value: Path | None = None
+
+
+_CONFIG_OPTION = typer.Option(None, help="Path to a YAML configuration file")
+
+
+@app.command("run")
+def run_cli(
+    prompt: str = typer.Argument(..., help="Prompt to submit for execution"),
+    agent: str | None = typer.Option(None, help="Agent name to use"),
+    workflow: str | None = typer.Option(
+        None, help="Workflow name (generate_code, debug_code, explain_code)"
+    ),
+    quiet: bool = typer.Option(False, help="Suppress banner/estimate; print only the final result"),
+    timeout: float | None = typer.Option(None, min=1, help="Max seconds to wait for completion"),
+    session: str | None = typer.Option(
+        None, help="Session name for persistent conversation history"
+    ),
+    poll_interval: float = typer.Option(2.0, min=0.5, help="Polling interval in seconds"),
+    config: Path | None = _CONFIG_OPTION,  # type: ignore[arg-type]
+) -> None:
+    """Submit a one-shot prompt and wait for completion."""
+    import asyncio
+
+    runtime = bootstrap(config)
+    chat_id = _resolve_session_chat_id(session)
+    agent_name = agent or runtime.settings.default_agent
+    resolved_workflow = _resolve_workflow(agent_name, workflow, runtime)
+
+    # Submit the prompt with auto-approve (CLI user explicitly asked for execution)
+    with _temporary_auto_approve(runtime):
+        result = asyncio.run(
+            runtime.services.submit_prompt.execute(
+                chat_id=chat_id,
+                user_id=_CLI_USER_ID,
+                agent_name=agent_name,
+                workflow=resolved_workflow,
+                prompt=prompt,
+            )
+        )
+
+    if not quiet:
+        typer.echo(f"Run ID: {result.run_id}")
+        typer.echo(f"Workflow: {resolved_workflow}")
+        typer.echo(f"Estimated duration: ~{result.estimate_seconds}s")
+        if result.plan_text:
+            preview = result.plan_text[:300]
+            typer.echo(f"\nPlan:\n{preview}")
+
+    # Poll until terminal
+    run = _poll_run(runtime, result.run_id, timeout=timeout, poll_interval=poll_interval)
+    _print_run_result(run, quiet=quiet)
+
+
+@app.command("chat")
+def chat_cli(
+    session: str | None = typer.Option(
+        None, help="Session name for persistent conversation history"
+    ),
+    agent: str | None = typer.Option(None, help="Agent name to use"),
+    workflow: str | None = typer.Option(
+        None, help="Workflow name (generate_code, debug_code, explain_code)"
+    ),
+    timeout: float | None = typer.Option(None, min=1, help="Max seconds to wait per run"),
+    poll_interval: float = typer.Option(2.0, min=0.5, help="Polling interval in seconds"),
+    config: Path | None = _CONFIG_OPTION,  # type: ignore[arg-type]
+) -> None:
+    """Interactive REPL for multi-turn conversation with session persistence."""
+    import asyncio
+
+    runtime = bootstrap(config)
+    chat_id = _resolve_session_chat_id(session)
+    agent_name = agent or runtime.settings.default_agent
+    resolved_workflow = _resolve_workflow(agent_name, workflow, runtime)
+
+    # Show conversation history on resume
+    _print_conversation_history(runtime, chat_id)
+
+    session_label = session or "(anonymous)"
+    typer.echo(f"MergeMate chat session [{session_label}]")
+    typer.echo('Type "exit" or "quit" to leave.')
+
+    with _temporary_auto_approve(runtime):
+        while True:
+            try:
+                user_input = input("> ").strip()
+            except (EOFError, KeyboardInterrupt):
+                typer.echo()
+                break
+            if user_input.lower() in ("exit", "quit"):
+                break
+            if not user_input:
+                continue
+
+            # Submit the prompt
+            result = asyncio.run(
+                runtime.services.submit_prompt.execute(
+                    chat_id=chat_id,
+                    user_id=_CLI_USER_ID,
+                    agent_name=agent_name,
+                    workflow=resolved_workflow,
+                    prompt=user_input,
+                )
+            )
+
+            typer.echo(f"  [Run {result.run_id[:8]}] ~{result.estimate_seconds}s ...")
+            if result.plan_text:
+                plan_preview = result.plan_text[:200].replace("\n", " ")
+                typer.echo(f"  Plan: {plan_preview}...")
+
+            # Poll until terminal
+            run = _poll_run(runtime, result.run_id, timeout=timeout, poll_interval=poll_interval)
+            _print_run_result(run)
