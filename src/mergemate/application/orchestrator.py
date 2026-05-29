@@ -59,7 +59,7 @@ class AgentOrchestrator:
         )
         repo_knowledge = self._deps.learning_service.load_repo_knowledge(
             run.chat_id,
-            repo_name=self._deps.settings.repo_name,
+            repo_name=run.repo_name if run.repo_name is not None else self._deps.settings.repo_name,
         )
 
         system_prompt, context_text = self._deps.prompt_service.render(

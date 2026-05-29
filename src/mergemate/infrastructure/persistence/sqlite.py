@@ -37,6 +37,7 @@ class SQLiteDatabase:
                     user_id INTEGER NOT NULL,
                     agent_name TEXT NOT NULL,
                     workflow TEXT NOT NULL,
+                    repo_name TEXT,
                     status TEXT NOT NULL,
                     current_stage TEXT NOT NULL,
                     prompt TEXT NOT NULL,
@@ -182,11 +183,11 @@ class SQLiteRunRepository:
             connection.execute(
                 """
                 INSERT INTO agent_runs (
-                    run_id, chat_id, user_id, agent_name, workflow, status,
+                    run_id, chat_id, user_id, agent_name, workflow, repo_name, status,
                     current_stage, prompt, estimate_seconds, plan_text, design_text,
                     test_text, review_text, review_iterations, approved, result_text,
                     error_text, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     run.run_id,
@@ -194,6 +195,7 @@ class SQLiteRunRepository:
                     run.user_id,
                     run.agent_name,
                     run.workflow,
+                    run.repo_name,
                     run.status.value,
                     run.current_stage,
                     run.prompt,
@@ -441,6 +443,7 @@ class SQLiteRunRepository:
             user_id=row["user_id"],
             agent_name=row["agent_name"],
             workflow=row["workflow"],
+            repo_name=row["repo_name"],
             status=RunStatus(row["status"]),
             current_stage=row["current_stage"],
             prompt=row["prompt"],

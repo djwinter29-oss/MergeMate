@@ -74,6 +74,7 @@ class SubmitPromptUseCase:
             status=initial_status,
             current_stage=RunStage.PLANNING,
             prompt=prompt,
+            repo_name=getattr(self._settings, "repo_name", None),
             estimate_seconds=estimate_seconds,
             plan_text=None,
             design_text=None,

@@ -540,6 +540,101 @@ async def test_orchestrator_passes_none_repo_name_when_settings_missing() -> Non
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Orchestrator - run's own repo_name preferred over settings
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_prefers_run_repo_name() -> None:
+    """Orchestrator passes run.repo_name over settings.repo_name when run has one."""
+    from mergemate.application.execution_plan import OrchestratorDependencies
+    from mergemate.domain.runs.entities import AgentRun
+    from mergemate.domain.shared import RunStatus
+    from datetime import UTC, datetime
+
+    now = datetime.now(UTC)
+    run = AgentRun(
+        run_id="run-1",
+        chat_id=123,
+        user_id=456,
+        agent_name="coder",
+        workflow="generate_code",
+        repo_name="run-scope",
+        status=RunStatus.QUEUED,
+        current_stage="queued_for_execution",
+        prompt="build a feature",
+        estimate_seconds=30,
+        plan_text="approved plan",
+        design_text=None,
+        test_text=None,
+        review_text=None,
+        review_iterations=0,
+        approved=True,
+        result_text=None,
+        error_text=None,
+        created_at=now,
+        updated_at=now,
+    )
+
+    class TrackingLearningService:
+        def __init__(self):
+            self.calls = []
+
+        def load_grouped_learnings(self, chat_id, current_workflow):
+            return []
+
+        def load_repo_knowledge(self, chat_id, repo_name=None):
+            self.calls.append((chat_id, repo_name))
+            return []
+
+        def remember_success(self, **payload):
+            pass
+
+    learning_service = TrackingLearningService()
+
+    orchestrator = AgentOrchestrator(
+        deps=OrchestratorDependencies(
+            run_repository=SimpleNamespace(
+                get=lambda run_id: run,
+                try_update_status=lambda run_id, status, **kw: SimpleNamespace(
+                    run=run, transitioned=True
+                ),
+            ),
+            context_service=SimpleNamespace(load_recent_messages=lambda chat_id: []),
+            documentation_service=SimpleNamespace(),
+            learning_service=learning_service,
+            planning_service=SimpleNamespace(),
+            prompt_service=SimpleNamespace(
+                render=lambda workflow, recent_messages, learned_items, prompt, repo_knowledge=None: (
+                    "system",
+                    "context",
+                )
+            ),
+            tool_service=SimpleNamespace(
+                build_runtime_tool_context_async=lambda run_id, agent_name, resume_stage="retrieve_context": (
+                    ""
+                ),
+            ),
+            workflow_service=SimpleNamespace(
+                build_execution_plan=lambda workflow, agent_name: SimpleNamespace(
+                    requires_tool_context=False,
+                    execute=_async_return(run),
+                ),
+                uses_multi_stage_delivery=lambda w: False,
+            ),
+            llm_gateway=None,
+            settings=SimpleNamespace(repo_name="config-repo"),
+        ),
+    )
+
+    await orchestrator.process_run("run-1")
+
+    assert len(learning_service.calls) == 1
+    # Run's own repo_name ("run-scope") should be preferred over settings ("config-repo")
+    assert learning_service.calls[0] == (123, "run-scope")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Bootstrap wiring
 # ══════════════════════════════════════════════════════════════════════════════
 

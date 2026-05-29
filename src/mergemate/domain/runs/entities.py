@@ -27,6 +27,7 @@ class AgentRun:
     error_text: str | None
     created_at: datetime
     updated_at: datetime
+    repo_name: str | None = None
 
 
 @dataclass(slots=True)

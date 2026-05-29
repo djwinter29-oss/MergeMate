@@ -21,6 +21,7 @@ def _build_run(run_id: str = "run-1") -> AgentRun:
         user_id=2,
         agent_name="coder",
         workflow="generate_code",
+        repo_name="mergemate",
         status=RunStatus.AWAITING_CONFIRMATION,
         current_stage="planning",
         prompt="build a bot",
@@ -103,6 +104,7 @@ def test_run_repository_round_trip_and_updates(tmp_path) -> None:
     loaded = repository.get("run-1")
     assert loaded is not None
     assert loaded.prompt == "build a bot"
+    assert loaded.repo_name == "mergemate"
 
     updated = repository.update_status(
         "run-1",
