@@ -90,6 +90,35 @@ mergemate validate-config
 
 `validate-config` now also rejects unknown provider aliases referenced by `default_provider` or agent `provider_names` before the bot starts.
 
+Submit a prompt for one-shot execution and wait for the result:
+
+```bash
+mergemate run "Add rate limiting to the API"
+
+# With session persistence across invocations
+mergemate run "Refactor the queue adapter" --session my-feature
+
+# Suppress banner output, print only the final result
+mergemate run "Fix the timeout bug" --quiet
+
+# Override polling interval and timeout
+mergemate run "Write documentation" --poll-interval 1 --timeout 300
+```
+
+Start an interactive REPL session:
+
+```bash
+mergemate chat
+
+# With a named session (persists conversation history across restarts)
+mergemate chat --session my-feature
+
+# Specify agent and workflow
+mergemate chat --agent coder --workflow generate_code
+```
+
+`mergemate chat` shows recent conversation history on resume, loops for multi-turn prompts, and auto-approves runs (no Telegram confirmation needed since the user is at the terminal).
+
 Print the default project-local config path:
 
 ```bash

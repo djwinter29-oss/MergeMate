@@ -98,6 +98,8 @@ and the search and context commands when you need to inspect persisted state loc
 - `mergemate platform-auth github|gitlab` — verify the selected GitHub or GitLab CLI is authenticated.
 - `mergemate search-runs <query> [--limit N]` — search stored run prompts, results, and metadata.
 - `mergemate search-conversations <query> [--limit N]` — search saved chat message history.
+- `mergemate run <prompt>` — submit a one-shot prompt and wait for completion (supports `--agent`, `--workflow`, `--session`, `--quiet`, `--timeout`, `--poll-interval`).
+- `mergemate chat` — interactive REPL session (supports `--session`, `--agent`, `--workflow`, `--timeout`, `--poll-interval`).
 
 The search commands are useful when you want to recover prior requirements or compare a current run with similar past work without opening the database directly.
 
