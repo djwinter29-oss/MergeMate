@@ -47,7 +47,7 @@ The current implementation includes:
 - background run execution with local concurrency control
 - proactive Telegram progress updates while a run is in flight
 - plan-based architecture documents written under `docs/architecture/`
-- separate test plans under `docs/testing/` and review reports under `docs/reviews/`
+- separate test plans under `docs/testing/` and runtime-generated review reports under `docs/reviews/` (the repository also keeps curated review notes under `docs/review/`)
 - SQLite-backed run and conversation persistence
 - learning memory from successful prior runs within the same chat
 - optional repository-scoped knowledge keyed by `repo_name` in config
