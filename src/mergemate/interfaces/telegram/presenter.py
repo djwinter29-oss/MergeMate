@@ -2,7 +2,7 @@
 """Formatting helpers for Telegram replies."""
 
 from datetime import UTC, datetime
-from typing import Any, Protocol, cast
+from typing import Protocol, cast
 
 from mergemate.domain.shared import RunStatus
 
