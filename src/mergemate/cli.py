@@ -3,6 +3,7 @@
 import json
 from hashlib import blake2s
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 import time
 from typing import Sequence
@@ -211,22 +212,72 @@ def search_conversations(
     _print_message_search_results(messages)
 
 
+@app.command("search")
+def search(
+    query: str = typer.Argument(..., help="Search term to match against runs and messages"),
+    limit: int = typer.Option(10, min=1, max=100, help="Maximum results to return"),
+    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
+) -> None:
+    """Search stored runs and conversation messages in one combined result set."""
+    runtime = bootstrap(config)
+    runs = runtime.persistence.run_repository.search(query, limit=limit)
+    messages = runtime.persistence.conversation_repository.search_messages(query, limit=limit)
+    _print_combined_search_results(runs, messages, limit=limit)
+
+
 def _print_search_results(runs: Sequence) -> None:
     if not runs:
         typer.echo("No matching runs found.")
         return
-    for run in runs:
-        snippet = (run.prompt or "")[:80].replace("\n", " ")
-        typer.echo(f"[{run.run_id[:8]}] {run.workflow}/{run.status.value}  —  {snippet}")
+    for result in _build_run_search_results(runs):
+        typer.echo(result)
 
 
 def _print_message_search_results(messages: list[dict[str, str | int]]) -> None:
     if not messages:
         typer.echo("No matching messages found.")
         return
+    for result in _build_message_search_results(messages):
+        typer.echo(result)
+
+
+def _print_combined_search_results(
+    runs: Sequence,
+    messages: list[dict[str, str | int]],
+    *,
+    limit: int,
+) -> None:
+    run_results = _build_run_search_results(runs)
+    message_results = _build_message_search_results(messages)
+    results: list[tuple[datetime, str]] = []
+
+    for run, result in zip(runs, run_results):
+        results.append((run.updated_at, result))
+    for msg, result in zip(messages, message_results):
+        results.append((datetime.fromisoformat(str(msg["created_at"])), result))
+
+    if not results:
+        typer.echo("No matching runs or messages found.")
+        return
+
+    for _, result in sorted(results, key=lambda item: item[0], reverse=True)[:limit]:
+        typer.echo(result)
+
+
+def _build_run_search_results(runs: Sequence) -> list[str]:
+    results: list[str] = []
+    for run in runs:
+        snippet = (run.prompt or "")[:80].replace("\n", " ")
+        results.append(f"[run {run.run_id[:8]}] {run.workflow}/{run.status.value}  —  {snippet}")
+    return results
+
+
+def _build_message_search_results(messages: list[dict[str, str | int]]) -> list[str]:
+    results: list[str] = []
     for msg in messages:
         content = str(msg["content"])[:100].replace("\n", " ")
-        typer.echo(f"[chat:{msg['chat_id']} {msg['role']}] {content}")
+        results.append(f"[chat:{msg['chat_id']} {msg['role']}] {content}")
+    return results
 
 
 # ── CLI run + chat commands ────────────────────────────────────────────
