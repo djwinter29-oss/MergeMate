@@ -115,7 +115,7 @@ The publish workflow builds the wheel and source distribution, checks them with 
 
 The PyPI workflow is configured for GitHub trusted publishing through the `id-token: write` permission. Configure the project on PyPI to trust this repository before using release tags.
 
-For repository hygiene and branch cleanup, see `docs/operations/repository-maintenance.md`. The `Makefile` also exposes `branches-list`, `branches-merged`, `branches-clean`, and `branches-prune` helpers for day-to-day maintenance. The `branches-prune` target skips the currently checked-out branch so it can be run safely from a feature branch.
+For repository hygiene and branch cleanup, see `docs/operations/repository-maintenance.md`. The `Makefile` also exposes `branches-list`, `branches-merged`, `branches-clean`, and `branches-prune` helpers for day-to-day maintenance. The listing targets stay successful even when there are no branches to report, and `branches-prune` skips the currently checked-out branch so it can be run safely from a feature branch.
 
 ## Development Workflow
 

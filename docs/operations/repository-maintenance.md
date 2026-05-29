@@ -21,6 +21,9 @@ maintenance because they only inspect branch state or print suggested cleanup co
 is the execution target for when you are ready to apply the cleanup locally, and it is safe to run
 from a feature branch because it will not try to delete the current checkout.
 
+The listing targets also exit successfully when there are no merged or stale branches to report, so
+an empty result set does not turn a maintenance check into a failure.
+
 ## Recommended Routine
 
 1. Run `make branches-merged` after a merge-heavy week or before starting a new cleanup pass.

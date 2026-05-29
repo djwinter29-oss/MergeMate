@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 
 def test_repository_maintenance_docs_cover_the_prune_target() -> None:
@@ -31,3 +33,50 @@ def test_repository_maintenance_prune_target_skips_the_current_branch() -> None:
         "from a feature branch because it will not try to delete the current checkout"
         in maintenance_text
     )
+
+
+def test_branch_maintenance_targets_succeed_when_there_are_no_matches() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+
+    with TemporaryDirectory() as tmp_dir:
+        tmp_repo = Path(tmp_dir)
+        subprocess.run(["git", "init", "-b", "main"], cwd=tmp_repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.name", "MergeMate Tests"],
+            cwd=tmp_repo,
+            check=True,
+            capture_output=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.email", "tests@example.com"],
+            cwd=tmp_repo,
+            check=True,
+            capture_output=True,
+        )
+        (tmp_repo / "README.md").write_text("seed\n", encoding="utf-8")
+        subprocess.run(["git", "add", "README.md"], cwd=tmp_repo, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "commit", "-m", "seed repo"],
+            cwd=tmp_repo,
+            check=True,
+            capture_output=True,
+        )
+
+        merged = subprocess.run(
+            ["make", "-f", str(repo_root / "Makefile"), "branches-merged"],
+            cwd=tmp_repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        stale = subprocess.run(
+            ["make", "-f", str(repo_root / "Makefile"), "branches-list"],
+            cwd=tmp_repo,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    assert "Local branches merged into main" in merged.stdout
+    assert "Remote tracking branches merged into main" in merged.stdout
+    assert "Stale branches (no remote tracking)" in stale.stdout
