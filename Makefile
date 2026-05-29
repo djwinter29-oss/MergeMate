@@ -41,17 +41,17 @@ coverage:
 
 branches-merged:
 	@echo "=== Local branches merged into main (safe to delete) ==="
-	@git branch --merged main | grep -v "main\|*" | sed 's/^/  /'
+	@git branch --merged main | grep -v "main\|*" | sed 's/^/  /' || true
 	@echo
 	@echo "=== Remote tracking branches merged into main (safe to prune) ==="
-	@git branch -r --merged origin/main | grep -v "origin/main\|origin/HEAD" | sed 's/^/  /'
+	@git branch -r --merged origin/main | grep -v "origin/main\|origin/HEAD" | sed 's/^/  /' || true
 
 branches-list:
 	@echo "=== All local branches ==="
 	@git branch | sed 's/^/  /'
 	@echo
 	@echo "=== Stale branches (no remote tracking) ==="
-	@git branch -vv | grep ': gone]' | sed 's/^/  /'
+	@git branch -vv | grep ': gone]' | sed 's/^/  /' || true
 
 branches-clean: branches-merged
 	@echo
