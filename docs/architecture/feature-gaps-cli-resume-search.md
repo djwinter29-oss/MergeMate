@@ -6,8 +6,9 @@
 
 > Update 2026-05-29: the CLI command surface and basic keyword search have since shipped.
 > `mergemate run`, `mergemate chat`, `mergemate search-runs`, `mergemate search-conversations`,
-> and unified `mergemate search` are available today. This document now serves as a historical
-> design note for the remaining session-resume and FTS-backed search work.
+> and unified `mergemate search` are available today. FTS5-backed phrase-aware search has also
+> shipped (2026-05-29). This document now serves as a historical design note for the session-resume
+> work.
 
 ---
 
