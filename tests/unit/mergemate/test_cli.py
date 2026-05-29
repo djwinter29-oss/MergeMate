@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from urllib.error import HTTPError, URLError
@@ -564,6 +565,85 @@ def _search_runtime(search_run_result=None, search_msg_result=None):
             conversation_repository=ConvRepoStub(),
         ),
     )
+
+
+def test_search_prints_combined_results_in_recency_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    from mergemate.domain.shared import RunStatus
+
+    class FakeRun:
+        run_id = "run12345"
+        workflow = "generate_code"
+        status = RunStatus.COMPLETED
+        prompt = "Build the CLI"
+        updated_at = datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
+
+    monkeypatch.setattr(
+        cli,
+        "bootstrap",
+        lambda _config: _search_runtime(
+            search_run_result=[FakeRun()],
+            search_msg_result=[
+                {
+                    "chat_id": 99,
+                    "role": "assistant",
+                    "content": "Unified search result",
+                    "created_at": "2026-01-03T00:00:00+00:00",
+                }
+            ],
+        ),
+    )
+
+    result = runner.invoke(cli.app, ["search", "CLI"])
+
+    assert result.exit_code == 0
+    lines = [line for line in result.stdout.splitlines() if line.strip()]
+    assert lines[0].startswith("[chat:99 assistant]")
+    assert lines[1].startswith("[run run12345]")
+
+
+def test_search_respects_combined_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    from mergemate.domain.shared import RunStatus
+
+    class FakeRun:
+        def __init__(self, run_id: str, updated_at: datetime) -> None:
+            self.run_id = run_id
+            self.workflow = "generate_code"
+            self.status = RunStatus.COMPLETED
+            self.prompt = f"Prompt {run_id}"
+            self.updated_at = updated_at
+
+    monkeypatch.setattr(
+        cli,
+        "bootstrap",
+        lambda _config: _search_runtime(
+            search_run_result=[
+                FakeRun("runA", datetime(2026, 1, 1, 0, 0, tzinfo=UTC)),
+                FakeRun("runB", datetime(2026, 1, 2, 0, 0, tzinfo=UTC)),
+            ],
+            search_msg_result=[
+                {
+                    "chat_id": 1,
+                    "role": "user",
+                    "content": "Message A",
+                    "created_at": "2026-01-03T00:00:00+00:00",
+                },
+                {
+                    "chat_id": 2,
+                    "role": "assistant",
+                    "content": "Message B",
+                    "created_at": "2026-01-04T00:00:00+00:00",
+                },
+            ],
+        ),
+    )
+
+    result = runner.invoke(cli.app, ["search", "Prompt", "--limit", "2"])
+
+    assert result.exit_code == 0
+    lines = [line for line in result.stdout.splitlines() if line.strip()]
+    assert len(lines) == 2
+    assert lines[0].startswith("[chat:2 assistant]")
+    assert lines[1].startswith("[chat:1 user]")
 
 
 def test_search_runs_prints_empty(monkeypatch: pytest.MonkeyPatch) -> None:

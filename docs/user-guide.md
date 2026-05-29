@@ -180,6 +180,9 @@ mergemate platform-auth gitlab
 Search stored runs and conversation history:
 
 ```bash
+mergemate search "retry after"
+mergemate search "webhook" --limit 5
+
 mergemate search-runs "retry after"
 mergemate search-runs "webhook" --limit 5
 
@@ -187,6 +190,7 @@ mergemate search-conversations "docker"
 mergemate search-conversations "status update" --limit 5
 ```
 
+`search` returns a single recency-ordered stream that combines matching runs and chat messages.
 `search-runs` matches stored run prompts, results, and metadata fields. `search-conversations`
 matches saved chat messages, which makes it useful for recalling prior requirements or follow-up
 context without scanning the raw database manually.
