@@ -41,7 +41,10 @@ mergemate chat [--session <name>] [--agent <name>]
 Session names are hashed into deterministic positive integers used as `chat_id`:
 
 ```python
-session_id = abs(hash(f"cli:{session_name}")) % (2**31 - 1)
+from hashlib import blake2s
+
+digest = blake2s(f"cli:{session_name}".encode("utf-8"), digest_size=8).digest()
+session_id = 1 + (int.from_bytes(digest, "big") % (2**31 - 2))
 ```
 
 This ensures:
