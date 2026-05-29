@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Changed
+
+- **Run repo scope consistency** — `AgentRun` now stores the `repo_name`
+  that was in effect when the run was submitted. The SQLite run repository
+  persists it, and orchestration prefers the run's own repository scope when
+  loading repo knowledge. This keeps repo-scoped memory aligned with the
+  submitted run even if the config changes later. Existing runs without a
+  `repo_name` fall back to the current config value (backward compatible).
+
 ### Added
 
 - **FTS5-backed search** — both `search-runs` and `search-conversations` (and
