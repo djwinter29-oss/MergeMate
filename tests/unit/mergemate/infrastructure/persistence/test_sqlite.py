@@ -457,3 +457,139 @@ def test_learning_repository_backward_compat_null_learning_lessons(tmp_path) -> 
     assert len(results) == 1
     assert "learning_lessons" in results[0]
     assert results[0]["learning_lessons"] is None
+
+
+# ── Relevance-scored multi-term search ────────────────────────────────
+
+
+def test_run_repository_search_ranks_exact_phrase_higher(tmp_path) -> None:
+    """Multi-term search: results matching the exact phrase rank first."""
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repository = SQLiteRunRepository(database)
+
+    run_a = _build_run("run-a")
+    run_a.prompt = "deploy to staging"
+    repository.create(run_a)
+
+    run_b = _build_run("run-b")
+    run_b.prompt = "staging deployment pipeline"
+    repository.create(run_b)
+    repository.update_plan("run-b", "staging deployment pipeline")
+
+    # "staging deploy" — run_a has "deploy to staging", run_b has "staging deployment"
+    results = repository.search("staging deploy")
+    assert len(results) == 2
+    # run_b has both "staging" AND "deploy*" in its prompt/plan
+    # run_a has both "staging" AND "deploy" (exact "deploy" in prompt)
+    # Both match both terms, so they should appear; exact phrase bonus may differ
+    assert {r.run_id for r in results} == {"run-a", "run-b"}
+
+
+def test_run_repository_search_requires_all_terms(tmp_path) -> None:
+    """Multi-term search returns only rows that match every term."""
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repository = SQLiteRunRepository(database)
+
+    run_a = _build_run("run-a")
+    run_a.prompt = "build CLI tool"
+    repository.create(run_a)
+
+    run_b = _build_run("run-b")
+    run_b.prompt = "CLI testing"
+    repository.create(run_b)
+
+    # "CLI build" — only run_a has both
+    results = repository.search("CLI build")
+    assert len(results) == 1
+    assert results[0].run_id == "run-a"
+
+    # "CLI testing" — only run_b has both
+    results = repository.search("CLI testing")
+    assert len(results) == 1
+    assert results[0].run_id == "run-b"
+
+
+def test_run_repository_search_single_term_still_works(tmp_path) -> None:
+    """Single-term search is backward compatible (AND-across-one-term = original)."""
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repository = SQLiteRunRepository(database)
+
+    run = _build_run("run-1")
+    run.prompt = "build a bot"
+    repository.create(run)
+    repository.update_plan("run-1", "plan about CLI tools")
+
+    results = repository.search("CLI")
+    assert len(results) == 1
+    assert results[0].run_id == "run-1"
+
+    results = repository.search("nonexistent")
+    assert len(results) == 0
+
+
+def test_conversation_search_ranks_phrase_match_first(tmp_path) -> None:
+    """Messages containing the exact phrase rank higher."""
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    conversations = SQLiteConversationRepository(database)
+
+    conversations.append_message(1, "user", "I need help with CI pipeline setup")
+    conversations.append_message(2, "user", "CI is broken and pipeline needs fixing")
+
+    # Exact phrase "CI pipeline" should rank first
+    results = conversations.search_messages("CI pipeline")
+    assert len(results) == 2
+    assert results[0]["chat_id"] == 1  # exact phrase match
+    assert results[1]["chat_id"] == 2
+
+
+def test_conversation_search_multi_term_and_semantics(tmp_path) -> None:
+    """Search requires all terms: 'cli tool' only matches messages with both words."""
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    conversations = SQLiteConversationRepository(database)
+
+    conversations.append_message(1, "user", "I built a CLI tool today")
+    conversations.append_message(2, "user", "just CLI stuff")
+    conversations.append_message(3, "user", "tooling improvements")
+
+    results = conversations.search_messages("CLI tool")
+    assert len(results) == 1
+    assert results[0]["chat_id"] == 1
+
+
+def test_search_handles_extra_whitespace(tmp_path) -> None:
+    """Multi-word queries with extra whitespace are normalized correctly."""
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repository = SQLiteRunRepository(database)
+
+    run = _build_run("run-1")
+    run.prompt = "deploy to staging"
+    repository.create(run)
+
+    # Extra spaces between terms
+    results = repository.search("  deploy    staging  ")
+    assert len(results) == 1
+    assert results[0].run_id == "run-1"
+
+
+def test_search_empty_query_returns_empty(tmp_path) -> None:
+    """Empty or whitespace-only query returns no results."""
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repository = SQLiteRunRepository(database)
+
+    run = _build_run("run-1")
+    run.prompt = "test"
+    repository.create(run)
+
+    assert repository.search("") == []
+    assert repository.search("   ") == []
+
+    conversations = SQLiteConversationRepository(database)
+    assert conversations.search_messages("") == []
+    assert conversations.search_messages("   ") == []

@@ -235,34 +235,78 @@ class SQLiteRunRepository:
         return [self._row_to_run(row) for row in rows]
 
     def search(self, query: str, limit: int = 10, *, chat_id: int | None = None) -> list[AgentRun]:
-        like_query = f"%{query.lower()}%"
-        where_clauses = [
-            "(",
-            "lower(coalesce(run_id, '')) LIKE ? OR",
-            "lower(coalesce(agent_name, '')) LIKE ? OR",
-            "lower(coalesce(workflow, '')) LIKE ? OR",
-            "lower(coalesce(status, '')) LIKE ? OR",
-            "lower(coalesce(current_stage, '')) LIKE ? OR",
-            "lower(coalesce(prompt, '')) LIKE ? OR",
-            "lower(coalesce(plan_text, '')) LIKE ? OR",
-            "lower(coalesce(design_text, '')) LIKE ? OR",
-            "lower(coalesce(test_text, '')) LIKE ? OR",
-            "lower(coalesce(review_text, '')) LIKE ? OR",
-            "lower(coalesce(result_text, '')) LIKE ? OR",
-            "lower(coalesce(error_text, '')) LIKE ?",
-            ")",
+        terms = [t.strip().lower() for t in query.split() if t.strip()]
+        if not terms:
+            return []
+
+        # Build a LIKE clause for each term so every individual term must appear
+        # somewhere in the searched fields (OR across fields, AND across terms).
+        search_fields = [
+            "lower(coalesce(run_id, ''))",
+            "lower(coalesce(agent_name, ''))",
+            "lower(coalesce(workflow, ''))",
+            "lower(coalesce(status, ''))",
+            "lower(coalesce(current_stage, ''))",
+            "lower(coalesce(prompt, ''))",
+            "lower(coalesce(plan_text, ''))",
+            "lower(coalesce(design_text, ''))",
+            "lower(coalesce(test_text, ''))",
+            "lower(coalesce(review_text, ''))",
+            "lower(coalesce(result_text, ''))",
+            "lower(coalesce(error_text, ''))",
         ]
-        parameters: list[object] = [like_query] * 12
+
+        # For each term we require: (field1 LIKE ? OR … OR field12 LIKE ?)
+        term_clauses: list[str] = []
+        for term in terms:
+            parts = " OR ".join(f"{fld} LIKE ?" for fld in search_fields)
+            term_clauses.append(f"({parts})")
+
+        where_sql = " AND ".join(term_clauses)
+        chat_where = ""
+
         if chat_id is not None:
-            where_clauses.append("AND chat_id = ?")
-            parameters.append(chat_id)
+            chat_where = " AND chat_id = ?"
+
+        # Relevance score: sum across fields of (term matches + exact-phrase bonus).
+        # For each field we count how many terms match, then add +1 for the field
+        # if the full phrase also matches that field (bonus for exact match).
+        score_parts: list[str] = []
+        for fld in search_fields:
+            # count of matching terms for this field
+            term_counts = " + ".join(f"CASE WHEN {fld} LIKE ? THEN 1 ELSE 0 END" for _ in terms)
+            # exact phrase bonus
+            full_phrase_bonus = f"CASE WHEN {fld} LIKE ? THEN 1 ELSE 0 END"
+            score_parts.append(f"({term_counts} + {full_phrase_bonus})")
+
+        relevance_score = " + ".join(score_parts)
+
+        # Parameter order must match SQL text order: SELECT (score params) then
+        # WHERE (term params + chat_id), then LIMIT.
+        score_params: list[object] = []
+        for fld in search_fields:
+            for term in terms:
+                score_params.append(f"%{term}%")
+        for fld in search_fields:
+            score_params.append(f"%{query.lower()}%")
+
+        where_params: list[object] = []
+        for term in terms:
+            like_param = f"%{term}%"
+            where_params.extend([like_param] * len(search_fields))
+        if chat_id is not None:
+            where_params.append(chat_id)
+
+        parameters: list[object] = score_params + where_params + [limit]
+
         query_sql = f"""
-                SELECT * FROM agent_runs
-                WHERE {" ".join(where_clauses)}
-                ORDER BY updated_at DESC
+                SELECT *, ({relevance_score}) AS _score
+                FROM agent_runs
+                WHERE {where_sql}{chat_where}
+                ORDER BY _score DESC, updated_at DESC
                 LIMIT ?
                 """
-        parameters.append(limit)
+
         with self._database.connection() as connection:
             rows = connection.execute(query_sql, tuple(parameters)).fetchall()
         return [self._row_to_run(row) for row in rows]
@@ -496,20 +540,40 @@ class SQLiteConversationRepository:
         *,
         chat_id: int | None = None,
     ) -> list[dict[str, str | int]]:
-        like_query = f"%{query.lower()}%"
-        query_sql = """
-                SELECT chat_id, role, content, created_at
-                FROM conversation_messages
-                WHERE lower(coalesce(content, '')) LIKE ?
-                """
-        parameters: list[object] = [like_query]
+        terms = [t.strip().lower() for t in query.split() if t.strip()]
+        if not terms:
+            return []
+
+        # Build AND-clauses: each term must appear in the content field.
+        term_clauses = ["lower(coalesce(content, '')) LIKE ?" for _ in terms]
+        where_sql = " AND ".join(term_clauses)
+        where_params: list[object] = []
+        for term in terms:
+            where_params.append(f"%{term}%")
         if chat_id is not None:
-            query_sql += " AND chat_id = ?"
-            parameters.append(chat_id)
-        query_sql += " ORDER BY created_at DESC LIMIT ?"
-        parameters.append(limit)
+            where_sql += " AND chat_id = ?"
+            where_params.append(chat_id)
+
+        # Relevance score: each term match + exact phrase bonus
+        term_score = " + ".join(
+            "CASE WHEN lower(coalesce(content, '')) LIKE ? THEN 1 ELSE 0 END" for _ in terms
+        )
+        phrase_bonus = "CASE WHEN lower(coalesce(content, '')) LIKE ? THEN 1 ELSE 0 END"
+        relevance_score = f"({term_score} + {phrase_bonus})"
+
+        score_params = [f"%{t}%" for t in terms] + [f"%{query.lower()}%"]
+
+        query_sql = f"""
+                SELECT chat_id, role, content, created_at, ({relevance_score}) AS _score
+                FROM conversation_messages
+                WHERE {where_sql}
+                ORDER BY _score DESC, created_at DESC
+                LIMIT ?
+                """
+        all_params = score_params + where_params + [limit]
+
         with self._database.connection() as connection:
-            rows = connection.execute(query_sql, tuple(parameters)).fetchall()
+            rows = connection.execute(query_sql, tuple(all_params)).fetchall()
         return [
             {
                 "chat_id": row["chat_id"],
