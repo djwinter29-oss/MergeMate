@@ -12,4 +12,6 @@ class ContextService:
         self._conversation_repository.append_message(chat_id, role, content)
 
     def load_recent_messages(self, chat_id: int, limit: int = 8) -> list[dict[str, str]]:
-        return cast(list[dict[str, str]], self._conversation_repository.list_messages(chat_id, limit=limit))
+        return cast(
+            list[dict[str, str]], self._conversation_repository.list_messages(chat_id, limit=limit)
+        )

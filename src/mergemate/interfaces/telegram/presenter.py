@@ -17,6 +17,8 @@ class _RunLike(Protocol):
     approved: bool
     tool_events: list[dict[str, str]]
     latest_tool_event: dict[str, str] | None
+
+
 def _remaining_seconds(run: _RunLike) -> int | None:
     if run.estimate_seconds is None:
         return None

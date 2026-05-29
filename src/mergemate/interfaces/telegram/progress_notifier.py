@@ -47,7 +47,9 @@ def _tool_event_signature(run: Any) -> tuple[str, str, str, str] | None:
 
 
 def _watcher_registry(application: _ApplicationLike) -> dict[str, asyncio.Task[None]]:
-    return cast(dict[str, asyncio.Task[None]], application.bot_data.setdefault(PROGRESS_WATCHERS_KEY, {}))
+    return cast(
+        dict[str, asyncio.Task[None]], application.bot_data.setdefault(PROGRESS_WATCHERS_KEY, {})
+    )
 
 
 def _terminal_delivery_registry(application: _ApplicationLike) -> set[str]:
@@ -67,7 +69,9 @@ async def notify_terminal_update(application: _ApplicationLike, chat_id: int, ru
     return True
 
 
-def start_progress_watcher(application: _ApplicationLike, runtime: Any, chat_id: int, run_id: str) -> None:
+def start_progress_watcher(
+    application: _ApplicationLike, runtime: Any, chat_id: int, run_id: str
+) -> None:
     registry = _watcher_registry(application)
     existing_task = registry.get(run_id)
     if existing_task is not None and not existing_task.done():
@@ -85,7 +89,9 @@ def start_progress_watcher(application: _ApplicationLike, runtime: Any, chat_id:
 
 
 async def stop_progress_watchers(application: _ApplicationLike) -> None:
-    registry = cast(dict[str, asyncio.Task[None]], application.bot_data.get(PROGRESS_WATCHERS_KEY, {}))
+    registry = cast(
+        dict[str, asyncio.Task[None]], application.bot_data.get(PROGRESS_WATCHERS_KEY, {})
+    )
     tasks = [task for task in registry.values() if not task.done()]
     for task in tasks:
         task.cancel()
@@ -95,7 +101,9 @@ async def stop_progress_watchers(application: _ApplicationLike) -> None:
     cast(set[str], application.bot_data.get(TERMINAL_DELIVERIES_KEY, set())).clear()
 
 
-async def watch_run_progress(application: _ApplicationLike, runtime: Any, chat_id: int, run_id: str) -> None:
+async def watch_run_progress(
+    application: _ApplicationLike, runtime: Any, chat_id: int, run_id: str
+) -> None:
     interval_seconds = max(runtime.settings.runtime.status_update_interval_seconds, 1)
     max_poll_iterations = getattr(runtime.settings.runtime, "max_poll_iterations", None)
     poll_count = 0

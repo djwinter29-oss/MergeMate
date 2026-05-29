@@ -72,7 +72,9 @@ class WorkflowService:
                 workflow,
                 preferred_agent_name=preferred_agent_name or worker_name,
             )
-            return cast(str, await self._llm_gateway.generate(agent_name, system_prompt, user_prompt))
+            return cast(
+                str, await self._llm_gateway.generate(agent_name, system_prompt, user_prompt)
+            )
 
         worker_names = [w.name for w in role_config.workers]
         raw_results: list[Any] = await asyncio.gather(
