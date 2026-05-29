@@ -242,7 +242,8 @@ def _extract_retry_after(
     current_time = now or datetime.now(timezone.utc)
     if current_time.tzinfo is None:
         current_time = current_time.replace(tzinfo=timezone.utc)
-    return cast(float, max(0.0, (retry_after_at - current_time).total_seconds()))
+    result: float = max(0.0, (retry_after_at - current_time).total_seconds())
+    return result
 
 
 # ── Gateway class ─────────────────────────────────────────────────────
