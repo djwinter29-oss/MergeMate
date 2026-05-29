@@ -199,6 +199,10 @@ matches saved chat messages, which makes it useful for recalling prior requireme
 context without scanning the raw database manually. Add `--session` when you want to scope the
 lookup to a named session.
 
+The runtime writes generated review reports under the workspace's `docs/reviews/` tree. This is
+separate from the repository's curated review notes under `docs/review/`, which are part of the
+static documentation set.
+
 ## Telegram Workflow
 
 The default workflow is:
