@@ -1,20 +1,25 @@
-# Architecture Design: Feature Gaps — Missing CLI Commands, Session Resume, Conversation Search
+# Architecture Design: Feature Gaps — Session Resume and Search Evolution
 
-- Status: Draft
+- Status: Historical design note (partially implemented)
 - Date: 2026-05-10
 - Review: Architecture Review P2.1 — 3 Feature Gaps from deep review
+
+> Update 2026-05-29: the CLI command surface and basic keyword search have since shipped.
+> `mergemate run`, `mergemate chat`, `mergemate search-runs`, `mergemate search-conversations`,
+> and unified `mergemate search` are available today. This document now serves as a historical
+> design note for the remaining session-resume and FTS-backed search work.
 
 ---
 
 ## 1. Problem Statement
 
-The deep review identified 3 feature gaps that were documented in tickets but never implemented:
+The deep review originally identified 3 feature gaps that were documented in tickets but never implemented:
 
-1. **Missing CLI commands** — `mergemate run` and `mergemate chat` were designed (see `docs/implementation/cli-interactive-mode.md`) but not landed in `src/mergemate/cli.py`.
-2. **Session resume capability** — The `--session <name>` CLI option exists as a design concept, but no resume-from-last-unsaved-session logic exists when the user re-enters a session whose last run was interrupted or incomplete.
-3. **Conversation search** — Basic keyword search now exists via `mergemate search-runs` and `mergemate search-conversations`, but the unified FTS-based search design from this review has not been implemented.
+1. **Missing CLI commands** — `mergemate run` and `mergemate chat` were designed (see `docs/implementation/cli-interactive-mode.md`) and are now implemented in `src/mergemate/cli.py`.
+2. **Session resume capability** — The `--session <name>` CLI option exists, but no resume-from-last-unsaved-session logic exists when the user re-enters a session whose last run was interrupted or incomplete.
+3. **Conversation search** — Basic keyword search now exists via `mergemate search-runs`, `mergemate search-conversations`, and unified `mergemate search`; the remaining design gap is SQLite FTS-backed ranking and phrase-aware search.
 
-All 3 gaps relate to the same CLI surface (`cli.py`) and conversation/session data model, so they are designed together here.
+The original review grouped these gaps because they touched the same CLI surface (`cli.py`) and conversation/session data model. The shipped command surface is now complete; the remaining work is about richer session recovery and search quality.
 
 ---
 
@@ -23,8 +28,8 @@ All 3 gaps relate to the same CLI surface (`cli.py`) and conversation/session da
 ### 2.1 CLI Framework
 
 - **Framework**: `typer` with subcommands
-- **Current commands**: `run-bot`, `validate-config`, `print-config-path`, `probe-readiness`, `install-package`, `repo-context`, `platform-auth`, `search-runs`, `search-conversations`
-- **Missing (designed but not implemented)**: `mergemate run` (one-shot prompt execution) and `mergemate chat` (interactive REPL) — see `docs/implementation/cli-interactive-mode.md`
+- **Current commands**: `run-bot`, `validate-config`, `print-config-path`, `probe-readiness`, `install-package`, `repo-context`, `platform-auth`, `search-runs`, `search-conversations`, `search`, `run`, `chat`
+- **Historical gap**: `mergemate run` (one-shot prompt execution) and `mergemate chat` (interactive REPL) were once missing, but are now implemented — see `docs/implementation/cli-interactive-mode.md`
 - **Telegram bot handlers** (for reference): `/start`, `/status`, `/tools`, `/approve`, `/cancel` plus free-text prompt handling
 
 ### 2.2 Session & Conversation Data Model
@@ -56,12 +61,14 @@ Currently:
 Currently:
 - `mergemate search-runs` searches stored run prompts, results, and metadata with repository-level keyword matching
 - `mergemate search-conversations` searches saved chat messages with repository-level keyword matching
-- No unified search command exists that combines messages and runs in one result set
+- `mergemate search` combines matching runs and messages into one recency-ordered result set
 - No SQLite FTS table exists to support relevance-ranked or phrase-aware search
 
 ---
 
-## 3. Design: Missing CLI Commands (`mergemate run` + `mergemate chat`)
+## 3. Historical Design: CLI Commands (`mergemate run` + `mergemate chat`)
+
+The interface and sketches below are preserved from the original proposal. The commands now ship in `src/mergemate/cli.py`.
 
 ### 3.1 `mergemate run`
 
@@ -262,7 +269,9 @@ When `--session` is specified and a resumable run exists, the `run` command can 
 
 ---
 
-## 5. Design: Conversation Search
+## 5. Historical Design: Conversation Search
+
+The existing CLI now supports keyword search. The sketches below describe the remaining FTS-backed search evolution.
 
 ### 5.1 Requirements
 
