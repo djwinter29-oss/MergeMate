@@ -134,6 +134,7 @@ class WorkflowControlConfigStub:
 @dataclass(slots=True)
 class SettingsStub:
     workflow_control: WorkflowControlConfigStub
+    repo_name: str | None = None
 
 
 @pytest.mark.asyncio
@@ -173,7 +174,7 @@ async def test_execute_auto_dispatches_when_confirmation_disabled() -> None:
         ContextServiceStub(),
         dispatcher,
         PlanningServiceStub(),
-        SettingsStub(WorkflowControlConfigStub(require_confirmation=False)),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=False), repo_name="mergemate"),
     )
 
     result = await use_case.execute(
@@ -194,6 +195,7 @@ async def test_execute_auto_dispatches_when_confirmation_disabled() -> None:
     ]
     saved_run = repository.get(result.run_id)
     assert saved_run is not None
+    assert saved_run.repo_name == "mergemate"
     assert saved_run.approved is True
     assert saved_run.current_stage == "queued_for_execution"
 
@@ -208,7 +210,7 @@ async def test_execute_marks_run_failed_when_plan_drafting_raises() -> None:
         context_service,
         dispatcher,
         FailingPlanningServiceStub(),
-        SettingsStub(WorkflowControlConfigStub(require_confirmation=False)),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=False), repo_name="mergemate"),
     )
 
     result = await use_case.execute(
@@ -242,7 +244,7 @@ async def test_execute_marks_run_failed_when_dispatch_rejects_during_shutdown() 
         ContextServiceStub(),
         dispatcher,
         PlanningServiceStub(),
-        SettingsStub(WorkflowControlConfigStub(require_confirmation=False)),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=False), repo_name="mergemate"),
     )
 
     with pytest.raises(PromptSubmissionError, match="Background worker is stopping"):
