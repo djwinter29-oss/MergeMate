@@ -1,8 +1,8 @@
-# mypy: allow-untyped-defs
 """Background worker for queued runs."""
 
 import asyncio
 import logging
+from typing import Any, cast
 from uuid import uuid4
 
 from mergemate.application.use_cases.submit_prompt import PromptSubmissionError
@@ -17,11 +17,11 @@ logger = logging.getLogger(__name__)
 class BackgroundRunWorker:
     def __init__(
         self,
-        orchestrator,
-        run_repository,
-        run_job_repository,
+        orchestrator: Any,
+        run_repository: Any,
+        run_job_repository: Any,
         queue_backend: JobQueueBackend,
-        submit_prompt,
+        submit_prompt: Any,
         lifecycle_notifier: LifecycleNotifier,
         *,
         max_concurrent_runs: int,
@@ -112,12 +112,12 @@ class BackgroundRunWorker:
         if run is not None:
             await self._notify_job_completion(job.job_type, run)
 
-    async def _process_job(self, job) -> object | None:
+    async def _process_job(self, job: Any) -> object | None:
         if job.job_type == RunJobType.PLAN_RUN:
-            return await self._process_planning_job(job)
-        return await self._process_execution_job(job)
+            return cast(object, await self._process_planning_job(job))
+        return cast(object, await self._process_execution_job(job))
 
-    async def _process_planning_job(self, job):
+    async def _process_planning_job(self, job: Any) -> Any:
         run_id = job.run_id
         try:
             result = await self._submit_prompt.complete_planning(run_id)
@@ -130,7 +130,7 @@ class BackgroundRunWorker:
         self._run_job_repository.complete_job(job.job_id)
         return self._run_repository.get(run_id)
 
-    async def _process_execution_job(self, job):
+    async def _process_execution_job(self, job: Any) -> Any:
         run_id = job.run_id
         try:
             run = await self._orchestrator.process_run(run_id)
@@ -158,7 +158,7 @@ class BackgroundRunWorker:
                     lease_seconds=self._lease_seconds,
                 )
 
-    async def _notify_job_completion(self, job_type, run) -> None:
+    async def _notify_job_completion(self, job_type: Any, run: Any) -> None:
         if run is None:
             return
         if job_type == RunJobType.PLAN_RUN:
@@ -172,7 +172,7 @@ class BackgroundRunWorker:
             return
         await self._lifecycle_notifier.notify_terminal(run)
 
-    def _mark_shutdown_interrupted(self, run_id: str, job_id: str):
+    def _mark_shutdown_interrupted(self, run_id: str, job_id: str) -> Any:
         self._run_job_repository.fail_job(job_id, "Run interrupted during shutdown.")
         existing = self._run_repository.get(run_id)
         if existing is None:

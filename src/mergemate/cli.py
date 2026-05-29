@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 import time
-from typing import Sequence
+from typing import Any, Sequence, cast
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
@@ -20,7 +20,7 @@ from mergemate.interfaces.telegram.bot import TelegramBotRuntime
 app = typer.Typer(help="MergeMate command line interface")
 
 
-def _resolve_readiness_url(settings) -> str:
+def _resolve_readiness_url(settings: Any) -> str:
     telegram_settings = settings.telegram
     if telegram_settings.mode != "webhook":
         raise ValueError("Readiness probing is only available when telegram.mode is webhook")
@@ -35,7 +35,7 @@ def _resolve_readiness_url(settings) -> str:
     )
 
 
-def _resolve_runtime_summary(settings) -> tuple[str, str]:
+def _resolve_runtime_summary(settings: Any) -> tuple[str, str]:
     default_provider = settings.default_provider
     default_agent = settings.default_agent
     return default_provider, default_agent
@@ -235,7 +235,7 @@ def search(
     _print_combined_search_results(runs, messages, limit=limit)
 
 
-def _print_search_results(runs: Sequence) -> None:
+def _print_search_results(runs: Sequence[Any]) -> None:
     if not runs:
         typer.echo("No matching runs found.")
         return
@@ -252,7 +252,7 @@ def _print_message_search_results(messages: list[dict[str, str | int]]) -> None:
 
 
 def _print_combined_search_results(
-    runs: Sequence,
+    runs: Sequence[Any],
     messages: list[dict[str, str | int]],
     *,
     limit: int,
@@ -274,7 +274,7 @@ def _print_combined_search_results(
         typer.echo(result)
 
 
-def _build_run_search_results(runs: Sequence) -> list[str]:
+def _build_run_search_results(runs: Sequence[Any]) -> list[str]:
     results: list[str] = []
     for run in runs:
         snippet = (run.prompt or "")[:80].replace("\n", " ")
@@ -308,7 +308,7 @@ def _resolve_session_chat_id(session_name: str | None) -> int:
 def _resolve_workflow(
     agent_name: str,
     workflow: str | None,
-    runtime,
+    runtime: Any,
 ) -> str:
     """Resolve the workflow for an agent, defaulting to the configured one."""
     from mergemate.config.models import ConfigWorkflowNotFoundError
@@ -317,14 +317,14 @@ def _resolve_workflow(
         return workflow
     agent_cfg = runtime.settings.agents.get(agent_name)
     if agent_cfg is not None and agent_cfg.workflow is not None:
-        return agent_cfg.workflow
+        return cast(str, agent_cfg.workflow)
     raise ConfigWorkflowNotFoundError(
         f"Agent {agent_name!r} has no default workflow. Use --workflow to specify one."
     )
 
 
 def _print_run_result(
-    run,
+    run: Any,
     *,
     quiet: bool = False,
 ) -> None:
@@ -346,7 +346,7 @@ def _print_run_result(
         typer.echo(f"Error: {run.error_text}", err=True)
 
 
-def _print_conversation_history(runtime, chat_id: int, *, limit: int = 10) -> None:
+def _print_conversation_history(runtime: Any, chat_id: int, *, limit: int = 10) -> None:
     """Print recent conversation history for a session."""
     messages = runtime.persistence.conversation_repository.load_recent_messages(
         chat_id, limit=limit
@@ -367,7 +367,7 @@ def _print_conversation_history(runtime, chat_id: int, *, limit: int = 10) -> No
     typer.echo("----------------------------")
 
 
-def _poll_run(runtime, run_id: str, *, timeout: float | None, poll_interval: float) -> object:
+def _poll_run(runtime: Any, run_id: str, *, timeout: float | None, poll_interval: float) -> object:
     """Poll for run completion. Returns the terminal run or raises typer.Exit."""
     import time as _time
 
@@ -386,12 +386,12 @@ def _poll_run(runtime, run_id: str, *, timeout: float | None, poll_interval: flo
     raise typer.Exit(code=1)
 
 
-def _temporary_auto_approve(runtime):
+def _temporary_auto_approve(runtime: Any) -> Any:
     """Context manager that temporarily disables confirmation requirements."""
     import contextlib
 
     @contextlib.contextmanager
-    def _manager():
+    def _manager() -> Any:
         original = runtime.settings.workflow_control.require_confirmation
         runtime.settings.workflow_control.require_confirmation = False
         try:
@@ -425,7 +425,7 @@ def run_cli(
         None, help="Session name for persistent conversation history"
     ),
     poll_interval: float = typer.Option(2.0, min=0.5, help="Polling interval in seconds"),
-    config: Path | None = _CONFIG_OPTION,  # type: ignore[arg-type]
+    config: Path | None = _CONFIG_OPTION,
 ) -> None:
     """Submit a one-shot prompt and wait for completion."""
     import asyncio
@@ -471,7 +471,7 @@ def chat_cli(
     ),
     timeout: float | None = typer.Option(None, min=1, help="Max seconds to wait per run"),
     poll_interval: float = typer.Option(2.0, min=0.5, help="Polling interval in seconds"),
-    config: Path | None = _CONFIG_OPTION,  # type: ignore[arg-type]
+    config: Path | None = _CONFIG_OPTION,
 ) -> None:
     """Interactive REPL for multi-turn conversation with session persistence."""
     import asyncio

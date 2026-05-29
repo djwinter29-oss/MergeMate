@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol, cast
 import warnings as _warnings
 
 from .enums import (
@@ -48,10 +48,20 @@ from .value_objects import (
 # Use lazy imports to avoid circular imports (policies → shared.enums → shared).
 
 
-def _get_policies() -> Any:
+class _PoliciesProtocol(Protocol):
+    def is_user_facing_workflow(self, *args: object, **kwargs: object) -> bool: ...
+
+    def resolve_workflow_name(self, *args: object, **kwargs: object) -> object: ...
+
+    def uses_multi_stage_delivery(self, *args: object, **kwargs: object) -> bool: ...
+
+    def workflow_prompt_file(self, *args: object, **kwargs: object) -> str: ...
+
+
+def _get_policies() -> _PoliciesProtocol:
     import importlib
 
-    return importlib.import_module("mergemate.domain.policies")
+    return cast(_PoliciesProtocol, importlib.import_module("mergemate.domain.policies"))
 
 
 def __getattr__(name: str) -> Any:
@@ -71,7 +81,7 @@ def is_user_facing_workflow(*args: object, **kwargs: object) -> bool:
         DeprecationWarning,
         stacklevel=2,
     )
-    return _get_policies().is_user_facing_workflow(*args, **kwargs)  # type: ignore[arg-type]
+    return _get_policies().is_user_facing_workflow(*args, **kwargs)
 
 
 def resolve_workflow_name(*args: object, **kwargs: object) -> object:
@@ -81,7 +91,7 @@ def resolve_workflow_name(*args: object, **kwargs: object) -> object:
         DeprecationWarning,
         stacklevel=2,
     )
-    return _get_policies().resolve_workflow_name(*args, **kwargs)  # type: ignore[arg-type]
+    return _get_policies().resolve_workflow_name(*args, **kwargs)
 
 
 def uses_multi_stage_delivery(*args: object, **kwargs: object) -> bool:
@@ -91,7 +101,7 @@ def uses_multi_stage_delivery(*args: object, **kwargs: object) -> bool:
         DeprecationWarning,
         stacklevel=2,
     )
-    return _get_policies().uses_multi_stage_delivery(*args, **kwargs)  # type: ignore[arg-type]
+    return _get_policies().uses_multi_stage_delivery(*args, **kwargs)
 
 
 def workflow_prompt_file(*args: object, **kwargs: object) -> str:
@@ -101,7 +111,7 @@ def workflow_prompt_file(*args: object, **kwargs: object) -> str:
         DeprecationWarning,
         stacklevel=2,
     )
-    return _get_policies().workflow_prompt_file(*args, **kwargs)  # type: ignore[arg-type]
+    return _get_policies().workflow_prompt_file(*args, **kwargs)
 
 
 __all__ = [

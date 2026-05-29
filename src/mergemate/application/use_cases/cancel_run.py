@@ -1,7 +1,7 @@
-# mypy: allow-untyped-defs
 """Cancel a run that is still awaiting confirmation."""
 
 from dataclasses import dataclass
+from typing import Any
 
 from mergemate.domain.shared import RunStatus
 
@@ -14,10 +14,10 @@ class CancelRunResult:
 
 
 class CancelRunUseCase:
-    def __init__(self, run_repository) -> None:
+    def __init__(self, run_repository: Any) -> None:
         self._run_repository = run_repository
 
-    def execute(self, run_id: str | None = None, *, chat_id: int | None = None):
+    def execute(self, run_id: str | None = None, *, chat_id: int | None = None) -> CancelRunResult | None:
         target_run = None
         if run_id is not None:
             target_run = self._run_repository.get(run_id)

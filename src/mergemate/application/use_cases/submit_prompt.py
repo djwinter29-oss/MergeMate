@@ -1,8 +1,8 @@
-# mypy: allow-untyped-defs
 """Submit a prompt and return an immediate acknowledgement."""
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from mergemate.application.jobs.dispatcher import RunDispatcher
@@ -38,11 +38,11 @@ class PromptSubmissionError(RunSubmissionError):
 class SubmitPromptUseCase:
     def __init__(
         self,
-        run_repository,
-        context_service,
+        run_repository: Any,
+        context_service: Any,
         dispatcher: RunDispatcher,
-        planning_service,
-        settings,
+        planning_service: Any,
+        settings: Any,
     ) -> None:
         self._run_repository = run_repository
         self._context_service = context_service

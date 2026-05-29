@@ -3,6 +3,7 @@
 
 import asyncio
 import logging
+from typing import Any, Protocol, cast
 
 from mergemate.domain.shared import RunStatus
 from mergemate.interfaces.telegram.message_utils import send_text_chunks
@@ -18,7 +19,14 @@ TERMINAL_DELIVERIES_KEY = "terminal_deliveries"
 logger = logging.getLogger(__name__)
 
 
-def _format_terminal_update(run) -> str:
+class _ApplicationLike(Protocol):
+    bot: Any
+    bot_data: dict[str, object]
+
+    def create_task(self, coro: Any) -> asyncio.Task[None]: ...
+
+
+def _format_terminal_update(run: Any) -> str:
     if run.status == RunStatus.COMPLETED:
         return format_completion(run.run_id, getattr(run, "result_text", None) or "")
     if run.status == RunStatus.CANCELLED:
@@ -26,7 +34,7 @@ def _format_terminal_update(run) -> str:
     return format_failure(run.run_id, getattr(run, "error_text", None))
 
 
-def _tool_event_signature(run) -> tuple[str, str, str, str] | None:
+def _tool_event_signature(run: Any) -> tuple[str, str, str, str] | None:
     latest_tool_event = getattr(run, "latest_tool_event", None)
     if latest_tool_event is None:
         return None
@@ -38,15 +46,15 @@ def _tool_event_signature(run) -> tuple[str, str, str, str] | None:
     )
 
 
-def _watcher_registry(application) -> dict[str, asyncio.Task[None]]:
-    return application.bot_data.setdefault(PROGRESS_WATCHERS_KEY, {})
+def _watcher_registry(application: _ApplicationLike) -> dict[str, asyncio.Task[None]]:
+    return cast(dict[str, asyncio.Task[None]], application.bot_data.setdefault(PROGRESS_WATCHERS_KEY, {}))
 
 
-def _terminal_delivery_registry(application) -> set[str]:
-    return application.bot_data.setdefault(TERMINAL_DELIVERIES_KEY, set())
+def _terminal_delivery_registry(application: _ApplicationLike) -> set[str]:
+    return cast(set[str], application.bot_data.setdefault(TERMINAL_DELIVERIES_KEY, set()))
 
 
-async def notify_terminal_update(application, chat_id: int, run) -> bool:
+async def notify_terminal_update(application: _ApplicationLike, chat_id: int, run: Any) -> bool:
     try:
         await send_text_chunks(
             lambda chunk: application.bot.send_message(chat_id=chat_id, text=chunk),
@@ -59,7 +67,7 @@ async def notify_terminal_update(application, chat_id: int, run) -> bool:
     return True
 
 
-def start_progress_watcher(application, runtime, chat_id: int, run_id: str) -> None:
+def start_progress_watcher(application: _ApplicationLike, runtime: Any, chat_id: int, run_id: str) -> None:
     registry = _watcher_registry(application)
     existing_task = registry.get(run_id)
     if existing_task is not None and not existing_task.done():
@@ -76,18 +84,18 @@ def start_progress_watcher(application, runtime, chat_id: int, run_id: str) -> N
     task.add_done_callback(_cleanup)
 
 
-async def stop_progress_watchers(application) -> None:
-    registry = application.bot_data.get(PROGRESS_WATCHERS_KEY, {})
+async def stop_progress_watchers(application: _ApplicationLike) -> None:
+    registry = cast(dict[str, asyncio.Task[None]], application.bot_data.get(PROGRESS_WATCHERS_KEY, {}))
     tasks = [task for task in registry.values() if not task.done()]
     for task in tasks:
         task.cancel()
     if tasks:
         await asyncio.gather(*tasks, return_exceptions=True)
     registry.clear()
-    application.bot_data.get(TERMINAL_DELIVERIES_KEY, set()).clear()
+    cast(set[str], application.bot_data.get(TERMINAL_DELIVERIES_KEY, set())).clear()
 
 
-async def watch_run_progress(application, runtime, chat_id: int, run_id: str) -> None:
+async def watch_run_progress(application: _ApplicationLike, runtime: Any, chat_id: int, run_id: str) -> None:
     interval_seconds = max(runtime.settings.runtime.status_update_interval_seconds, 1)
     max_poll_iterations = getattr(runtime.settings.runtime, "max_poll_iterations", None)
     poll_count = 0

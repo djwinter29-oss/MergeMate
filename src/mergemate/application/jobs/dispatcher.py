@@ -1,6 +1,7 @@
 """Dispatch accepted work to the background worker."""
 
 from dataclasses import dataclass
+from typing import Any
 
 from mergemate.domain.shared import RunJobType
 from mergemate.domain.shared.exceptions import JobQueueError
@@ -18,7 +19,7 @@ class DispatchResult:
 class RunDispatcher:
     def __init__(
         self,
-        run_job_repository,
+        run_job_repository: Any,
         queue_backend: JobQueueBackend,
     ) -> None:
         self._run_job_repository = run_job_repository

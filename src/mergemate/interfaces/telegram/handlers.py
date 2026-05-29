@@ -1,6 +1,7 @@
 # mypy: allow-untyped-defs
 """Telegram command and message handlers."""
 
+from typing import Any
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -27,16 +28,16 @@ TELEGRAM_MESSAGE_LIMIT = message_utils.TELEGRAM_MESSAGE_LIMIT
 MAX_TOOL_HISTORY_LIMIT = 50
 
 
-def _runtime(context: ContextTypes.DEFAULT_TYPE):
+def _runtime(context: ContextTypes.DEFAULT_TYPE) -> Any:
     return context.application.bot_data["runtime"]
 
 
-def _is_chat_entry_agent(runtime, agent_name: str) -> bool:
+def _is_chat_entry_agent(runtime: Any, agent_name: str) -> bool:
     agent_config = runtime.settings.agents.get(agent_name)
     return agent_config is not None and is_user_facing_workflow(agent_config.workflow)
 
 
-def _build_request(update: Update, runtime) -> TelegramRequest | None:
+def _build_request(update: Update, runtime: Any) -> TelegramRequest | None:
     message = update.effective_message
     user = update.effective_user
     chat = update.effective_chat

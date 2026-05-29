@@ -3,6 +3,7 @@
 
 import asyncio
 from collections.abc import Iterator
+from typing import Any, cast
 
 from mergemate.domain.tools import ToolInvoker
 from mergemate.domain.tools.entities import ToolMetadata
@@ -11,7 +12,12 @@ from mergemate.domain.shared import RunStage, RunStatus, tool_stage
 
 class ToolService:
     def __init__(
-        self, tool_registry, settings, *, run_repository=None, tool_event_repository=None
+        self,
+        tool_registry: Any,
+        settings: Any,
+        *,
+        run_repository: Any = None,
+        tool_event_repository: Any = None,
     ) -> None:
         self._tool_registry = tool_registry
         self._settings = settings
@@ -32,7 +38,7 @@ class ToolService:
         installer = self._tool_registry.get_tool("package_installer")
         if installer is None:
             return {"status": "blocked", "detail": "Package installer tool is not available."}
-        return installer.invoke({"package_name": package_name})
+        return cast(dict[str, str], installer.invoke({"package_name": package_name}))
 
     def _record_tool_event(
         self,

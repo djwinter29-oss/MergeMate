@@ -3,7 +3,7 @@
 
 import asyncio
 import logging
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from mergemate.domain.shared import RunStatus
 from mergemate.interfaces.telegram import message_utils
@@ -27,7 +27,7 @@ class _ApplicationLike(Protocol):
     bot: _BotLike
     bot_data: dict[str, object]
 
-    def create_task(self, coro) -> asyncio.Task[None]: ...
+    def create_task(self, coro: Any) -> asyncio.Task[None]: ...
 
 
 class _RunLike(Protocol):
@@ -49,7 +49,7 @@ class LifecycleNotifier(Protocol):
 
     def bind_application(self, application: _ApplicationLike) -> None: ...
 
-    def bind_runtime(self, runtime) -> None: ...
+    def bind_runtime(self, runtime: Any) -> None: ...
 
     async def notify_plan_ready(self, run: _RunLike) -> bool: ...
 
@@ -62,7 +62,7 @@ logger = logging.getLogger(__name__)
 
 
 class TelegramRunLifecycleNotifier:
-    def __init__(self, settings) -> None:
+    def __init__(self, settings: Any) -> None:
         self._settings = settings
         self._application: _ApplicationLike | None = None
         self._runtime = None
@@ -70,7 +70,7 @@ class TelegramRunLifecycleNotifier:
     def bind_application(self, application: _ApplicationLike) -> None:
         self._application = application
 
-    def bind_runtime(self, runtime) -> None:
+    def bind_runtime(self, runtime: Any) -> None:
         self._runtime = runtime
 
     async def notify_plan_ready(self, run: _RunLike) -> bool:

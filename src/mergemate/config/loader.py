@@ -4,7 +4,7 @@
 from pathlib import Path
 from typing import Any
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 from mergemate.config.models import AppConfig
 
