@@ -646,6 +646,87 @@ def test_search_respects_combined_limit(monkeypatch: pytest.MonkeyPatch) -> None
     assert lines[1].startswith("[chat:1 user]")
 
 
+def test_search_session_filters_combined_results(monkeypatch: pytest.MonkeyPatch) -> None:
+    expected_chat_id = cli._resolve_session_chat_id("my-feature")
+    calls: list[tuple[str, str, int, int | None]] = []
+
+    class RunRepoStub:
+        def search(self, query, limit=10, *, chat_id=None):
+            calls.append(("runs", query, limit, chat_id))
+            return []
+
+    class ConvRepoStub:
+        def search_messages(self, query, limit=10, *, chat_id=None):
+            calls.append(("messages", query, limit, chat_id))
+            return []
+
+    monkeypatch.setattr(
+        cli,
+        "bootstrap",
+        lambda _config: SimpleNamespace(
+            persistence=SimpleNamespace(
+                run_repository=RunRepoStub(),
+                conversation_repository=ConvRepoStub(),
+            )
+        ),
+    )
+
+    result = runner.invoke(cli.app, ["search", "Prompt", "--session", "my-feature"])
+
+    assert result.exit_code == 0
+    assert calls == [
+        ("runs", "Prompt", 10, expected_chat_id),
+        ("messages", "Prompt", 10, expected_chat_id),
+    ]
+
+
+def test_search_runs_session_filters_results(monkeypatch: pytest.MonkeyPatch) -> None:
+    expected_chat_id = cli._resolve_session_chat_id("my-feature")
+    calls: list[tuple[str, str, int, int | None]] = []
+
+    class RunRepoStub:
+        def search(self, query, limit=10, *, chat_id=None):
+            calls.append(("runs", query, limit, chat_id))
+            return []
+
+    monkeypatch.setattr(
+        cli,
+        "bootstrap",
+        lambda _config: SimpleNamespace(persistence=SimpleNamespace(run_repository=RunRepoStub())),
+    )
+
+    result = runner.invoke(cli.app, ["search-runs", "Prompt", "--session", "my-feature"])
+
+    assert result.exit_code == 0
+    assert calls == [("runs", "Prompt", 10, expected_chat_id)]
+
+
+def test_search_conversations_session_filters_results(monkeypatch: pytest.MonkeyPatch) -> None:
+    expected_chat_id = cli._resolve_session_chat_id("my-feature")
+    calls: list[tuple[str, str, int, int | None]] = []
+
+    class ConvRepoStub:
+        def search_messages(self, query, limit=10, *, chat_id=None):
+            calls.append(("messages", query, limit, chat_id))
+            return []
+
+    monkeypatch.setattr(
+        cli,
+        "bootstrap",
+        lambda _config: SimpleNamespace(
+            persistence=SimpleNamespace(conversation_repository=ConvRepoStub())
+        ),
+    )
+
+    result = runner.invoke(
+        cli.app,
+        ["search-conversations", "Prompt", "--session", "my-feature"],
+    )
+
+    assert result.exit_code == 0
+    assert calls == [("messages", "Prompt", 10, expected_chat_id)]
+
+
 def test_search_runs_prints_empty(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli, "bootstrap", lambda _config: _search_runtime())
 
