@@ -1,5 +1,6 @@
-# mypy: allow-untyped-defs
 """Workflow orchestration entrypoint."""
+
+from typing import Any
 
 from mergemate.application.execution_plan import (
     ExecutionContext,
@@ -24,7 +25,7 @@ class AgentOrchestrator:
         latest_run = self._deps.run_repository.get(run_id)
         return latest_run is not None and latest_run.status == RunStatus.CANCELLED
 
-    async def process_run(self, run_id: str):
+    async def process_run(self, run_id: str) -> Any:
         run = self._deps.run_repository.get(run_id)
         if run is None:
             raise RunNotFoundError(f"Run {run_id} was not found")

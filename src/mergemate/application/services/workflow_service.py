@@ -1,8 +1,7 @@
-# mypy: allow-untyped-defs
 """Workflow planning, design, implementation, testing, and review orchestration prompts."""
 
 import asyncio
-from typing import Any
+from typing import Any, cast
 
 from mergemate.application.execution_plan import DirectExecutionPlan, MultiStageExecutionPlan
 from mergemate.domain.policies import uses_multi_stage_delivery
@@ -12,7 +11,7 @@ from mergemate.domain.workflows.stage import get_workflow_definitions
 
 
 class WorkflowService:
-    def __init__(self, llm_gateway, settings) -> None:
+    def __init__(self, llm_gateway: Any, settings: Any) -> None:
         self._llm_gateway = llm_gateway
         self._settings = settings
 
@@ -55,7 +54,7 @@ class WorkflowService:
                 role_config=role_config,
                 preferred_agent_name=preferred_agent_name,
             )
-        return await self._llm_gateway.generate(agent_name, system_prompt, user_prompt)
+        return cast(str, await self._llm_gateway.generate(agent_name, system_prompt, user_prompt))
 
     async def _run_parallel_stage(
         self,
@@ -73,7 +72,9 @@ class WorkflowService:
                 workflow,
                 preferred_agent_name=preferred_agent_name or worker_name,
             )
-            return await self._llm_gateway.generate(agent_name, system_prompt, user_prompt)
+            return cast(
+                str, await self._llm_gateway.generate(agent_name, system_prompt, user_prompt)
+            )
 
         worker_names = [w.name for w in role_config.workers]
         raw_results: list[Any] = await asyncio.gather(
@@ -89,7 +90,7 @@ class WorkflowService:
 
         strategy = role_config.combine_strategy or "sectioned"
         if strategy == "first_success":
-            return non_error_results[0]
+            return cast(str, non_error_results[0])
 
         # sectioned: join results with worker name headers
         output_parts: list[str] = []
@@ -132,7 +133,7 @@ class WorkflowService:
         )
 
     async def execute_direct(self, agent_name: str, system_prompt: str, user_prompt: str) -> str:
-        return await self._llm_gateway.generate(agent_name, system_prompt, user_prompt)
+        return cast(str, await self._llm_gateway.generate(agent_name, system_prompt, user_prompt))
 
     async def generate_tests(
         self, plan_text: str, design_text: str, implementation_text: str

@@ -9,11 +9,11 @@ the workflow orchestration can track completion per task.
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, cast
 
 
 class PlanningService:
-    def __init__(self, llm_gateway, settings) -> None:
+    def __init__(self, llm_gateway: Any, settings: Any) -> None:
         self._llm_gateway = llm_gateway
         self._settings = settings
 
@@ -47,10 +47,13 @@ class PlanningService:
             user_prompt += (
                 f"\n\nIncorporate this feedback or reviewer concern:\n{prior_feedback.strip()}"
             )
-        return await self._llm_gateway.generate(
-            self._settings.resolve_agent_name_for_workflow("planning"),
-            system_prompt,
-            user_prompt,
+        return cast(
+            str,
+            await self._llm_gateway.generate(
+                self._settings.resolve_agent_name_for_workflow("planning"),
+                system_prompt,
+                user_prompt,
+            ),
         )
 
     async def revise_plan(self, existing_prompt: str, feedback: str) -> tuple[str, str]:

@@ -3,13 +3,14 @@
 
 import logging
 from pathlib import Path
+from typing import Any
 
 
 def configure_logging(level: str) -> None:
     logging.basicConfig(level=getattr(logging, level.upper(), logging.INFO))
 
 
-def log_startup_configuration(settings, *, config_path: Path, database_path: Path) -> None:
+def log_startup_configuration(settings: Any, *, config_path: Path, database_path: Path) -> None:
     telegram_settings = settings.telegram
     webhook_enabled = telegram_settings.mode == "webhook"
     webhook_url = settings.resolve_telegram_webhook_url() if webhook_enabled else "disabled"

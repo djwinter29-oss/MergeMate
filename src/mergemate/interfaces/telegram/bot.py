@@ -1,8 +1,8 @@
-# mypy: allow-untyped-defs
 """Telegram runtime adapter for polling and webhook modes."""
 
+from typing import Any
 from telegram import Update
-from telegram.ext import Application, ApplicationBuilder, CommandHandler, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 
 from mergemate.interfaces.telegram.health import WebhookHealthServer, WebhookReadinessState
 from mergemate.interfaces.telegram.handlers import (
@@ -16,7 +16,7 @@ from mergemate.interfaces.telegram.handlers import (
 from mergemate.interfaces.telegram.progress_notifier import stop_progress_watchers
 
 
-async def start_runtime_tasks(application: Application) -> None:
+async def start_runtime_tasks(application: Any) -> None:
     runtime = application.bot_data.get("runtime")
     lifecycle_notifier = getattr(runtime, "lifecycle_notifier", None)
     if lifecycle_notifier is not None:
@@ -27,7 +27,7 @@ async def start_runtime_tasks(application: Application) -> None:
     await mark_runtime_ready(application)
 
 
-async def stop_runtime_tasks(application: Application) -> None:
+async def stop_runtime_tasks(application: Any) -> None:
     readiness_state = application.bot_data.get("webhook_readiness_state")
     if readiness_state is not None:
         readiness_state.mark_stopping()
@@ -38,19 +38,17 @@ async def stop_runtime_tasks(application: Application) -> None:
     await stop_progress_watchers(application)
 
 
-async def mark_runtime_ready(application: Application) -> None:
+async def mark_runtime_ready(application: Any) -> None:
     readiness_state = application.bot_data.get("webhook_readiness_state")
     if readiness_state is not None:
         readiness_state.mark_ready()
 
 
 class TelegramBotRuntime:
-    def __init__(self, runtime) -> None:
+    def __init__(self, runtime: Any) -> None:
         self._runtime = runtime
 
-    def build_application(
-        self, *, readiness_state: WebhookReadinessState | None = None
-    ) -> Application:
+    def build_application(self, *, readiness_state: WebhookReadinessState | None = None) -> Any:
         builder = ApplicationBuilder().token(self._runtime.settings.resolve_telegram_token())
         builder = builder.post_init(start_runtime_tasks)
         builder = builder.post_stop(stop_runtime_tasks)

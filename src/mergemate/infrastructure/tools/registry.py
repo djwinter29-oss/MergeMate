@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from mergemate.domain.tools import ToolInvoker
 
@@ -23,7 +23,7 @@ class ToolRegistry:
     def get_tool(self, name: str) -> ToolInvoker | None:
         return self._tools.get(name)
 
-    def get_tool_metadata(self, name: str):
+    def get_tool_metadata(self, name: str) -> Any:
         tool = self.get_tool(name)
         if tool is None:
             return None

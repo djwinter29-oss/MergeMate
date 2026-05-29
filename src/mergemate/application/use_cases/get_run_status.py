@@ -2,6 +2,7 @@
 """Read the current run status."""
 
 from dataclasses import dataclass, field
+from typing import Any, cast
 
 
 @dataclass(slots=True)
@@ -9,7 +10,7 @@ class RunStatusSnapshot:
     run: object
     tool_events: list[dict[str, str]] = field(default_factory=list)
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self.run, name)
 
     @property
@@ -18,21 +19,22 @@ class RunStatusSnapshot:
 
 
 class GetRunStatusUseCase:
-    def __init__(self, run_repository, tool_event_repository=None) -> None:
+    def __init__(self, run_repository: Any, tool_event_repository: Any = None) -> None:
         self._run_repository = run_repository
         self._tool_event_repository = tool_event_repository
 
-    def _build_snapshot(self, run, *, tool_event_limit: int = 5):
-        tool_events = []
+    def _build_snapshot(self, run: Any, *, tool_event_limit: int = 5) -> RunStatusSnapshot:
+        tool_events: list[dict[str, str]] = []
         if self._tool_event_repository is not None:
-            tool_events = self._tool_event_repository.list_for_run(
-                run.run_id, limit=tool_event_limit
+            tool_events = cast(
+                list[dict[str, str]],
+                self._tool_event_repository.list_for_run(run.run_id, limit=tool_event_limit),
             )
         return RunStatusSnapshot(run=run, tool_events=tool_events)
 
     def execute(
         self, run_id: str | None = None, *, chat_id: int | None = None, tool_event_limit: int = 5
-    ):
+    ) -> RunStatusSnapshot | None:
         if run_id is not None:
             run = self._run_repository.get(run_id)
             if run is None:

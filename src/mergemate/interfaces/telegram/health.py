@@ -75,7 +75,7 @@ class WebhookHealthServer:
         self._server = None
         self._thread = None
 
-    def _build_handler(self):
+    def _build_handler(self) -> type[BaseHTTPRequestHandler]:
         expected_path = self._path
         state = self._state
 
@@ -115,7 +115,7 @@ class WebhookHealthServer:
                     return
                 self._send_json_response(status)
 
-            def log_message(self, fmt: str, *args) -> None:
+            def log_message(self, format: str, *args: object) -> None:
                 return
 
         return Handler

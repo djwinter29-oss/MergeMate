@@ -2,12 +2,24 @@
 """Formatting helpers for Telegram replies."""
 
 from datetime import UTC, datetime
-
+from typing import Protocol, cast
 
 from mergemate.domain.shared import RunStatus
 
 
-def _remaining_seconds(run) -> int | None:
+class _RunLike(Protocol):
+    estimate_seconds: int | None
+    created_at: datetime
+    status: RunStatus
+    run_id: str
+    current_stage: str
+    review_iterations: int
+    approved: bool
+    tool_events: list[dict[str, str]]
+    latest_tool_event: dict[str, str] | None
+
+
+def _remaining_seconds(run: _RunLike) -> int | None:
     if run.estimate_seconds is None:
         return None
     now = datetime.now(UTC)
@@ -15,7 +27,7 @@ def _remaining_seconds(run) -> int | None:
     return max(run.estimate_seconds - elapsed, 0)
 
 
-def _estimate_line(run, *, prefix: str = "\n") -> str:
+def _estimate_line(run: _RunLike, *, prefix: str = "\n") -> str:
     remaining_seconds = _remaining_seconds(run)
     if remaining_seconds is not None and run.status in {
         RunStatus.QUEUED,
@@ -26,14 +38,14 @@ def _estimate_line(run, *, prefix: str = "\n") -> str:
     return ""
 
 
-def _tool_events(run) -> list[dict[str, str]]:
-    return list(getattr(run, "tool_events", []))
+def _tool_events(run: _RunLike) -> list[dict[str, str]]:
+    return cast(list[dict[str, str]], list(getattr(run, "tool_events", [])))
 
 
-def _latest_tool_event(run) -> dict[str, str] | None:
+def _latest_tool_event(run: _RunLike) -> dict[str, str] | None:
     latest_tool_event = getattr(run, "latest_tool_event", None)
     if latest_tool_event is not None:
-        return latest_tool_event
+        return cast(dict[str, str], latest_tool_event)
     events = _tool_events(run)
     return events[0] if events else None
 
@@ -95,7 +107,7 @@ def format_status(run_id: str, status: str, estimate_seconds: int | None = None)
     return f"Run {run_id} is currently {status}. Estimated remaining time: {estimate_seconds}s."
 
 
-def format_detailed_status(run) -> str:
+def format_detailed_status(run: _RunLike) -> str:
     estimate_line = _estimate_line(run)
     tool_events = _tool_events(run)
     tool_activity = ""
@@ -156,7 +168,7 @@ def format_auto_execution_started(run_id: str, plan_text: str, estimate_seconds:
     )
 
 
-def format_progress_update(run) -> str:
+def format_progress_update(run: _RunLike) -> str:
     estimate_line = _estimate_line(run, prefix=" ")
     latest_tool_event = _latest_tool_event(run)
     tool_activity = ""
@@ -172,7 +184,7 @@ def format_progress_update(run) -> str:
     )
 
 
-def format_tool_history(run) -> str:
+def format_tool_history(run: _RunLike) -> str:
     tool_events = _tool_events(run)
     if not tool_events:
         return f"No tool activity recorded for run {run.run_id}."

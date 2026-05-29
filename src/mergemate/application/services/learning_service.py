@@ -3,6 +3,7 @@
 
 import json
 import logging
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -14,13 +15,13 @@ with ONLY valid JSON, no commentary, no markdown formatting."""
 class LearningService:
     def __init__(
         self,
-        learning_repository,
+        learning_repository: Any,
         enabled: bool,
         max_context_items: int,
         max_result_chars: int,
-        llm_gateway=None,
+        llm_gateway: Any = None,
         extraction_agent_name: str | None = None,
-        repo_knowledge_repository=None,
+        repo_knowledge_repository: Any = None,
     ) -> None:
         self._learning_repository = learning_repository
         self._enabled = enabled
@@ -42,7 +43,10 @@ class LearningService:
     def load_recent_learnings(self, chat_id: int) -> list[dict[str, str]]:
         if not self._enabled:
             return []
-        return self._learning_repository.list_recent(chat_id, limit=self._max_context_items)
+        return cast(
+            list[dict[str, str]],
+            self._learning_repository.list_recent(chat_id, limit=self._max_context_items),
+        )
 
     def remember_repo_knowledge(
         self, *, chat_id: int, repo_name: str, topic: str, summary: str
@@ -56,18 +60,24 @@ class LearningService:
     ) -> list[dict[str, str]]:
         if not self._enabled or self._repo_knowledge_repository is None:
             return []
-        return self._repo_knowledge_repository.list_recent(
-            chat_id, repo_name=repo_name, limit=self._max_context_items
+        return cast(
+            list[dict[str, str]],
+            self._repo_knowledge_repository.list_recent(
+                chat_id, repo_name=repo_name, limit=self._max_context_items
+            ),
         )
 
     def load_grouped_learnings(self, chat_id: int, current_workflow: str) -> list[dict[str, str]]:
         if not self._enabled:
             return []
-        return self._learning_repository.list_grouped_by_workflow(
-            chat_id=chat_id,
-            current_workflow=current_workflow,
-            same_workflow_limit=self._max_context_items,
-            other_workflow_limit=1,
+        return cast(
+            list[dict[str, str]],
+            self._learning_repository.list_grouped_by_workflow(
+                chat_id=chat_id,
+                current_workflow=current_workflow,
+                same_workflow_limit=self._max_context_items,
+                other_workflow_limit=1,
+            ),
         )
 
     async def _extract_lessons(self, result_text: str) -> str:
@@ -80,10 +90,13 @@ class LearningService:
         if self._llm_gateway is None:
             return "{}"
         try:
-            raw = await self._llm_gateway.generate(
-                self._extraction_agent_name,
-                _EXTRACT_SYSTEM_PROMPT,
-                result_text,
+            raw = cast(
+                str,
+                await self._llm_gateway.generate(
+                    self._extraction_agent_name,
+                    _EXTRACT_SYSTEM_PROMPT,
+                    result_text,
+                ),
             )
             # Validate it's parseable JSON with expected keys
             parsed = json.loads(raw)

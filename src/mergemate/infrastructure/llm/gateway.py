@@ -13,7 +13,7 @@ import time
 from collections.abc import Mapping
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from mergemate.config.models import RetryConfig
 from mergemate.domain.shared.exceptions import (
@@ -171,7 +171,7 @@ async def with_retry(
 
     for attempt in range(cfg.max_retries + 1):
         try:
-            return await fn()
+            return cast(str, await fn())
         except BaseException as exc:
             last_exc = exc
 
@@ -242,7 +242,8 @@ def _extract_retry_after(
     current_time = now or datetime.now(timezone.utc)
     if current_time.tzinfo is None:
         current_time = current_time.replace(tzinfo=timezone.utc)
-    return max(0.0, (retry_after_at - current_time).total_seconds())
+    result: float = max(0.0, (retry_after_at - current_time).total_seconds())
+    return result
 
 
 # ── Gateway class ─────────────────────────────────────────────────────
