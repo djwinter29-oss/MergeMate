@@ -96,9 +96,9 @@ and the search and context commands when you need to inspect persisted state loc
 - `mergemate install-package <package-name>` — install an extra Python package when package installs are allowed by config.
 - `mergemate repo-context [--platform github|gitlab]` — inspect repository context through local `git` plus an authenticated platform CLI.
 - `mergemate platform-auth github|gitlab` — verify the selected GitHub or GitLab CLI is authenticated.
-- `mergemate search-runs <query> [--limit N]` — search stored run prompts, results, and metadata.
-- `mergemate search-conversations <query> [--limit N]` — search saved chat message history.
-- `mergemate search <query> [--limit N]` — search runs and chat messages together in a single result stream.
+- `mergemate search-runs <query> [--limit N] [--session NAME]` — search stored run prompts, results, and metadata, optionally scoped to a session.
+- `mergemate search-conversations <query> [--limit N] [--session NAME]` — search saved chat message history, optionally scoped to a session.
+- `mergemate search <query> [--limit N] [--session NAME]` — search runs and chat messages together in a single result stream, optionally scoped to a session.
 - `mergemate run <prompt>` — submit a one-shot prompt and wait for completion (supports `--agent`, `--workflow`, `--session`, `--quiet`, `--timeout`, `--poll-interval`).
 - `mergemate chat` — interactive REPL session (supports `--session`, `--agent`, `--workflow`, `--timeout`, `--poll-interval`).
 

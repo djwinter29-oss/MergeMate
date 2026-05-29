@@ -192,11 +192,13 @@ def platform_auth(
 def search_runs(
     query: str = typer.Argument(..., help="Search term to match against run fields"),
     limit: int = typer.Option(10, min=1, max=100, help="Maximum results to return"),
+    session: str | None = typer.Option(None, help="Session name to restrict results to"),
     config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
 ) -> None:
     """Search agent runs by keyword across prompts, results, and metadata fields."""
     runtime = bootstrap(config)
-    runs = runtime.persistence.run_repository.search(query, limit=limit)
+    chat_id = _resolve_session_chat_id(session) if session is not None else None
+    runs = runtime.persistence.run_repository.search(query, limit=limit, chat_id=chat_id)
     _print_search_results(runs)
 
 
@@ -204,11 +206,15 @@ def search_runs(
 def search_conversations(
     query: str = typer.Argument(..., help="Search term to match against conversation messages"),
     limit: int = typer.Option(10, min=1, max=100, help="Maximum results to return"),
+    session: str | None = typer.Option(None, help="Session name to restrict results to"),
     config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
 ) -> None:
     """Search conversation messages by keyword."""
     runtime = bootstrap(config)
-    messages = runtime.persistence.conversation_repository.search_messages(query, limit=limit)
+    chat_id = _resolve_session_chat_id(session) if session is not None else None
+    messages = runtime.persistence.conversation_repository.search_messages(
+        query, limit=limit, chat_id=chat_id
+    )
     _print_message_search_results(messages)
 
 
@@ -216,12 +222,16 @@ def search_conversations(
 def search(
     query: str = typer.Argument(..., help="Search term to match against runs and messages"),
     limit: int = typer.Option(10, min=1, max=100, help="Maximum results to return"),
+    session: str | None = typer.Option(None, help="Session name to restrict results to"),
     config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
 ) -> None:
     """Search stored runs and conversation messages in one combined result set."""
     runtime = bootstrap(config)
-    runs = runtime.persistence.run_repository.search(query, limit=limit)
-    messages = runtime.persistence.conversation_repository.search_messages(query, limit=limit)
+    chat_id = _resolve_session_chat_id(session) if session is not None else None
+    runs = runtime.persistence.run_repository.search(query, limit=limit, chat_id=chat_id)
+    messages = runtime.persistence.conversation_repository.search_messages(
+        query, limit=limit, chat_id=chat_id
+    )
     _print_combined_search_results(runs, messages, limit=limit)
 
 
