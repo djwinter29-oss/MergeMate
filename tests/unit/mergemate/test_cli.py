@@ -1,3 +1,6 @@
+import os
+import subprocess
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from urllib.error import HTTPError, URLError
@@ -168,6 +171,33 @@ def test_print_config_path_outputs_default_path(monkeypatch: pytest.MonkeyPatch)
 
     assert result.exit_code == 0
     assert "/tmp/default.yaml" in result.stdout
+
+
+def test_resolve_session_chat_id_is_stable_across_hash_seeds() -> None:
+    repo_root = Path(__file__).resolve().parents[4]
+    command = [
+        sys.executable,
+        "-c",
+        "from mergemate.cli import _resolve_session_chat_id; print(_resolve_session_chat_id('my-feature'))",
+    ]
+    outputs: list[str] = []
+
+    for seed in ("1", "2"):
+        env = os.environ.copy()
+        env["PYTHONHASHSEED"] = seed
+        env["PYTHONPATH"] = os.pathsep.join([str(repo_root / "src"), env.get("PYTHONPATH", "")])
+        result = subprocess.run(
+            command,
+            cwd=repo_root,
+            env=env,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        outputs.append(result.stdout.strip())
+
+    assert outputs[0] == outputs[1]
+    assert int(outputs[0]) > 0
 
 
 def test_probe_readiness_reports_ready_status(monkeypatch: pytest.MonkeyPatch) -> None:

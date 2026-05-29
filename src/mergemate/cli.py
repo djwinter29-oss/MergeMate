@@ -1,6 +1,7 @@
 """CLI entrypoints for running MergeMate."""
 
 import json
+from hashlib import blake2s
 from dataclasses import dataclass
 from pathlib import Path
 import time
@@ -239,7 +240,8 @@ def _resolve_session_chat_id(session_name: str | None) -> int:
         import random
 
         return -abs(random.getrandbits(31))
-    return abs(hash(f"cli:{session_name}")) % (2**31 - 1)
+    digest = blake2s(f"cli:{session_name}".encode("utf-8"), digest_size=8).digest()
+    return 1 + (int.from_bytes(digest, "big") % (2**31 - 2))
 
 
 def _resolve_workflow(

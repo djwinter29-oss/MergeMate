@@ -34,7 +34,7 @@ All 3 gaps relate to the same CLI surface (`cli.py`) and conversation/session da
 - `ContextService`: thin wrapper around `SQLiteConversationRepository` — `append_message()` and `load_recent_messages()`
 - `GetRunStatusUseCase`: looks up runs by `run_id` or latest run for a `chat_id`
 - `CancelRunUseCase`: cancels runs in `awaiting_confirmation` status
-- Session identity: `chat_id = abs(hash(f"cli:{session_name}")) % (2**31 - 1)`
+- Session identity: `chat_id` is derived from a stable digest of `cli:{session_name}` so the same name maps to the same session across processes
 
 **Gaps in the current data model:**
 - No FTS (Full-Text Search) index on `conversation_messages.content`
@@ -554,5 +554,6 @@ def _resolve_session_chat_id(session_name: str | None) -> int:
     """
     if session_name is None:
         return random.randrange(1, 2**31 - 1)  # Anonymous session
-    return abs(hash(f"cli:{session_name}")) % (2**31 - 1)
+    digest = blake2s(f"cli:{session_name}".encode("utf-8"), digest_size=8).digest()
+    return 1 + (int.from_bytes(digest, "big") % (2**31 - 2))
 ```
