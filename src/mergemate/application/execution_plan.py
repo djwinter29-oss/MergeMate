@@ -63,22 +63,6 @@ def _check_after_cancelled(
 
 
 @dataclass(slots=True, frozen=True)
-class StageDescriptor:
-    """Legacy stage descriptor used by ``DirectExecutionPlan``.
-
-    ``MultiStageExecutionPlan`` now derives its stage data from
-    ``WorkflowStage`` objects.  This type is kept for backward
-    compatibility only.
-    """
-
-    name: str
-    current_stage: str | RunStage
-    uses_tool_context: bool = False
-    checks_cancellation_before: bool = False
-    checks_cancellation_after: bool = False
-
-
-@dataclass(slots=True, frozen=True)
 class OrchestratorDependencies:
     """Bundled dependencies for AgentOrchestrator and ExecutionRuntime."""
 
@@ -114,27 +98,16 @@ class BaseExecutionPlan:
         self._agent_name = agent_name
 
     @property
-    def stages(self) -> tuple[StageDescriptor, ...]:
-        """Return the stage descriptors for this plan."""
-        return ()
-
-    @property
     def requires_tool_context(self) -> bool:
-        return any(stage.uses_tool_context for stage in self.stages)
+        return False
 
 
 class DirectExecutionPlan(BaseExecutionPlan):
     """Single-stage execution plan — one LLM call, no sub-stages."""
 
     @property
-    def stages(self) -> tuple[StageDescriptor, ...]:
-        return (
-            StageDescriptor(
-                name="execution",
-                current_stage=RunStage.EXECUTION,
-                uses_tool_context=True,
-            ),
-        )
+    def requires_tool_context(self) -> bool:
+        return True
 
     async def execute(self, runtime: ExecutionRuntime, execution: ExecutionContext) -> Any:
         run = execution.run
@@ -161,7 +134,7 @@ class DirectExecutionPlan(BaseExecutionPlan):
 
         runtime.deps.run_repository.save_artifacts(
             run.run_id,
-            current_stage=self.stages[0].current_stage,
+            current_stage=RunStage.EXECUTION,
             result_text=direct_result,
         )
         runtime.deps.context_service.append_message(run.chat_id, "assistant", direct_result)
@@ -209,20 +182,8 @@ class MultiStageExecutionPlan(BaseExecutionPlan):
         self._workflow_definition = workflow_definition
 
     @property
-    def stages(self) -> tuple[StageDescriptor, ...]:
-        """Derive legacy ``StageDescriptor`` tuples from the workflow definition."""
-        if self._workflow_definition is None:
-            return ()
-        return tuple(
-            StageDescriptor(
-                name=s.name,
-                current_stage=s.current_stage,
-                uses_tool_context=s.uses_tool_context,
-                checks_cancellation_before=s.checks_cancellation_before,
-                checks_cancellation_after=s.checks_cancellation_after,
-            )
-            for s in self._workflow_definition.stages
-        )
+    def requires_tool_context(self) -> bool:
+        return any(stage.uses_tool_context for stage in self._get_workflow_stages())
 
     def _get_workflow_stages(self) -> tuple[WorkflowStage, ...]:
         """Return the ``WorkflowStage`` instances to execute.
