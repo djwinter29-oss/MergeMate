@@ -1,21 +1,18 @@
 """Tests for execution plan uncovered lines.
 
 Covers:
-1.  BaseExecutionPlan.stages returns () [line 139]
-2.  MultiStageExecutionPlan.stages when no workflow def [line 229-230]
-3.  MultiStageExecutionPlan.stages when workflow def provided [line 231]
-4.  MultiStageExecutionPlan._get_workflow_stages when no workflow def [line 247-252]
-5.  MultiStageExecutionPlan.execute when handler is None [line 287-292]
-6.  MultiStageExecutionPlan.execute replan handler is None [line 319-323]
-7.  MultiStageExecutionPlan._build_final_result with progress summary [lines 394-408]
-8.  _check_after_cancelled when stage.checks_cancellation_after is True and cancelled [line 61]
-9.  _check_cancelled when stage.checks_cancellation_before is True and cancelled [line 48]
-10. ExecutionRuntime(deps=..., is_cancelled=...) constructor [lines 84-87]
-11. DirectExecutionPlan.execute full path (lines 166-196)
-12. MultiStageExecutionPlan.execute replan handler runs (lines 324-328)
-13. MultiStageExecutionPlan.execute cancelled after replan handler (lines 330-337) [line 307 covered via same path]
-14. MultiStageExecutionPlan.execute last-iteration check at line 342
-15. MultiStageExecutionPlan.execute loop completion at line 360
+1.  MultiStageExecutionPlan._get_workflow_stages when no workflow def
+2.  MultiStageExecutionPlan.execute when handler is None
+3.  MultiStageExecutionPlan.execute replan handler is None
+4.  MultiStageExecutionPlan._build_final_result with progress summary
+5.  _check_after_cancelled when stage.checks_cancellation_after is True and cancelled
+6.  _check_cancelled when stage.checks_cancellation_before is True and cancelled
+7.  ExecutionRuntime(deps=..., is_cancelled=...) constructor
+8.  DirectExecutionPlan.execute full path
+9.  MultiStageExecutionPlan.execute replan handler runs
+10. MultiStageExecutionPlan.execute cancelled after replan handler
+11. MultiStageExecutionPlan.execute last-iteration check
+12. MultiStageExecutionPlan.execute loop completion
 """
 
 from datetime import UTC, datetime
@@ -27,13 +24,11 @@ import pytest
 from unittest.mock import AsyncMock
 
 from mergemate.application.execution_plan import (
-    BaseExecutionPlan,
     DirectExecutionPlan,
     ExecutionContext,
     ExecutionRuntime,
     MultiStageExecutionPlan,
     OrchestratorDependencies,
-    StageDescriptor,
 )
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.shared import RunStage, RunStatus, WorkflowName
@@ -182,39 +177,6 @@ class CancelFlagRepo(RunRepositoryStub):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
-
-
-class TestBaseExecutionPlan:
-    def test_stages_returns_empty_tuple(self) -> None:
-        """Cover BaseExecutionPlan.stages default."""
-        plan = BaseExecutionPlan("test-agent")
-        assert plan.stages == ()
-        assert plan.requires_tool_context is False
-
-
-class TestMultiStageExecutionPlanStages:
-    def test_stages_returns_empty_when_no_workflow_def(self) -> None:
-        """Cover line 229-230: stages returns () when _workflow_definition is None."""
-        plan = MultiStageExecutionPlan("test-agent", max_iterations=3)
-        assert plan.stages == ()
-
-    def test_stages_returns_descriptors_when_workflow_def_provided(self) -> None:
-        """Cover line 231: stages returns StageDescriptor tuple with workflow def."""
-        plan = MultiStageExecutionPlan(
-            "test-agent", max_iterations=3, workflow_definition=_GENERATE_CODE_DEF
-        )
-        stages = plan.stages
-        assert len(stages) > 0
-        assert all(isinstance(s, StageDescriptor) for s in stages)
-        assert stages[0].name == "design"
-        assert stages[0].uses_tool_context is True
-        assert stages[0].checks_cancellation_before is True
-
-    def test_get_workflow_stages_raises_when_no_workflow_def(self) -> None:
-        """Cover lines 247-252: _get_workflow_stages raises StageExecutionError."""
-        plan = MultiStageExecutionPlan("test-agent", max_iterations=3)
-        with pytest.raises(StageExecutionError, match="requires a workflow_definition"):
-            plan._get_workflow_stages()
 
 
 def test_init_rejects_zero_iterations() -> None:
