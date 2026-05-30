@@ -18,6 +18,7 @@ class DocumentationService:
         ├── implementation/
         ├── testing/
         ├── review/
+        ├── reviews/
         ├── lessons/
         ├── requirements/
         └── shared/
@@ -31,6 +32,7 @@ class DocumentationService:
         "implementation",
         "testing",
         "review",
+        "reviews",
         "lessons",
         "requirements",
         "shared",
