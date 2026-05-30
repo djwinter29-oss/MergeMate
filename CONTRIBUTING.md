@@ -65,8 +65,11 @@ MergeMate uses a **branch → commit → push → PR → CI → merge** workflow
    ```bash
    git checkout main
    git pull
+   make branches-prune
    git branch -d feat/my-feature
    ```
+   If you want the full branch-maintenance workflow, see `docs/operations/repository-maintenance.md`.
+
 
 ## Branch Naming
 
