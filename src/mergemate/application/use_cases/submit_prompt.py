@@ -60,7 +60,7 @@ class SubmitPromptUseCase:
         prompt: str,
     ) -> SubmitPromptResult:
         now = datetime.now(UTC)
-        estimate_seconds = estimate_duration(workflow)
+        estimate_seconds = estimate_duration(workflow, prompt)
         require_confirmation = self._settings.workflow_control.require_confirmation
         initial_status = (
             RunStatus.AWAITING_CONFIRMATION if require_confirmation else RunStatus.QUEUED
