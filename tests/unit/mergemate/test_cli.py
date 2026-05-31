@@ -10,6 +10,7 @@ import pytest
 from typer.testing import CliRunner
 
 from mergemate import cli
+from mergemate.config.models import ConfigWorkflowNotFoundError
 
 
 runner = CliRunner()
@@ -163,6 +164,23 @@ def test_validate_config_fails_when_provider_reference_is_invalid(
 
     assert result.exit_code != 0
     assert isinstance(result.exception, ValueError)
+
+
+def test_resolve_workflow_reports_available_workflows() -> None:
+    runtime = SimpleNamespace(
+        settings=SimpleNamespace(
+            agents={
+                "planner": SimpleNamespace(workflow="planning"),
+                "coder": SimpleNamespace(workflow="generate_code"),
+            }
+        )
+    )
+
+    with pytest.raises(
+        ConfigWorkflowNotFoundError,
+        match=r"Agent 'reviewer' has no default workflow\. Use --workflow to specify one\. Available workflows: generate_code, planning",
+    ):
+        cli._resolve_workflow("reviewer", None, runtime)
 
 
 def test_print_config_path_outputs_default_path(monkeypatch: pytest.MonkeyPatch) -> None:
