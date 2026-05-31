@@ -52,6 +52,13 @@ def test_write_test_and_review_documents_use_final_paths(tmp_path: Path) -> None
     assert "Review Report" in review_report_path.read_text(encoding="utf-8")
 
 
+def test_service_initialization_creates_review_directories(tmp_path: Path) -> None:
+    DocumentationService(tmp_path / "docs")
+
+    assert (tmp_path / "docs" / "review").is_dir()
+    assert (tmp_path / "docs" / "reviews").is_dir()
+
+
 def test_write_document_deduplicates_existing_filename(tmp_path: Path) -> None:
     service = DocumentationService(tmp_path / "docs")
 
