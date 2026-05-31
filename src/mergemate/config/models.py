@@ -3,7 +3,7 @@
 from collections import Counter
 import os
 from pathlib import Path
-from typing import Any, ClassVar, Literal, Self
+from typing import Any, ClassVar, Collection, Literal, Self
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import BaseModel, Field, model_validator
@@ -44,6 +44,12 @@ class ConfigProviderNotFoundError(ConfigError):
 
 class ConfigWorkflowNotFoundError(ConfigError):
     """No agent found for the requested workflow."""
+
+
+def _format_workflow_list(workflows: Collection[str]) -> str:
+    if not workflows:
+        return "none configured"
+    return ", ".join(sorted(workflows))
 
 
 ParallelMode = Literal["single", "parallel"]
@@ -423,10 +429,10 @@ class AppConfig(BaseModel):
             {str(role.workflow) for role in self.roles.values()}
             | {str(agent.workflow) for agent in self.agents.values()}
         )
-        available_text = ", ".join(configured_workflows)
+        available_text = _format_workflow_list(configured_workflows)
         raise ConfigWorkflowNotFoundError(
             f"No configured agent found for workflow {resolved_workflow}. "
-            f"Configured workflows: {available_text}"
+            f"Available workflows: {available_text}"
         )
 
     def resolve_telegram_token(self) -> str:

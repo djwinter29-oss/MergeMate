@@ -318,8 +318,17 @@ def _resolve_workflow(
     agent_cfg = runtime.settings.agents.get(agent_name)
     if agent_cfg is not None and agent_cfg.workflow is not None:
         return cast(str, agent_cfg.workflow)
+    configured_workflows = sorted(
+        {
+            str(agent.workflow)
+            for agent in runtime.settings.agents.values()
+            if getattr(agent, "workflow", None) is not None
+        }
+    )
+    available_text = ", ".join(configured_workflows) if configured_workflows else "none configured"
     raise ConfigWorkflowNotFoundError(
-        f"Agent {agent_name!r} has no default workflow. Use --workflow to specify one."
+        f"Agent {agent_name!r} has no default workflow. Use --workflow to specify one. "
+        f"Available workflows: {available_text}"
     )
 
 

@@ -177,7 +177,8 @@ def test_config_model_raises_for_unknown_workflow() -> None:
     config = _build_config()
 
     with pytest.raises(
-        ConfigWorkflowNotFoundError, match="No configured agent found for workflow debug_code"
+        ConfigWorkflowNotFoundError,
+        match=r"No configured agent found for workflow debug_code\. Available workflows: .*",
     ):
         config.resolve_agent_name_for_workflow("debug_code")
 
