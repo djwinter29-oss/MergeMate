@@ -652,8 +652,8 @@ def test_bootstrap_wires_repo_knowledge_repository(monkeypatch, tmp_path: Path) 
 
     monkeypatch.setattr(
         bootstrap_module,
-        "SQLiteRepoKnowledgeRepository",
-        RepoKnowledgeRepositoryRecorder,
+        "_load_repo_knowledge_repository_class",
+        lambda: RepoKnowledgeRepositoryRecorder,
     )
 
     captured_kwargs = {}

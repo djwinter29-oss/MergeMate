@@ -1,7 +1,10 @@
 """Composition root for runtime wiring."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from mergemate.application.execution_plan import OrchestratorDependencies
 from mergemate.application.jobs.dispatcher import RunDispatcher
@@ -26,7 +29,6 @@ from mergemate.infrastructure.persistence.sqlite import (
     SQLiteConversationRepository,
     SQLiteDatabase,
     SQLiteLearningRepository,
-    SQLiteRepoKnowledgeRepository,
     SQLiteRunJobRepository,
     SQLiteRunRepository,
     SQLiteToolEventRepository,
@@ -40,6 +42,9 @@ from mergemate.interfaces.telegram.lifecycle_notifier import (
     TelegramRunLifecycleNotifier,
 )
 from mergemate.infrastructure.tools.registry import ToolRegistryBuilder
+
+if TYPE_CHECKING:
+    from mergemate.infrastructure.persistence.sqlite import SQLiteRepoKnowledgeRepository
 
 # ── Workflow plugin discovery ───────────────────────────────────────────────
 
@@ -111,6 +116,14 @@ def _load_workflow_config_plugins(settings: AppConfig) -> None:
             )
 
 
+def _load_repo_knowledge_repository_class() -> type[SQLiteRepoKnowledgeRepository]:
+    """Import the repo knowledge repository lazily to avoid bootstrap side effects."""
+
+    from mergemate.infrastructure.persistence.sqlite import SQLiteRepoKnowledgeRepository
+
+    return SQLiteRepoKnowledgeRepository
+
+
 @dataclass(slots=True)
 class PersistenceContext:
     """Persistence-related sub-context for MergeMateRuntime — groups all DB-backed repositories."""
@@ -169,7 +182,7 @@ def bootstrap(config_path: Path | None = None) -> MergeMateRuntime:
         database_path=resolved_database_path,
     )
 
-    repo_knowledge_repository_cls = SQLiteRepoKnowledgeRepository
+    repo_knowledge_repository_cls = _load_repo_knowledge_repository_class()
 
     run_repository = SQLiteRunRepository(database)
     run_job_repository = SQLiteRunJobRepository(database)
