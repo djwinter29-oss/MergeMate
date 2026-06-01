@@ -12,9 +12,11 @@ class Recorder:
         self.calls.append((args, kwargs))
 
 
-def test_bootstrap_imports_repo_knowledge_repository_class() -> None:
+def test_bootstrap_defers_repo_knowledge_repository_import() -> None:
+    assert not hasattr(bootstrap_module, "SQLiteRepoKnowledgeRepository")
     assert (
-        bootstrap_module.SQLiteRepoKnowledgeRepository.__name__ == "SQLiteRepoKnowledgeRepository"
+        bootstrap_module._load_repo_knowledge_repository_class().__name__
+        == "SQLiteRepoKnowledgeRepository"
     )
 
 
@@ -173,8 +175,8 @@ def test_bootstrap_wires_runtime_dependencies(monkeypatch, tmp_path: Path) -> No
     )
     monkeypatch.setattr(
         bootstrap_module,
-        "SQLiteRepoKnowledgeRepository",
-        type("SQLiteRepoKnowledgeRepositoryStub", (RepositoryStub,), {}),
+        "_load_repo_knowledge_repository_class",
+        lambda: type("SQLiteRepoKnowledgeRepositoryStub", (RepositoryStub,), {}),
     )
     monkeypatch.setattr(
         bootstrap_module,
@@ -318,7 +320,9 @@ def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Pa
         bootstrap_module, "SQLiteLearningRepository", lambda _database: "learning_repo"
     )
     monkeypatch.setattr(
-        bootstrap_module, "SQLiteRepoKnowledgeRepository", lambda _database: "repo_knowledge_repo"
+        bootstrap_module,
+        "_load_repo_knowledge_repository_class",
+        lambda: lambda _database: "repo_knowledge_repo",
     )
     monkeypatch.setattr(
         bootstrap_module, "SQLiteToolEventRepository", lambda _database: "tool_event_repo"
