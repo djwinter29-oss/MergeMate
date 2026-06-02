@@ -4,11 +4,11 @@
 - Date: 2026-05-10
 - Review: Architecture Review P2.1 — 3 Feature Gaps from deep review
 
-> Update 2026-05-29: the CLI command surface and basic keyword search have since shipped.
+> Update 2026-06-02: the CLI command surface and search stack have now shipped.
 > `mergemate run`, `mergemate chat`, `mergemate search-runs`, `mergemate search-conversations`,
-> and unified `mergemate search` are available today. FTS5-backed phrase-aware search has also
-> shipped (2026-05-29). This document now serves as a historical design note for the session-resume
-> work.
+> and unified `mergemate search` are available today, and search is backed by SQLite FTS5 with
+> phrase-aware ranking plus a LIKE fallback when FTS is unavailable. This document now serves as a
+> historical design note for the remaining session-resume work.
 
 ---
 
@@ -18,9 +18,9 @@ The deep review originally identified 3 feature gaps that were documented in tic
 
 1. **Missing CLI commands** — `mergemate run` and `mergemate chat` were designed (see `docs/implementation/cli-interactive-mode.md`) and are now implemented in `src/mergemate/cli.py`.
 2. **Session resume capability** — The `--session <name>` CLI option exists, but no resume-from-last-unsaved-session logic exists when the user re-enters a session whose last run was interrupted or incomplete.
-3. **Conversation search** — Basic keyword search now exists via `mergemate search-runs`, `mergemate search-conversations`, and unified `mergemate search`; the remaining design gap is SQLite FTS-backed ranking and phrase-aware search.
+3. **Conversation search** — The original keyword-search gap has now been closed by FTS5-backed search with phrase-aware ranking and a LIKE fallback.
 
-The original review grouped these gaps because they touched the same CLI surface (`cli.py`) and conversation/session data model. The shipped command surface is now complete; the remaining work is about richer session recovery and search quality.
+The original review grouped these gaps because they touched the same CLI surface (`cli.py`) and conversation/session data model. The shipped command and search surface is now complete; the remaining work is about richer session recovery.
 
 ---
 
@@ -42,11 +42,11 @@ The original review grouped these gaps because they touched the same CLI surface
 - `CancelRunUseCase`: cancels runs in `awaiting_confirmation` status
 - Session identity: `chat_id` is derived from a stable digest of `cli:{session_name}` so the same name maps to the same session across processes
 
-**Gaps in the current data model:**
-- No FTS (Full-Text Search) index on `conversation_messages.content`
-- No index on `agent_runs.prompt` or `agent_runs.result_text` for search
-- No `conversation_messages.run_id` foreign key — messages are linked only by `chat_id`
-- No "last active run" tracking for session resume
+**Current data model notes:**
+- The runtime now maintains SQLite FTS5 indexes for `conversation_messages.content` and run search text so search can rank and phrase-match results instead of relying only on plain keyword scans.
+- `agent_runs.prompt` and `agent_runs.result_text` remain part of the search surface through the consolidated FTS search text and LIKE fallback.
+- There is still no `conversation_messages.run_id` foreign key — messages are linked only by `chat_id`.
+- There is still no "last active run" tracking for session resume.
 
 ### 2.3 Session Resume Gap
 
@@ -57,13 +57,13 @@ Currently:
   - Offer to resume, retry, or cancel it
   - Re-attach progress watchers for a still-running job
 
-### 2.4 Search Gap
+### 2.4 Search State
 
 Currently:
-- `mergemate search-runs` searches stored run prompts, results, and metadata with repository-level keyword matching
-- `mergemate search-conversations` searches saved chat messages with repository-level keyword matching
-- `mergemate search` combines matching runs and messages into one recency-ordered result set
-- No SQLite FTS table exists to support relevance-ranked or phrase-aware search
+- `mergemate search-runs` searches stored run prompts, results, and metadata through the consolidated FTS search path, with a LIKE fallback if FTS is unavailable.
+- `mergemate search-conversations` searches saved chat messages through the consolidated FTS search path, with a LIKE fallback if FTS is unavailable.
+- `mergemate search` combines matching runs and messages into one recency-ordered result set.
+- The remaining search-adjacent gap is not ranking support; it is richer session recovery, including resumable run discovery when re-entering an in-flight session.
 
 ---
 

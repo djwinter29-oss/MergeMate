@@ -49,6 +49,7 @@ The current implementation includes:
 - plan-based architecture documents written under `docs/architecture/`
 - separate test plans under `docs/testing/` and runtime-generated review reports under `docs/reviews/` (the repository also keeps curated review notes under `docs/review/`)
 - SQLite-backed run and conversation persistence
+- FTS5-backed search across stored runs and conversation messages, with phrase-aware ranking and a LIKE fallback when SQLite FTS is unavailable
 - learning memory from successful prior runs within the same chat
 - optional repository-scoped knowledge keyed by `repo_name` in config
 - optional multi-model fan-out for an agent, with parallel execution across configured provider aliases
