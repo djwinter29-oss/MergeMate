@@ -305,7 +305,7 @@ class AppConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _populate_roles_from_agents(cls, data: dict[str, Any]) -> Self:
+    def _populate_roles_from_agents(cls, data: dict[str, Any]) -> dict[str, Any]:
         """Backward compat: if roles is empty but agents exist, populate roles from agents."""
         agents = data.get("agents", {})
         roles = data.get("roles", {})
