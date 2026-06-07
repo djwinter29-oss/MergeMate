@@ -808,3 +808,128 @@ def test_search_conversations_prints_matches(monkeypatch: pytest.MonkeyPatch) ->
     assert "chat:42" in result.stdout
     assert "user" in result.stdout
     assert "Hello bot" in result.stdout
+
+
+def _resume_runtime(*, runs=None, messages=None):
+    class RunRepoStub:
+        def list_for_chat(self, chat_id: int, limit: int = 1):
+            return runs or []
+
+    class ConvRepoStub:
+        def load_recent_messages(self, chat_id: int, limit: int = 10):
+            return messages or []
+
+    return SimpleNamespace(
+        settings=SimpleNamespace(
+            default_agent="coder",
+            workflow_control=SimpleNamespace(require_confirmation=True),
+            agents={"coder": SimpleNamespace(workflow="generate_code")},
+        ),
+        persistence=SimpleNamespace(
+            run_repository=RunRepoStub(),
+            conversation_repository=ConvRepoStub(),
+        ),
+        services=SimpleNamespace(),
+    )
+
+
+def test_print_session_resume_summary_shows_latest_non_terminal_run(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from mergemate.domain.shared import RunStage, RunStatus
+
+    run = SimpleNamespace(
+        run_id="run-12345678",
+        status=RunStatus.RUNNING,
+        current_stage=RunStage.EXECUTION,
+        prompt="Add rate limiting\nfor the API",
+    )
+
+    cli._print_session_resume_summary(_resume_runtime(runs=[run]), chat_id=99)
+
+    captured = capsys.readouterr()
+    assert "--- Incomplete run detected ---" in captured.out
+    assert "Run: run-1234" in captured.out
+    assert "Status: running" in captured.out
+    assert "Stage: execution" in captured.out
+    assert "Prompt: Add rate limiting for the API" in captured.out
+
+
+def test_print_session_resume_summary_skips_terminal_run(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from mergemate.domain.shared import RunStage, RunStatus
+
+    run = SimpleNamespace(
+        run_id="run-12345678",
+        status=RunStatus.COMPLETED,
+        current_stage=RunStage.COMPLETED,
+        prompt="Add rate limiting for the API",
+    )
+
+    cli._print_session_resume_summary(_resume_runtime(runs=[run]), chat_id=99)
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+
+
+def test_run_cli_shows_session_resume_summary(monkeypatch: pytest.MonkeyPatch) -> None:
+    from mergemate.domain.shared import RunStatus
+
+    run = SimpleNamespace(
+        run_id="run-12345678",
+        status=RunStatus.RUNNING,
+        current_stage="planning",
+        prompt="Add rate limiting for the API",
+    )
+    final_run = SimpleNamespace(
+        status=RunStatus.COMPLETED,
+        result_text="done",
+        error_text=None,
+        plan_text=None,
+    )
+    captured_chat_ids: list[int] = []
+
+    class SubmitPromptStub:
+        async def execute(self, **kwargs):
+            captured_chat_ids.append(kwargs["chat_id"])
+            return SimpleNamespace(run_id="run-1", estimate_seconds=3, plan_text=None)
+
+    runtime = _resume_runtime(runs=[run], messages=[])
+    runtime.services = SimpleNamespace(submit_prompt=SubmitPromptStub())
+
+    monkeypatch.setattr(cli, "bootstrap", lambda _config: runtime)
+    monkeypatch.setattr(
+        cli, "_poll_run", lambda _runtime, _run_id, *, timeout, poll_interval: final_run
+    )
+
+    result = runner.invoke(cli.app, ["run", "Add rate limiting", "--session", "my-feature"])
+
+    assert result.exit_code == 0
+    assert "--- Incomplete run detected ---" in result.stdout
+    assert captured_chat_ids == [cli._resolve_session_chat_id("my-feature")]
+
+
+def test_chat_cli_shows_session_resume_summary(monkeypatch: pytest.MonkeyPatch) -> None:
+    from mergemate.domain.shared import RunStatus
+
+    run = SimpleNamespace(
+        run_id="run-12345678",
+        status=RunStatus.RUNNING,
+        current_stage="planning",
+        prompt="Add rate limiting for the API",
+    )
+
+    runtime = _resume_runtime(
+        runs=[run],
+        messages=[{"role": "user", "content": "Previous discussion"}],
+    )
+
+    monkeypatch.setattr(cli, "bootstrap", lambda _config: runtime)
+
+    result = runner.invoke(cli.app, ["chat", "--session", "my-feature"], input="exit\n")
+
+    assert result.exit_code == 0
+    assert "--- Incomplete run detected ---" in result.stdout
+    assert "MergeMate chat session [my-feature]" in result.stdout
+    assert "--- Previous conversation ---" in result.stdout
