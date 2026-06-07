@@ -376,6 +376,25 @@ def _print_conversation_history(runtime: Any, chat_id: int, *, limit: int = 10) 
     typer.echo("----------------------------")
 
 
+def _print_session_resume_summary(runtime: Any, chat_id: int) -> None:
+    """Print the latest non-terminal run for a named session, if one exists."""
+    runs = runtime.persistence.run_repository.list_for_chat(chat_id, limit=1)
+    if not runs:
+        return
+
+    run = runs[0]
+    if run.status in RunStatus.terminal_statuses():
+        return
+
+    prompt_preview = run.prompt[:120].replace("\n", " ")
+    typer.echo("--- Incomplete run detected ---")
+    typer.echo(f"  Run: {run.run_id[:8]}")
+    typer.echo(f"  Status: {run.status.value}")
+    typer.echo(f"  Stage: {run.current_stage}")
+    typer.echo(f"  Prompt: {prompt_preview}")
+    typer.echo("-------------------------------")
+
+
 def _poll_run(runtime: Any, run_id: str, *, timeout: float | None, poll_interval: float) -> object:
     """Poll for run completion. Returns the terminal run or raises typer.Exit."""
     import time as _time
@@ -444,6 +463,9 @@ def run_cli(
     agent_name = agent or runtime.settings.default_agent
     resolved_workflow = _resolve_workflow(agent_name, workflow, runtime)
 
+    # Show session context before submitting a new prompt
+    _print_session_resume_summary(runtime, chat_id)
+
     # Submit the prompt with auto-approve (CLI user explicitly asked for execution)
     with _temporary_auto_approve(runtime):
         result = asyncio.run(
@@ -491,6 +513,7 @@ def chat_cli(
     resolved_workflow = _resolve_workflow(agent_name, workflow, runtime)
 
     # Show conversation history on resume
+    _print_session_resume_summary(runtime, chat_id)
     _print_conversation_history(runtime, chat_id)
 
     session_label = session or "(anonymous)"
