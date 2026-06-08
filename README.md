@@ -51,7 +51,7 @@ The current implementation includes:
 - SQLite-backed run and conversation persistence
 - FTS5-backed search across stored runs and conversation messages, with phrase-aware ranking and a LIKE fallback when SQLite FTS is unavailable
 - learning memory from successful prior runs within the same chat
-- optional repository-scoped knowledge keyed by `repo_name` in config
+- optional repository-scoped knowledge keyed by `repo_name` in config, with each run persisting the repository scope that was active when it was submitted
 - optional multi-model fan-out for an agent, with parallel execution across configured provider aliases
 - static planner, coder, tester, and reviewer agent roles in config
 - bounded review-driven replanning up to a configurable maximum iteration count
@@ -158,7 +158,7 @@ The current split-runtime implementation work starts with durable planning and e
 
 MergeMate now persists short excerpts from successful runs and feeds recent learned examples back into later prompts for the same chat.
 
-If you set the optional top-level `repo_name` in config, MergeMate also loads repository-specific knowledge snippets for that repository and includes them in the prompt context. When `repo_name` is unset, the bot falls back to chat-scoped learning only.
+If you set the optional top-level `repo_name` in config, MergeMate also loads repository-specific knowledge snippets for that repository and includes them in the prompt context. Each submitted run stores the repository scope that was active at submission time, so later lookups keep using the run's own repo context even if the config changes. When `repo_name` is unset, the bot falls back to chat-scoped learning only.
 
 MergeMate can also fan out one request to multiple configured model aliases in parallel. The default `coder` agent is now configured to call two provider aliases concurrently and return a sectioned combined result.
 

@@ -4,6 +4,8 @@
 
 ### Changed
 
+- **Documentation refresh** — clarified that repository-scoped knowledge is keyed by `repo_name`, that submitted runs persist the repository scope in effect at submission time, and that later lookups prefer the run's own repository context.
+
 - **Run repo scope consistency** — `AgentRun` now stores the `repo_name`
   that was in effect when the run was submitted. The SQLite run repository
   persists it, and orchestration prefers the run's own repository scope when
