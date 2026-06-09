@@ -23,6 +23,8 @@ mergemate run "<prompt>" [--agent <name>] [--workflow <name>] [--quiet]
 - `--timeout N`: raises `TimeoutError` (exit code 1) if the run exceeds N seconds
 - `--session <name>`: uses a deterministic `chat_id` derived from the session name
   so subsequent runs with the same name share conversation history
+- Named sessions print the latest incomplete run summary before submission so a resumed thread
+  starts with the current prompt and stage context in view
 - Exit codes: 0 = success, 1 = timeout, 2 = runtime error
 
 **`mergemate chat` subcommand** — interactive REPL for multi-turn conversation.
@@ -33,6 +35,7 @@ mergemate chat [--session <name>] [--agent <name>]
 
 - Creates or resumes a named session (persisted via SQLite)
 - Shows conversation history on resume
+- Prints the latest incomplete run summary before the next prompt is entered
 - Runs a `while True` loop: `input("> ")` → submit → poll → print result
 - Type `exit`, `quit`, or `Ctrl+C` to leave
 

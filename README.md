@@ -60,6 +60,7 @@ The current implementation includes:
 - OpenAI provider adapter with a clear fallback message when no API key is configured
 - config-gated package installation support through the runtime CLI
 - source-control integration through logged-in `git`, `gh`, and `glab` CLIs
+- named CLI sessions that surface the latest incomplete run summary plus recent conversation history when you re-enter them
 
 ## Project Status
 
