@@ -52,6 +52,7 @@ The original review grouped these gaps because they touched the same CLI surface
 
 Currently:
 - `mergemate chat --session <name>` creates a deterministic `chat_id` and uses the existing conversation history
+- The CLI now prints the latest incomplete run summary when `run` or `chat` re-enters a named session, which improves continuity even though full active-run resume is still not implemented
 - But if a user leaves a session mid-run, there's no mechanism to:
   - Detect the "last incomplete run" for that session
   - Offer to resume, retry, or cancel it

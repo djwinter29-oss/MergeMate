@@ -119,6 +119,8 @@ mergemate chat --agent coder --workflow generate_code
 
 `mergemate chat` shows recent conversation history on resume, loops for multi-turn prompts, and auto-approves runs (no Telegram confirmation needed since the user is at the terminal).
 
+When you reuse a named session with `mergemate run --session ...` or `mergemate chat --session ...`, MergeMate also prints the latest incomplete run summary before the next prompt is submitted. That makes it easier to continue an interrupted thread without opening the database manually.
+
 Print the default project-local config path:
 
 ```bash
