@@ -378,12 +378,12 @@ def _print_conversation_history(runtime: Any, chat_id: int, *, limit: int = 10) 
 
 def _print_session_resume_summary(runtime: Any, chat_id: int) -> None:
     """Print the latest non-terminal run for a named session, if one exists."""
-    runs = runtime.persistence.run_repository.list_for_chat(chat_id, limit=1)
+    runs = runtime.persistence.run_repository.list_for_chat(chat_id, limit=10)
     if not runs:
         return
 
-    run = runs[0]
-    if run.status in RunStatus.terminal_statuses():
+    run = next((item for item in runs if item.status not in RunStatus.terminal_statuses()), None)
+    if run is None:
         return
 
     prompt_preview = run.prompt[:120].replace("\n", " ")
