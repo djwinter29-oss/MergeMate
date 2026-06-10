@@ -855,6 +855,32 @@ def test_print_session_resume_summary_shows_latest_non_terminal_run(
     assert "Prompt: Add rate limiting for the API" in captured.out
 
 
+def test_print_session_resume_summary_skips_latest_terminal_run(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from mergemate.domain.shared import RunStage, RunStatus
+
+    terminal_run = SimpleNamespace(
+        run_id="run-terminal",
+        status=RunStatus.COMPLETED,
+        current_stage=RunStage.COMPLETED,
+        prompt="Finish the refactor",
+    )
+    active_run = SimpleNamespace(
+        run_id="run-active",
+        status=RunStatus.RUNNING,
+        current_stage=RunStage.EXECUTION,
+        prompt="Add rate limiting\nfor the API",
+    )
+
+    cli._print_session_resume_summary(_resume_runtime(runs=[terminal_run, active_run]), chat_id=99)
+
+    captured = capsys.readouterr()
+    assert "--- Incomplete run detected ---" in captured.out
+    assert "Run: run-acti" in captured.out
+    assert "Status: running" in captured.out
+
+
 def test_print_session_resume_summary_skips_terminal_run(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
