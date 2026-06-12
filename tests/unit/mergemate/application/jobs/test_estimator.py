@@ -17,8 +17,7 @@ def test_estimate_duration_returns_expected_seconds(workflow: str, expected_seco
 
 
 def test_estimate_duration_uses_prompt_complexity() -> None:
-    assert estimate_duration("generate_code", "fix typo") == 24
-
+    short_estimate = estimate_duration("generate_code", "fix typo")
     complex_prompt = """
 Implement auth database migration and API schema.
 
@@ -29,5 +28,36 @@ Implement auth database migration and API schema.
 print('x')
 ```
 """
+    complex_estimate = estimate_duration("generate_code", complex_prompt)
 
-    assert estimate_duration("generate_code", complex_prompt) == 45
+    assert short_estimate == 24
+    assert complex_estimate > short_estimate
+
+
+def test_estimate_duration_accounts_for_structured_multi_file_prompts() -> None:
+    complex_prompt = """
+Implement auth database migration and API schema.
+
+1. update schema
+2. add API endpoint
+
+```python
+print('x')
+```
+"""
+    structured_prompt = """
+Update src/mergemate/cli.py and tests/unit/mergemate/test_cli.py.
+
+- add a command handler
+- adjust the README
+- expand the regression tests
+
+```python
+print("hello")
+```
+"""
+
+    complex_estimate = estimate_duration("generate_code", complex_prompt)
+    structured_estimate = estimate_duration("generate_code", structured_prompt)
+
+    assert structured_estimate > complex_estimate

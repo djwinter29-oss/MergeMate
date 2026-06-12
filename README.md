@@ -81,7 +81,7 @@ Current limitations:
 - webhook deployment hardening is still in progress beyond the initial self-hosted webhook and readiness setup
 - honest ingress and worker splitting is still in progress; the current codebase now has durable planning and execution jobs, but Redis-backed transport and a dedicated worker process are not implemented yet
 - the provider adapter currently assumes an OpenAI-compatible chat-completions request shape
-- progress estimates are now prompt-aware heuristic-based rather than telemetry-driven
+- progress estimates are now prompt-aware and structure-aware heuristic-based rather than telemetry-driven
 - sandboxed code execution is not part of the MVP
 - runtime tool execution is still limited to safe context collection; autonomous mutating tool use is not implemented
 
