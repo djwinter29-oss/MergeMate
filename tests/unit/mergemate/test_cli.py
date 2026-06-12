@@ -811,8 +811,11 @@ def test_search_conversations_prints_matches(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def _resume_runtime(*, runs=None, messages=None):
+    captured_limits: list[int] = []
+
     class RunRepoStub:
         def list_for_chat(self, chat_id: int, limit: int = 1):
+            captured_limits.append(limit)
             return runs or []
 
     class ConvRepoStub:
@@ -830,6 +833,7 @@ def _resume_runtime(*, runs=None, messages=None):
             conversation_repository=ConvRepoStub(),
         ),
         services=SimpleNamespace(),
+        captured_limits=captured_limits,
     )
 
 
@@ -897,6 +901,26 @@ def test_print_session_resume_summary_skips_terminal_run(
 
     captured = capsys.readouterr()
     assert captured.out == ""
+
+
+def test_print_session_resume_summary_uses_wider_lookup_window(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from mergemate.domain.shared import RunStage, RunStatus
+
+    run = SimpleNamespace(
+        run_id="run-12345678",
+        status=RunStatus.RUNNING,
+        current_stage=RunStage.EXECUTION,
+        prompt="Add rate limiting for the API",
+    )
+    runtime = _resume_runtime(runs=[run])
+
+    cli._print_session_resume_summary(runtime, chat_id=99)
+
+    captured = capsys.readouterr()
+    assert "--- Incomplete run detected ---" in captured.out
+    assert runtime.captured_limits == [100]
 
 
 def test_run_cli_shows_session_resume_summary(monkeypatch: pytest.MonkeyPatch) -> None:
