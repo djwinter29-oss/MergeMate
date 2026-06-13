@@ -4,6 +4,11 @@
 
 ### Changed
 
+- **Progress estimates** — execution estimates now account for prompt structure
+  in addition to workflow base times. Bullet lists, code blocks, file references,
+  and multi-file wording nudge the estimate upward so progress messages stay
+  closer to real work.
+
 - **Documentation refresh** — clarified that repository-scoped knowledge is keyed by `repo_name`, that submitted runs persist the repository scope in effect at submission time, and that later lookups prefer the run's own repository context.
 
 - **Run repo scope consistency** — `AgentRun` now stores the `repo_name`
