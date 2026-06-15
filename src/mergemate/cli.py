@@ -3,7 +3,7 @@
 import json
 from hashlib import blake2s
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 import time
 from typing import Any, Sequence, cast
@@ -355,6 +355,36 @@ def _print_run_result(
         typer.echo(f"Error: {run.error_text}", err=True)
 
 
+def _format_datetime(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    return normalized.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+
+def _format_age(value: datetime | None, *, now: datetime | None = None) -> str | None:
+    if value is None:
+        return None
+    reference = now if now is not None else datetime.now(UTC)
+    normalized_reference = reference if reference.tzinfo is not None else reference.replace(tzinfo=UTC)
+    normalized_value = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    delta = normalized_reference.astimezone(UTC) - normalized_value.astimezone(UTC)
+    total_seconds = max(0, int(delta.total_seconds()))
+    days, remainder = divmod(total_seconds, 86_400)
+    hours, remainder = divmod(remainder, 3_600)
+    minutes, seconds = divmod(remainder, 60)
+    parts: list[str] = []
+    if days:
+        parts.append(f"{days}d")
+    if hours:
+        parts.append(f"{hours}h")
+    if minutes:
+        parts.append(f"{minutes}m")
+    if not parts:
+        parts.append(f"{seconds}s")
+    return " ".join(parts)
+
+
 def _print_conversation_history(runtime: Any, chat_id: int, *, limit: int = 10) -> None:
     """Print recent conversation history for a session."""
     messages = runtime.persistence.conversation_repository.load_recent_messages(
@@ -393,9 +423,16 @@ def _print_session_resume_summary(runtime: Any, chat_id: int) -> None:
     typer.echo(f"  Run: {run.run_id[:8]}")
     typer.echo(f"  Status: {run.status.value}")
     typer.echo(f"  Stage: {run.current_stage}")
+    created_at = getattr(run, "created_at", None)
+    updated_at = getattr(run, "updated_at", None)
+    if created_at is not None:
+        typer.echo(f"  Created: {_format_datetime(created_at)}")
+    if updated_at is not None:
+        updated_at_text = _format_datetime(updated_at)
+        age_text = _format_age(updated_at)
+        typer.echo(f"  Updated: {updated_at_text} ({age_text} ago)")
     typer.echo(f"  Prompt: {prompt_preview}")
     typer.echo("-------------------------------")
-
 
 def _poll_run(runtime: Any, run_id: str, *, timeout: float | None, poll_interval: float) -> object:
     """Poll for run completion. Returns the terminal run or raises typer.Exit."""
