@@ -366,7 +366,9 @@ def _format_age(value: datetime | None, *, now: datetime | None = None) -> str |
     if value is None:
         return None
     reference = now if now is not None else datetime.now(UTC)
-    normalized_reference = reference if reference.tzinfo is not None else reference.replace(tzinfo=UTC)
+    normalized_reference = (
+        reference if reference.tzinfo is not None else reference.replace(tzinfo=UTC)
+    )
     normalized_value = value if value.tzinfo is not None else value.replace(tzinfo=UTC)
     delta = normalized_reference.astimezone(UTC) - normalized_value.astimezone(UTC)
     total_seconds = max(0, int(delta.total_seconds()))
@@ -433,6 +435,7 @@ def _print_session_resume_summary(runtime: Any, chat_id: int) -> None:
         typer.echo(f"  Updated: {updated_at_text} ({age_text} ago)")
     typer.echo(f"  Prompt: {prompt_preview}")
     typer.echo("-------------------------------")
+
 
 def _poll_run(runtime: Any, run_id: str, *, timeout: float | None, poll_interval: float) -> object:
     """Poll for run completion. Returns the terminal run or raises typer.Exit."""
