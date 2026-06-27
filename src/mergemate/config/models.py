@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, ClassVar, Collection, Literal, Self
 from urllib.parse import ParseResult, urlparse
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AliasChoices, BaseModel, Field, model_validator
 
 # ── Workflow name constants (mirrors domain WorkflowName, no import needed) ──
 
@@ -245,7 +245,10 @@ class RuntimeConfig(BaseModel):
     job_lease_seconds: int = Field(default=30, ge=1)
     job_heartbeat_interval_seconds: int = Field(default=10, ge=1)
     max_poll_iterations: int | None = Field(default=None, ge=1)
-    llm_retry: RetryConfig = Field(default_factory=RetryConfig)
+    llm_retry: RetryConfig = Field(
+        default_factory=RetryConfig,
+        validation_alias=AliasChoices("llm_retry", "retry"),
+    )
 
 
 class WorkflowControlConfig(BaseModel):

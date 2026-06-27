@@ -107,7 +107,7 @@ async def with_retry(
 
 ### 4.2 `_generate_from_provider` Wrapper
 
-The existing `_generate_from_provider()` reads `settings.runtime.retry` and wraps the call in `with_retry()`. The `generate()` single-mode path now delegates to `_generate_from_provider()` to share retry logic.
+The existing `_generate_from_provider()` reads `settings.runtime.llm_retry`, and still accepts the legacy `settings.runtime.retry` alias for backward compatibility, then wraps the call in `with_retry()`. The `generate()` single-mode path now delegates to `_generate_from_provider()` to share retry logic.
 
 ## 5. Non-Goals (Future Work)
 

@@ -129,6 +129,15 @@ def _get_budget(cfg: RetryConfig) -> _RetryBudget:
     return _budget
 
 
+def _resolve_retry_config(settings: Any) -> RetryConfig:
+    """Return the configured retry policy, supporting the legacy ``retry`` alias."""
+    runtime = getattr(settings, "runtime", None)
+    retry_cfg = getattr(runtime, "llm_retry", None)
+    if retry_cfg is None:
+        retry_cfg = getattr(runtime, "retry", None)
+    return retry_cfg if isinstance(retry_cfg, RetryConfig) else RetryConfig()
+
+
 # ── Full-jitter delay calculation ─────────────────────────────────────
 
 
@@ -361,9 +370,7 @@ class ParallelLLMGateway:
         system_prompt: str,
         user_prompt: str,
     ) -> str:
-        retry_cfg: RetryConfig = getattr(
-            getattr(self._settings, "runtime", None), "llm_retry", RetryConfig()
-        )
+        retry_cfg = _resolve_retry_config(self._settings)
 
         async def _call() -> str:
             result = await self._clients[provider_name].generate(system_prompt, user_prompt)
