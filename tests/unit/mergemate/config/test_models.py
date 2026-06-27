@@ -4,7 +4,13 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from mergemate.config.models import AppConfig, ConfigWorkflowNotFoundError, TelegramConfig
+from mergemate.config.models import (
+    AppConfig,
+    ConfigWorkflowNotFoundError,
+    RetryConfig,
+    RuntimeConfig,
+    TelegramConfig,
+)
 from mergemate.domain.shared import WorkflowName
 
 
@@ -660,3 +666,17 @@ def test_config_model_raises_when_webhook_url_requested_without_base_url() -> No
 
     with pytest.raises(ValueError, match="Telegram webhook public base URL must be configured"):
         config.resolve_telegram_webhook_url()
+
+
+def test_runtime_config_accepts_legacy_retry_alias() -> None:
+    cfg = RuntimeConfig.model_validate({"retry": {"max_retries": 7, "base_delay_seconds": 0.5}})
+
+    assert cfg.llm_retry == RetryConfig(max_retries=7, base_delay_seconds=0.5)
+
+
+def test_runtime_config_accepts_modern_llm_retry_name() -> None:
+    cfg = RuntimeConfig.model_validate(
+        {"llm_retry": {"max_retries": 4, "base_delay_seconds": 0.25}}
+    )
+
+    assert cfg.llm_retry == RetryConfig(max_retries=4, base_delay_seconds=0.25)

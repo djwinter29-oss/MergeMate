@@ -26,10 +26,11 @@ This PR implements the design from `docs/architecture/llm-gateway-retry.md` (PR 
   - Non-retryable: CancelledError, ProviderResponseError, AllProvidersFailedError, unknown types
 - **`_RetryBudget`** — Sliding-window counter; 429 does not consume budget
 - **`_get_budget()` / `_reset_budget_for_testing()`** — Global singleton management
+- **`_resolve_retry_config()`** — Reads `runtime.llm_retry` and falls back to the legacy `runtime.retry` alias
 - **`_full_jitter_delay()`** — `random.uniform(0, min(max, base * 2^attempt))`
 - **`with_retry()`** — Async retry wrapper: budget check, 429/Retry-After handling, exponential backoff
 - **`_is_rate_limit()` / `_extract_retry_after()`** — HTTP 429 helpers
-- **`_generate_from_provider()`** — Now wraps call in `with_retry()`; reads config from `settings.runtime.llm_retry`
+- **`_generate_from_provider()`** — Now wraps call in `with_retry()`; reads config from `settings.runtime.llm_retry` and honors the legacy `settings.runtime.retry` alias
 - **`generate()`** — Single-mode path now delegates to `_generate_from_provider()` (so it gets retry too)
 
 ### `tests/unit/mergemate/infrastructure/llm/test_gateway.py`

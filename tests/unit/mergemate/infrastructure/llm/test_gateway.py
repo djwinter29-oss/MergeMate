@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 import asyncio
 import time as time_module
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -592,6 +593,34 @@ class TestWithRetry:
 
 class TestParallelLLMGatewayWithRetry:
     """End-to-end tests of retry behaviour through the gateway."""
+
+    @pytest.mark.asyncio
+    async def test_generate_from_provider_honors_legacy_retry_alias(self) -> None:
+        """The gateway should still honor runtime.retry for older configs."""
+        call_count = 0
+
+        class FlakyClientStub:
+            async def generate(self, system_prompt: str, user_prompt: str) -> str:
+                nonlocal call_count
+                call_count += 1
+                if call_count < 3:
+                    raise httpx.TimeoutException("transient timeout")
+                return "recovered"
+
+        settings = SettingsStub(
+            provider_names=["p1"],
+            agents={"coder": AgentStub(parallel_mode="single")},
+        )
+        settings.runtime = SimpleNamespace(
+            retry=RetryConfig(max_retries=5, base_delay_seconds=0.001),
+        )
+
+        gateway = ParallelLLMGateway(settings, {"p1": FlakyClientStub()})
+
+        result = await gateway.generate("coder", "system", "user")
+
+        assert result == "recovered"
+        assert call_count == 3
 
     @pytest.mark.asyncio
     async def test_generate_from_provider_retries_on_retryable_error(self) -> None:
