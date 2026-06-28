@@ -41,10 +41,14 @@ coverage:
 
 branches-merged:
 	@echo "=== Local branches merged into main (safe to delete) ==="
-	@git branch --merged main | grep -v "main\|*" | sed 's/^/  /' || true
+	@git for-each-ref --format='%(refname:short)' refs/heads --merged main \
+		| grep -Fvx main \
+		| sed 's/^/  /' || true
 	@echo
 	@echo "=== Remote tracking branches merged into main (safe to prune) ==="
-	@git branch -r --merged origin/main | grep -v "origin/main\|origin/HEAD" | sed 's/^/  /' || true
+	@git for-each-ref --format='%(refname:short)' refs/remotes/origin --merged origin/main \
+		| grep -Fvx -e origin -e origin/main -e origin/HEAD \
+		| sed 's/^/  /' || true
 
 branches-list:
 	@echo "=== All local branches ==="
@@ -56,7 +60,7 @@ branches-list:
 branches-clean: branches-merged
 	@echo
 	@echo "To delete merged local branches, run:"
-	@echo '  git branch --merged main | grep -v "main\|*" | xargs -r git branch -d'
+	@echo '  git for-each-ref --format='"'"'%(refname:short)'"'"' refs/heads --merged main | grep -Fvx main | xargs -r git branch -d'
 	@echo
 	@echo "To prune stale remote tracking refs locally, run:"
 	@echo '  git remote prune origin'
@@ -67,9 +71,9 @@ branches-prune:
 	@echo
 	@echo "=== Deleting merged local branches (excluding the current branch) ==="
 	@current_branch=$$(git branch --show-current); \
-	git branch --merged main --format='%(refname:short)' \
+	git for-each-ref --format='%(refname:short)' refs/heads --merged main \
 		| { if [ -n "$$current_branch" ]; then grep -Fvx -e main -e "$$current_branch"; else grep -Fvx -e main; fi; } \
-		| xargs -r git branch -d
+		| while IFS= read -r branch; do git branch -d "$$branch"; done
 
 # ── Pre-commit ────────────────────────────────────────────────────────────────
 
