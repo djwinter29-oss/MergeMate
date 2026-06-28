@@ -28,11 +28,12 @@ def test_repository_maintenance_prune_target_skips_the_current_branch() -> None:
 
     assert "git branch --show-current" in makefile_text
     assert "excluding the current branch" in makefile_text
+    assert "git for-each-ref --format='%(refname:short)' refs/heads --merged main" in makefile_text
+    assert 'while IFS= read -r branch; do git branch -d "$$branch"; done' in makefile_text
     assert 'grep -Fvx -e main -e "$$current_branch"' in makefile_text
-    assert (
-        "from a feature branch because it will not try to delete the current checkout"
-        in maintenance_text
-    )
+    assert "uses `git for-each-ref` for the branch listings" in maintenance_text
+    assert "from a feature branch" in maintenance_text
+    assert "will not try to delete the current checkout" in maintenance_text
 
 
 def test_branch_maintenance_targets_succeed_when_there_are_no_matches() -> None:

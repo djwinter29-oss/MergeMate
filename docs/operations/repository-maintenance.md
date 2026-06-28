@@ -17,9 +17,11 @@ The repository includes branch maintenance helpers in the `Makefile`:
   while leaving the currently checked-out branch untouched
 
 `branches-list`, `branches-merged`, and `branches-clean` are intentionally safe to run during routine
-maintenance because they only inspect branch state or print suggested cleanup commands. `branches-prune`
-is the execution target for when you are ready to apply the cleanup locally, and it is safe to run
-from a feature branch because it will not try to delete the current checkout.
+maintenance because they only inspect branch state or print suggested cleanup commands. The Makefile
+uses `git for-each-ref` for the branch listings so the output is more explicit than `git branch`
+parsing and is easier to reuse in shell pipelines. `branches-prune` is the execution target for when
+you are ready to apply the cleanup locally, and it is safe to run from a feature branch because it
+will not try to delete the current checkout.
 
 The listing targets also exit successfully when there are no merged or stale branches to report, so
 an empty result set does not turn a maintenance check into a failure.
