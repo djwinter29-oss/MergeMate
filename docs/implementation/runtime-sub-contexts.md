@@ -43,8 +43,7 @@ updated to use the `services.` nesting pattern:
 
 ## Verification
 
-- 784 tests passed, 4 skipped (E2E Telegram tests), 0 failures
-- The sole pre-existing failure in `test_orchestrator_integration.py` (`SettingsStub` missing `repo_name` attribute) is unrelated
+- 891 tests passed, 38 deselected (integration and e2e tests), 0 failures
 - No behavioral change — property shims ensure all deprecated flat access still resolves correctly
 
 ## Files Changed

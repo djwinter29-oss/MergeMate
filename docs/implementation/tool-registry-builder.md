@@ -43,7 +43,7 @@ Removed 6 unused import lines (the tool classes are now imported inside the buil
 - Fluent chaining works: `.with_git().with_github_cli()` registers both tools.
 - All tools receive the same parameters as before (resolved `working_directory`, config-derived settings).
 - No behavioural change — `ToolRegistry.__init__` signature unchanged, same `ToolRegistry` instances reach downstream consumers.
-- 750/750 non-broken tests pass; the 22 pre-existing failures are unrelated (integration test stubs, CLI output parsing mismatches).
+- 891 tests passed, 38 deselected (integration and e2e excluded), 0 failures.
 
 ## Files Changed
 

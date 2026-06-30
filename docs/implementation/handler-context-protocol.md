@@ -38,6 +38,6 @@ No changes needed — `ExecutionRuntime` structurally satisfies `HandlerContext`
 
 ## Verification
 
-- **Tests:** 753 passed, 4 skipped (unchanged)
+- **Tests:** 891 passed, 38 deselected (integration and e2e excluded)
 - **Ruff:** no issues
-- **Mypy:** no issues across all 72 source files
+- **Mypy:** no issues across all 77 source files
