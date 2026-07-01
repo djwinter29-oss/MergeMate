@@ -53,9 +53,9 @@ The current implementation includes:
 - learning memory from successful prior runs within the same chat
 - optional repository-scoped knowledge keyed by `repo_name` in config, with each run persisting the repository scope that was active when it was submitted
 - optional multi-model fan-out for an agent, with parallel execution across configured provider aliases
-- static planner, coder, tester, and reviewer agent roles in config
+- static planner, architect, coder, tester, and reviewer agent roles in config
 - bounded review-driven replanning up to a configurable maximum iteration count
-- `/start`, `/status`, `/approve`, and `/cancel` commands
+- `/start`, `/status`, `/tools`, `/approve`, and `/cancel` commands
 - local config plus explicit `--config` override at startup
 - OpenAI provider adapter with a clear fallback message when no API key is configured
 - config-gated package installation support through the runtime CLI
