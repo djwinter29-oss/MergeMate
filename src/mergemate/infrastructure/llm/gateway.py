@@ -138,6 +138,27 @@ def _resolve_retry_config(settings: Any) -> RetryConfig:
     return retry_cfg if isinstance(retry_cfg, RetryConfig) else RetryConfig()
 
 
+def _resolve_provider_retry_config(settings: Any, provider_name: str) -> RetryConfig:
+    """Return the provider-specific retry policy when configured."""
+    providers = getattr(settings, "providers", None)
+    provider_cfg: Any = None
+    if isinstance(providers, Mapping):
+        provider_cfg = providers.get(provider_name)
+    elif providers is not None:
+        provider_cfg = getattr(providers, provider_name, None)
+
+    if provider_cfg is None:
+        return _resolve_retry_config(settings)
+
+    provider_retry = getattr(provider_cfg, "retry", None)
+    if provider_retry is None and isinstance(provider_cfg, Mapping):
+        provider_retry = provider_cfg.get("retry")
+
+    if isinstance(provider_retry, RetryConfig):
+        return provider_retry
+    return _resolve_retry_config(settings)
+
+
 # ── Full-jitter delay calculation ─────────────────────────────────────
 
 
@@ -370,7 +391,7 @@ class ParallelLLMGateway:
         system_prompt: str,
         user_prompt: str,
     ) -> str:
-        retry_cfg = _resolve_retry_config(self._settings)
+        retry_cfg = _resolve_provider_retry_config(self._settings, provider_name)
 
         async def _call() -> str:
             result = await self._clients[provider_name].generate(system_prompt, user_prompt)
