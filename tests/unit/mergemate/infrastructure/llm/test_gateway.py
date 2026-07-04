@@ -67,6 +67,7 @@ class AgentStub:
 class SettingsStub:
     provider_names: list[str]
     agents: dict[str, AgentStub] = field(default_factory=dict)
+    providers: object = None
     runtime: object = None
 
     def resolve_agent_provider_names(self, agent_name: str) -> list[str]:
@@ -593,6 +594,36 @@ class TestWithRetry:
 
 class TestParallelLLMGatewayWithRetry:
     """End-to-end tests of retry behaviour through the gateway."""
+
+    @pytest.mark.asyncio
+    async def test_generate_from_provider_prefers_provider_specific_retry_config(self) -> None:
+        call_count = 0
+
+        class FlakyClientStub:
+            async def generate(self, system_prompt: str, user_prompt: str) -> str:
+                nonlocal call_count
+                call_count += 1
+                if call_count < 3:
+                    raise httpx.TimeoutException("transient timeout")
+                return "provider-specific"
+
+        settings = SettingsStub(
+            provider_names=["p1"],
+            agents={"coder": AgentStub(parallel_mode="single")},
+            providers={
+                "p1": SimpleNamespace(retry=RetryConfig(max_retries=2, base_delay_seconds=0.001))
+            },
+        )
+        settings.runtime = SimpleNamespace(
+            llm_retry=RetryConfig(max_retries=0, base_delay_seconds=0.001),
+        )
+
+        gateway = ParallelLLMGateway(settings, {"p1": FlakyClientStub()})
+
+        result = await gateway.generate("coder", "system", "user")
+
+        assert result == "provider-specific"
+        assert call_count == 3
 
     @pytest.mark.asyncio
     async def test_generate_from_provider_honors_legacy_retry_alias(self) -> None:

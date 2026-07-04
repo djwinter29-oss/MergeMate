@@ -1,5 +1,7 @@
 """Configuration models for MergeMate."""
 
+from __future__ import annotations
+
 from collections import Counter
 import os
 from pathlib import Path
@@ -85,6 +87,7 @@ class ProviderConfig(BaseModel):
     api_key_header: str = "Authorization"
     api_key_prefix: str = "Bearer"
     extra_headers: dict[str, str] = Field(default_factory=dict)
+    retry: RetryConfig | None = None
 
     @model_validator(mode="after")
     def validate_provider_url(self) -> Self:

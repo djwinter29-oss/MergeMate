@@ -27,6 +27,7 @@ def _build_config() -> AppConfig:
                 "secondary": {
                     "api_key_env": "SECONDARY_KEY",
                     "model": "gpt-4.1",
+                    "retry": {"max_retries": 6, "base_delay_seconds": 0.75},
                 },
             },
             "telegram": {"bot_token_env": "TELEGRAM_TOKEN"},
@@ -54,6 +55,9 @@ def test_config_model_resolves_provider_names_and_api_keys(monkeypatch: pytest.M
     assert config.resolve_agent_provider_names("coder") == ["secondary"]
     assert config.resolve_agent_provider_names("missing") == ["primary"]
     assert config.resolve_agent_provider_names("reviewer") == ["primary"]
+    assert config.providers["secondary"].retry == RetryConfig(
+        max_retries=6, base_delay_seconds=0.75
+    )
 
 
 def test_config_model_returns_copy_when_resolving_provider_names() -> None:
