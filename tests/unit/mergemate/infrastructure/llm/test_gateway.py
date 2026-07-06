@@ -10,6 +10,7 @@ from unittest.mock import MagicMock
 
 from mergemate.config.models import RetryConfig
 from mergemate.domain.shared.exceptions import AllProvidersFailedError, ProviderResponseError
+from mergemate.infrastructure.llm import gateway as gateway_module
 from mergemate.infrastructure.llm.gateway import (
     ParallelLLMGateway,
     _extract_retry_after,
@@ -105,6 +106,61 @@ async def test_generate_uses_first_available_provider_for_single_mode() -> None:
 
     assert result == "ok"
     assert client.calls == [("system", "user")]
+
+
+@pytest.mark.asyncio
+async def test_generate_uses_provider_specific_retry_config_when_available(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = ClientStub("ok")
+    runtime_retry = RetryConfig(max_retries=2, base_delay_seconds=0.25)
+    provider_retry = RetryConfig(max_retries=6, base_delay_seconds=0.75)
+    settings = SettingsStub(
+        provider_names=["primary"],
+        agents={"coder": AgentStub(parallel_mode="single")},
+        providers={"primary": SimpleNamespace(retry=provider_retry)},
+        runtime=SimpleNamespace(llm_retry=runtime_retry),
+    )
+    gateway = ParallelLLMGateway(settings, {"primary": client})
+    captured: dict[str, RetryConfig] = {}
+
+    async def fake_with_retry(fn, cfg, **kwargs):
+        captured["cfg"] = cfg
+        return await fn()
+
+    monkeypatch.setattr(gateway_module, "with_retry", fake_with_retry)
+
+    result = await gateway.generate("coder", "system", "user")
+
+    assert result == "ok"
+    assert captured["cfg"] == provider_retry
+
+
+@pytest.mark.asyncio
+async def test_generate_falls_back_to_runtime_retry_config_when_provider_has_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = ClientStub("ok")
+    runtime_retry = RetryConfig(max_retries=4, base_delay_seconds=1.5)
+    settings = SettingsStub(
+        provider_names=["primary"],
+        agents={"coder": AgentStub(parallel_mode="single")},
+        providers={"primary": SimpleNamespace(retry=None)},
+        runtime=SimpleNamespace(llm_retry=runtime_retry),
+    )
+    gateway = ParallelLLMGateway(settings, {"primary": client})
+    captured: dict[str, RetryConfig] = {}
+
+    async def fake_with_retry(fn, cfg, **kwargs):
+        captured["cfg"] = cfg
+        return await fn()
+
+    monkeypatch.setattr(gateway_module, "with_retry", fake_with_retry)
+
+    result = await gateway.generate("coder", "system", "user")
+
+    assert result == "ok"
+    assert captured["cfg"] == runtime_retry
 
 
 @pytest.mark.asyncio

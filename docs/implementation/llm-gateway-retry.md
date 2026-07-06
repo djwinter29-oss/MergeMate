@@ -31,6 +31,7 @@ This PR implements the design from `docs/architecture/llm-gateway-retry.md` (PR 
 - **`with_retry()`** — Async retry wrapper: budget check, 429/Retry-After handling, exponential backoff
 - **`_is_rate_limit()` / `_extract_retry_after()`** — HTTP 429 helpers
 - **`_generate_from_provider()`** — Now wraps call in `with_retry()`; reads config from `settings.runtime.llm_retry` and honors the legacy `settings.runtime.retry` alias
+- **Provider-specific retry overrides** — `providers.<name>.retry` is also honored when present and takes precedence over the runtime default for that provider
 - **`generate()`** — Single-mode path now delegates to `_generate_from_provider()` (so it gets retry too)
 
 ### `tests/unit/mergemate/infrastructure/llm/test_gateway.py`
@@ -49,5 +50,5 @@ This PR implements the design from `docs/architecture/llm-gateway-retry.md` (PR 
 - 429 with Retry-After delays without consuming retry budget
 - Sliding-window budget is a soft circuit breaker (resets after window expires)
 - No new dependencies — pure stdlib (asyncio, random, time)
-- Per-provider retry overrides deferred to future work
+- Per-provider retry overrides are supported now via `providers.<name>.retry`
 - No full circuit breaker; the sliding window budget covers the common overload case

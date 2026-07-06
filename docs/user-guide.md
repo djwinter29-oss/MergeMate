@@ -254,6 +254,9 @@ providers:
     model: kimi-k2
     timeout_seconds: 90
     provider_url: https://api.moonshot.ai/v1/chat/completions
+    retry:
+      max_retries: 4
+      base_delay_seconds: 1.5
 
   deepseek_architect:
     api_key_env: DEEPSEEK_API_KEY
@@ -310,6 +313,8 @@ agents:
     parallel_mode: single
     combine_strategy: first_success
 ```
+
+Use `runtime.llm_retry` to set the default retry policy for all providers, then override it per provider with `providers.<name>.retry` when one endpoint needs a different retry budget or backoff profile. Provider-level retry settings take precedence for that provider.
 
 ## Parallel Model Fan-Out
 
