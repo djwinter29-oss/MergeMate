@@ -210,6 +210,9 @@ providers:
 		model: kimi-k2
 		timeout_seconds: 90
 		provider_url: https://api.moonshot.ai/v1/chat/completions
+		retry:
+			max_retries: 4
+			base_delay_seconds: 1.5
 
 	deepseek_architect:
 		api_key_env: DEEPSEEK_API_KEY
@@ -261,6 +264,8 @@ agents:
 ```
 
 This lets you run Kimi, DeepSeek, OpenAI, Azure-hosted models, and other compatible endpoints in the same MergeMate workflow.
+
+You can also override retry behavior per provider. Set `runtime.llm_retry` for the global default, then add `providers.<name>.retry` when a specific endpoint needs a different retry budget or backoff profile. Provider-level retry settings take precedence for that provider and are especially useful when one upstream is stricter than the rest.
 
 ## GitHub And GitLab
 
