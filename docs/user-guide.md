@@ -98,6 +98,9 @@ mergemate run "Add rate limiting to the API"
 # With session persistence across invocations
 mergemate run "Refactor the queue adapter" --session my-feature
 
+# Reattach to the latest incomplete run in a named session
+mergemate resume --session my-feature
+
 # Suppress banner output, print only the final result
 mergemate run "Fix the timeout bug" --quiet
 

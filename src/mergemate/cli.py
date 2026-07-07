@@ -408,15 +408,19 @@ def _print_conversation_history(runtime: Any, chat_id: int, *, limit: int = 10) 
     typer.echo("----------------------------")
 
 
-def _print_session_resume_summary(runtime: Any, chat_id: int) -> None:
-    """Print the latest non-terminal run for a named session, if one exists."""
+def _latest_non_terminal_run(runtime: Any, chat_id: int) -> Any | None:
+    """Return the latest non-terminal run for a chat session, if any."""
     runs = runtime.persistence.run_repository.list_for_chat(
         chat_id, limit=_SESSION_RESUME_LOOKUP_LIMIT
     )
     if not runs:
-        return
+        return None
+    return next((item for item in runs if item.status not in RunStatus.terminal_statuses()), None)
 
-    run = next((item for item in runs if item.status not in RunStatus.terminal_statuses()), None)
+
+def _print_session_resume_summary(runtime: Any, chat_id: int) -> None:
+    """Print the latest non-terminal run for a named session, if one exists."""
+    run = _latest_non_terminal_run(runtime, chat_id)
     if run is None:
         return
 
@@ -594,3 +598,30 @@ def chat_cli(
             # Poll until terminal
             run = _poll_run(runtime, result.run_id, timeout=timeout, poll_interval=poll_interval)
             _print_run_result(run)
+
+
+@app.command("resume")
+def resume_cli(
+    session: str = typer.Option(..., help="Session name to resume"),
+    timeout: float | None = typer.Option(None, min=1, help="Max seconds to wait for completion"),
+    poll_interval: float = typer.Option(2.0, min=0.5, help="Polling interval in seconds"),
+    config: Path | None = _CONFIG_OPTION,
+) -> None:
+    """Reattach to the latest incomplete run in a named session."""
+    runtime = bootstrap(config)
+    chat_id = _resolve_session_chat_id(session)
+    run = _latest_non_terminal_run(runtime, chat_id)
+
+    if run is None:
+        typer.echo(f'No incomplete run found for session "{session}".', err=True)
+        raise typer.Exit(code=1)
+
+    typer.echo(f'Resuming session "{session}" with run {run.run_id[:8]}...')
+    _print_session_resume_summary(runtime, chat_id)
+
+    if run.status == RunStatus.AWAITING_CONFIRMATION:
+        runtime.persistence.run_repository.approve(run.run_id)
+        typer.echo("Approved pending run; waiting for execution to continue...")
+
+    completed_run = _poll_run(runtime, run.run_id, timeout=timeout, poll_interval=poll_interval)
+    _print_run_result(completed_run)
