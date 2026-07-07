@@ -814,9 +814,16 @@ def _resume_runtime(*, runs=None, messages=None):
     captured_limits: list[int] = []
 
     class RunRepoStub:
+        def __init__(self) -> None:
+            self.approved_runs: list[str] = []
+
         def list_for_chat(self, chat_id: int, limit: int = 1):
             captured_limits.append(limit)
             return runs or []
+
+        def approve(self, run_id: str):
+            self.approved_runs.append(run_id)
+            return SimpleNamespace(run=(runs or [None])[0], transitioned=True)
 
     class ConvRepoStub:
         def load_recent_messages(self, chat_id: int, limit: int = 10):
@@ -1015,3 +1022,75 @@ def test_chat_cli_shows_session_resume_summary(monkeypatch: pytest.MonkeyPatch) 
     assert "--- Incomplete run detected ---" in result.stdout
     assert "MergeMate chat session [my-feature]" in result.stdout
     assert "--- Previous conversation ---" in result.stdout
+
+
+def test_resume_cli_reattaches_to_latest_non_terminal_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    from mergemate.domain.shared import RunStatus
+
+    run = SimpleNamespace(
+        run_id="run-12345678",
+        status=RunStatus.RUNNING,
+        current_stage="planning",
+        prompt="Add rate limiting for the API",
+    )
+    final_run = SimpleNamespace(
+        status=RunStatus.COMPLETED,
+        result_text="done",
+        error_text=None,
+        plan_text=None,
+    )
+    runtime = _resume_runtime(runs=[run], messages=[])
+
+    monkeypatch.setattr(cli, "bootstrap", lambda _config: runtime)
+    monkeypatch.setattr(
+        cli, "_poll_run", lambda _runtime, _run_id, *, timeout, poll_interval: final_run
+    )
+
+    result = runner.invoke(cli.app, ["resume", "--session", "my-feature"])
+
+    assert result.exit_code == 0
+    assert 'Resuming session "my-feature" with run run-1234...' in result.stdout
+    assert "Status: completed" in result.stdout
+    assert "Result:\ndone" in result.stdout
+    assert runtime.persistence.run_repository.approved_runs == []
+
+
+def test_resume_cli_approves_pending_runs_before_polling(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from mergemate.domain.shared import RunStatus
+
+    run = SimpleNamespace(
+        run_id="run-abcdef12",
+        status=RunStatus.AWAITING_CONFIRMATION,
+        current_stage="awaiting_confirmation",
+        prompt="Add rate limiting for the API",
+    )
+    final_run = SimpleNamespace(
+        status=RunStatus.COMPLETED,
+        result_text="done",
+        error_text=None,
+        plan_text=None,
+    )
+    runtime = _resume_runtime(runs=[run], messages=[])
+
+    monkeypatch.setattr(cli, "bootstrap", lambda _config: runtime)
+    monkeypatch.setattr(
+        cli, "_poll_run", lambda _runtime, _run_id, *, timeout, poll_interval: final_run
+    )
+
+    result = runner.invoke(cli.app, ["resume", "--session", "my-feature"])
+
+    assert result.exit_code == 0
+    assert runtime.persistence.run_repository.approved_runs == ["run-abcdef12"]
+    assert "Approved pending run; waiting for execution to continue..." in result.stdout
+
+
+def test_resume_cli_requires_an_incomplete_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    runtime = _resume_runtime(runs=[], messages=[])
+    monkeypatch.setattr(cli, "bootstrap", lambda _config: runtime)
+
+    result = runner.invoke(cli.app, ["resume", "--session", "my-feature"])
+
+    assert result.exit_code != 0
+    assert 'No incomplete run found for session "my-feature".' in result.stderr
