@@ -19,6 +19,17 @@ def test_repository_maintenance_docs_cover_the_prune_target() -> None:
     assert "branches-clean" in maintenance_text
 
 
+def test_architecture_review_notes_the_tool_invoker_protocol() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    architecture_review_text = (
+        repo_root / "docs" / "architecture" / "architecture-review-2026-05-10.md"
+    ).read_text(encoding="utf-8")
+
+    assert "ToolInvoker" in architecture_review_text
+    assert "the tool-interface gap" in architecture_review_text
+    assert "now exists" in architecture_review_text
+
+
 def test_repository_maintenance_prune_target_skips_the_current_branch() -> None:
     repo_root = Path(__file__).resolve().parents[3]
     makefile_text = (repo_root / "Makefile").read_text(encoding="utf-8")

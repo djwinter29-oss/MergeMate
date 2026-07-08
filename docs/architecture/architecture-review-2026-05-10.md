@@ -405,7 +405,7 @@ from mergemate.domain.shared.exceptions import (
 | `LLMClient` | `infrastructure/llm/base.py` | `OpenAIAdapter` | Yes (async prot) |
 | `ValidationHook` | `domain/workflows/validation.py` | `@runtime_checkable` | Yes (async prot) |
 | `JobQueueBackend` | `infrastructure/queue/__init__.py` | `LocalQueue` | Yes (async protocol) |
-| *(missing)* `ToolInvoker` | — | 4 tool classes | No protocol |
+| `ToolInvoker` | `domain/tools/protocols.py` | 4 tool classes | Yes (sync protocol) |
 | `LifecycleNotifier` | `interfaces/telegram/lifecycle_notifier.py` | `TelegramRunLifecycleNotifier` | Yes (async protocol) |
 
 **Recommendation:** Add async repository protocols for `AgentRunRepository` /
@@ -435,6 +435,10 @@ Specific issues:
 
 **Verdict: Mixed — LLM is well-abstracted, persistence is not**
 
+> Update 2026-07-08: the tool-interface gap called out in the original review has
+> since been closed. `ToolInvoker` now exists in `src/mergemate/domain/tools/`
+> and is re-exported from `src/mergemate/domain/tools/__init__.py`.
+
 **LLM abstraction (GOOD):**
 - `LLMClient` Protocol in `base.py` with a single `async def generate()` method
 - `OpenAIAdapter` is a clean implementation — no framework dependency
@@ -456,7 +460,8 @@ Specific issues:
 - Each tool has a `ToolMetadata` descriptor and an `invoke(payload)` method
 - `ToolRegistry` provides name-based lookup
 - Strong point: tools are self-describing via `metadata`
-- Weak point: no Protocol defines the tool interface — duck typing only
+- Weak point: the review originally noted missing protocol coverage, but that gap has
+  since been resolved by `ToolInvoker`
 
 ### 5. Workflow Plugin System Design
 
