@@ -82,6 +82,9 @@
 - **Docs refresh** — updated the `docs/architecture/feature-gaps-cli-resume-search.md`
   architecture note to reflect the shipped `search-runs` and `search-conversations`
   CLI commands and to narrow the remaining search gap to unified/FTS-backed search.
+- **Architecture review correction** — annotated `docs/architecture/architecture-review-2026-05-10.md`
+  to reflect that the previously missing `ToolInvoker` protocol now exists in
+  `src/mergemate/domain/tools/`.
 
 - **MergeMateRuntime field grouping** — refactored from flat 18-field
   `@dataclass(slots=True)` to 6 fields with `PersistenceContext` (6 repository
