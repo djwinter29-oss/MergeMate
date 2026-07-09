@@ -445,6 +445,8 @@ def test_probe_readiness_wait_times_out(monkeypatch: pytest.MonkeyPatch) -> None
 
     assert result.exit_code == 1
     assert '{"status": "starting"}' in result.stdout
+    assert "Readiness probe timed out after 0.6s waiting for ready status" in result.stderr
+    assert "max_wait_seconds=0.5" in result.stderr
     assert sleep_calls == [0.5]
 
 

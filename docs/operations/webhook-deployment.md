@@ -86,7 +86,8 @@ curl --fail --silent http://127.0.0.1:8081/healthz
 
 The CLI probe accepts the same polling knobs as the code path: `--wait` for continuous polling,
 `--interval-seconds` to tune the polling cadence, `--max-wait-seconds` to cap the total wait, and
-`--timeout-seconds` to set the per-request HTTP timeout.
+`--timeout-seconds` to set the per-request HTTP timeout. When a wait loop reaches its maximum,
+MergeMate prints the last readiness body plus a timeout note before exiting nonzero.
 
 Example rollout wait loop:
 

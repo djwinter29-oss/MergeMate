@@ -98,12 +98,19 @@ def print_config_path() -> None:
     typer.echo(str(resolve_config_path()))
 
 
-def _report_not_ready(response_body: str, payload: dict[str, object]) -> None:
+def _report_not_ready(
+    response_body: str,
+    payload: dict[str, object],
+    *,
+    timeout_message: str | None = None,
+) -> None:
     """Print readiness failure and exit."""
     if payload.get("status") == "connection_error":
         typer.echo(response_body, err=True)
     else:
         typer.echo(response_body)
+    if timeout_message is not None:
+        typer.echo(timeout_message, err=True)
     raise typer.Exit(code=1)
 
 
@@ -141,8 +148,18 @@ def probe_readiness(
         if not wait:
             _report_not_ready(response_body, payload)
 
-        if max_wait_seconds is not None and time.monotonic() - start_time >= max_wait_seconds:
-            _report_not_ready(response_body, payload)
+        if max_wait_seconds is not None:
+            elapsed_seconds = time.monotonic() - start_time
+            if elapsed_seconds >= max_wait_seconds:
+                _report_not_ready(
+                    response_body,
+                    payload,
+                    timeout_message=(
+                        "Readiness probe timed out after "
+                        f"{elapsed_seconds:.1f}s waiting for ready status "
+                        f"(max_wait_seconds={max_wait_seconds:.1f})"
+                    ),
+                )
 
         time.sleep(interval_seconds)
 
