@@ -138,9 +138,10 @@ mergemate probe-readiness
 mergemate probe-readiness --wait
 ```
 
-`--wait` keeps polling until the webhook healthcheck reports `{"status": "ready"}`. Use
+`mergemate probe-readiness --wait` keeps polling until the webhook healthcheck reports `{"status": "ready"}`. Use
 `--interval-seconds` to slow down or speed up the polling loop, `--max-wait-seconds` to bound the
 overall wait time, and `--timeout-seconds` to adjust the timeout for each individual HTTP probe.
+If the wait loop reaches its maximum, MergeMate prints the last readiness body plus a timeout note before exiting nonzero.
 
 Run the Telegram bot:
 
@@ -148,7 +149,7 @@ Run the Telegram bot:
 mergemate run-bot
 ```
 
-For webhook mode, configure `telegram.mode: webhook`, set `telegram.webhook_public_base_url` to the externally reachable base URL for the bot, and expose the secret named by `telegram.webhook_secret_token_env`.
+For webhook mode, configure `telegram.mode: webhook`, set `telegram.webhook_public_base_url` to the externally reachable base URL for the bot, and expose the secret named by `telegram.webhook_secret_token_env`. During rollout, `mergemate probe-readiness --wait` helps verify the local healthcheck listener is ready before you point traffic at the bot.
 
 Run with an explicit user-space config file:
 
