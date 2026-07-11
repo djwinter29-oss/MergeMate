@@ -107,6 +107,17 @@ def test_validate_config_resolves_webhook_settings(monkeypatch: pytest.MonkeyPat
     assert result.exit_code == 0
 
 
+def test_validate_config_help_describes_validation_scope() -> None:
+    result = runner.invoke(cli.app, ["validate-config", "--help"])
+
+    assert result.exit_code == 0
+    assert (
+        "Validate required secrets, provider aliases, and the resolved database path"
+        in result.stdout
+    )
+    assert "before startup." in result.stdout
+
+
 def test_validate_config_fails_for_missing_explicit_path(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         cli,
