@@ -73,11 +73,14 @@ def run_bot(
     TelegramBotRuntime(runtime).run()
 
 
-@app.command("validate-config")
+@app.command(
+    "validate-config",
+    help="Validate required secrets, provider aliases, and the resolved database path before startup.",
+)
 def validate_config(
     config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
 ) -> None:
-    """Validate and print the resolved configuration path."""
+    """Validate required secrets, provider aliases, and the resolved database path before startup."""
     resolved_path = resolve_config_path(config)
     settings = load_runtime_settings(config)
     settings.resolve_telegram_token()
