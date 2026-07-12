@@ -638,6 +638,7 @@ def resume_cli(
 
     typer.echo(f'Resuming session "{session}" with run {run.run_id[:8]}...')
     _print_session_resume_summary(runtime, chat_id)
+    _print_conversation_history(runtime, chat_id)
 
     if run.status == RunStatus.AWAITING_CONFIRMATION:
         runtime.persistence.run_repository.approve(run.run_id)

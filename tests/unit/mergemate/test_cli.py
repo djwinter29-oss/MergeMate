@@ -1052,7 +1052,9 @@ def test_resume_cli_reattaches_to_latest_non_terminal_run(monkeypatch: pytest.Mo
         error_text=None,
         plan_text=None,
     )
-    runtime = _resume_runtime(runs=[run], messages=[])
+    runtime = _resume_runtime(
+        runs=[run], messages=[{"role": "user", "content": "Previous discussion"}]
+    )
 
     monkeypatch.setattr(cli, "bootstrap", lambda _config: runtime)
     monkeypatch.setattr(
@@ -1065,6 +1067,7 @@ def test_resume_cli_reattaches_to_latest_non_terminal_run(monkeypatch: pytest.Mo
     assert 'Resuming session "my-feature" with run run-1234...' in result.stdout
     assert "Status: completed" in result.stdout
     assert "Result:\ndone" in result.stdout
+    assert "--- Previous conversation ---" in result.stdout
     assert runtime.persistence.run_repository.approved_runs == []
 
 

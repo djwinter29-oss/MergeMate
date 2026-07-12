@@ -124,6 +124,8 @@ mergemate chat --agent coder --workflow generate_code
 
 When you reuse a named session with `mergemate run --session ...` or `mergemate chat --session ...`, MergeMate also prints the latest incomplete run summary before the next prompt is submitted. That makes it easier to continue an interrupted thread without opening the database manually.
 
+If you need to reattach directly to a still-running session, use `mergemate resume --session ...`. The command prints the incomplete run summary, recent conversation history, and then waits for the original run to reach a terminal state.
+
 Print the default project-local config path:
 
 ```bash
