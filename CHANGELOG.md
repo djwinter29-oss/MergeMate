@@ -6,6 +6,8 @@
 
 - **Documentation refresh** — clarified the `probe-readiness` rollout guidance in the README and user guide, including the wait-loop tuning flags and the timeout note emitted when a readiness wait reaches its maximum.
 
+- **Documentation sync** — updated the README command surface to include `mergemate resume` and describe its session reattach behavior alongside the other CLI entrypoints.
+
 - **Progress estimates** — execution estimates now account for prompt structure
   in addition to workflow base times. Bullet lists, code blocks, file references,
   and multi-file wording nudge the estimate upward so progress messages stay
