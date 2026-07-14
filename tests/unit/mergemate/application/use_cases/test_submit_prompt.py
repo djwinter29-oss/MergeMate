@@ -310,6 +310,39 @@ def test_approve_is_idempotent_for_completed_run() -> None:
 
 
 @pytest.mark.asyncio
+async def test_approve_dispatches_run_after_confirmation() -> None:
+    repository = InMemoryRunRepository()
+    dispatcher = DispatcherStub()
+    use_case = SubmitPromptUseCase(
+        repository,
+        ContextServiceStub(),
+        dispatcher,
+        PlanningServiceStub(),
+        SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
+    )
+
+    result = await use_case.execute(
+        chat_id=1,
+        user_id=2,
+        agent_name="coder",
+        workflow="generate_code",
+        prompt="build feature",
+    )
+    planning = await use_case.complete_planning(result.run_id)
+
+    approval = use_case.approve(result.run_id)
+
+    assert planning is not None
+    assert approval is not None
+    assert approval.dispatched is True
+    assert approval.status == RunStatus.QUEUED.value
+    assert dispatcher.dispatched_jobs == [
+        (result.run_id, RunJobType.PLAN_RUN),
+        (result.run_id, RunJobType.EXECUTE_RUN),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_approve_rejects_run_while_planning_is_in_progress() -> None:
     repository = InMemoryRunRepository()
     dispatcher = DispatcherStub()
