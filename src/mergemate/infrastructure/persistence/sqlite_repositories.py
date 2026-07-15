@@ -67,17 +67,18 @@ class SQLiteRunRepository:
             ).fetchone()
         return self._row_to_run(row) if row is not None else None
 
-    def list_for_chat(self, chat_id: int, limit: int = 5) -> list[AgentRun]:
+    def list_for_chat(self, chat_id: int, limit: int | None = 5) -> list[AgentRun]:
         with self._database.connection() as connection:
-            rows = connection.execute(
-                """
+            query = """
                 SELECT * FROM agent_runs
                 WHERE chat_id = ?
                 ORDER BY created_at DESC
-                LIMIT ?
-                """,
-                (chat_id, limit),
-            ).fetchall()
+            """
+            parameters: list[object] = [chat_id]
+            if limit is not None:
+                query += " LIMIT ?"
+                parameters.append(limit)
+            rows = connection.execute(query, tuple(parameters)).fetchall()
         return [self._row_to_run(row) for row in rows]
 
     def search(self, query: str, limit: int = 10, *, chat_id: int | None = None) -> list[AgentRun]:

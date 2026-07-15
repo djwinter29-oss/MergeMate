@@ -430,9 +430,7 @@ def _print_conversation_history(runtime: Any, chat_id: int, *, limit: int = 10) 
 
 def _latest_non_terminal_run(runtime: Any, chat_id: int) -> Any | None:
     """Return the latest non-terminal run for a chat session, if any."""
-    runs = runtime.persistence.run_repository.list_for_chat(
-        chat_id, limit=_SESSION_RESUME_LOOKUP_LIMIT
-    )
+    runs = runtime.persistence.run_repository.list_for_chat(chat_id, limit=None)
     if not runs:
         return None
     return next((item for item in runs if item.status not in RunStatus.terminal_statuses()), None)
@@ -504,7 +502,6 @@ class _ConfigOption:
 
 
 _CONFIG_OPTION = typer.Option(None, help="Path to a YAML configuration file")
-_SESSION_RESUME_LOOKUP_LIMIT = 100
 
 
 @app.command("run")

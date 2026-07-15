@@ -824,13 +824,13 @@ def test_search_conversations_prints_matches(monkeypatch: pytest.MonkeyPatch) ->
 
 
 def _resume_runtime(*, runs=None, messages=None):
-    captured_limits: list[int] = []
+    captured_limits: list[object] = []
 
     class RunRepoStub:
         def __init__(self) -> None:
             self.approved_runs: list[str] = []
 
-        def list_for_chat(self, chat_id: int, limit: int = 1):
+        def list_for_chat(self, chat_id: int, limit: int | None = 1):
             captured_limits.append(limit)
             return runs or []
 
@@ -923,7 +923,7 @@ def test_print_session_resume_summary_skips_terminal_run(
     assert captured.out == ""
 
 
-def test_print_session_resume_summary_uses_wider_lookup_window(
+def test_print_session_resume_summary_uses_full_history_lookup(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     from mergemate.domain.shared import RunStage, RunStatus
@@ -940,7 +940,7 @@ def test_print_session_resume_summary_uses_wider_lookup_window(
 
     captured = capsys.readouterr()
     assert "--- Incomplete run detected ---" in captured.out
-    assert runtime.captured_limits == [100]
+    assert runtime.captured_limits == [None]
 
 
 def test_print_session_resume_summary_includes_timestamps_when_available(
