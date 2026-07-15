@@ -7,8 +7,10 @@
 > Update 2026-06-02: the CLI command surface and search stack have now shipped.
 > `mergemate run`, `mergemate chat`, `mergemate search-runs`, `mergemate search-conversations`,
 > and unified `mergemate search` are available today, and search is backed by SQLite FTS5 with
-> phrase-aware ranking plus a LIKE fallback when FTS is unavailable. This document now serves as a
-> historical design note for the remaining session-resume work.
+> phrase-aware ranking plus a LIKE fallback when FTS is unavailable. `mergemate resume` is also
+> available for direct reattachment, and it now scans the full session history instead of relying on
+> a fixed lookup window. This document now serves as a historical design note for the remaining
+> session-recovery UX work.
 
 ---
 
@@ -46,17 +48,17 @@ The original review grouped these gaps because they touched the same CLI surface
 - The runtime now maintains SQLite FTS5 indexes for `conversation_messages.content` and run search text so search can rank and phrase-match results instead of relying only on plain keyword scans.
 - `agent_runs.prompt` and `agent_runs.result_text` remain part of the search surface through the consolidated FTS search text and LIKE fallback.
 - There is still no `conversation_messages.run_id` foreign key — messages are linked only by `chat_id`.
-- There is still no "last active run" tracking for session resume.
+- There is still no "last active run" tracking for session resume; the CLI finds resumable runs by scanning the session's run history at entry time.
 
 ### 2.3 Session Resume Gap
 
 Currently:
 - `mergemate chat --session <name>` creates a deterministic `chat_id` and uses the existing conversation history
-- The CLI now prints the latest incomplete run summary when `run` or `chat` re-enters a named session, which improves continuity even though full active-run resume is still not implemented
-- But if a user leaves a session mid-run, there's no mechanism to:
-  - Detect the "last incomplete run" for that session
-  - Offer to resume, retry, or cancel it
-  - Re-attach progress watchers for a still-running job
+- The CLI now prints the latest incomplete run summary when `run` or `chat` re-enters a named session, which improves continuity. Direct reattachment is handled by `mergemate resume`.
+- But if a user leaves a session mid-run, the remaining gap is still the passive UX path inside `run`/`chat`:
+  - Detecting the "last incomplete run" is implemented through the resume lookup
+  - `resume` can reattach and optionally approve a pending run
+  - automatic watcher reattachment from a plain session re-entry is still a manual action
 
 ### 2.4 Search State
 
@@ -64,7 +66,7 @@ Currently:
 - `mergemate search-runs` searches stored run prompts, results, and metadata through the consolidated FTS search path, with a LIKE fallback if FTS is unavailable.
 - `mergemate search-conversations` searches saved chat messages through the consolidated FTS search path, with a LIKE fallback if FTS is unavailable.
 - `mergemate search` combines matching runs and messages into one recency-ordered result set.
-- The remaining search-adjacent gap is not ranking support; it is richer session recovery, including resumable run discovery when re-entering an in-flight session.
+- The remaining search-adjacent gap is not ranking support; it is richer session recovery UX, especially automatic reattachment when re-entering an in-flight session.
 
 ---
 

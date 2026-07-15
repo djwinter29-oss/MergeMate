@@ -170,6 +170,24 @@ def test_run_repository_search_returns_matching_runs(tmp_path) -> None:
     assert len(results) == 0
 
 
+def test_run_repository_list_for_chat_without_limit_returns_all_runs(tmp_path) -> None:
+    database = SQLiteDatabase(tmp_path / "state.db")
+    database.initialize()
+    repository = SQLiteRunRepository(database)
+
+    run_a = _build_run("run-a")
+    run_a.created_at = datetime(2026, 1, 1, 0, 0, tzinfo=UTC)
+    repository.create(run_a)
+
+    run_b = _build_run("run-b")
+    run_b.created_at = datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
+    repository.create(run_b)
+
+    listed = repository.list_for_chat(1, limit=None)
+
+    assert [item.run_id for item in listed] == ["run-b", "run-a"]
+
+
 def test_run_repository_search_with_chat_id_filter(tmp_path) -> None:
     """Lines 255-256: search() with chat_id filter narrows results to that chat."""
     database = SQLiteDatabase(tmp_path / "state.db")
