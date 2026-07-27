@@ -48,7 +48,7 @@ The original review grouped these gaps because they touched the same CLI surface
 - The runtime now maintains SQLite FTS5 indexes for `conversation_messages.content` and run search text so search can rank and phrase-match results instead of relying only on plain keyword scans.
 - `agent_runs.prompt` and `agent_runs.result_text` remain part of the search surface through the consolidated FTS search text and LIKE fallback.
 - There is still no `conversation_messages.run_id` foreign key — messages are linked only by `chat_id`.
-- There is still no "last active run" tracking for session resume; the CLI finds resumable runs by scanning the session's run history at entry time.
+- Session resume now resolves the latest non-terminal run for a chat by scanning the session's run history at entry time, so re-entry skips older completed runs and targets the active one when present.
 
 ### 2.3 Session Resume Gap
 

@@ -44,7 +44,7 @@ class GetRunStatusUseCase:
             return self._build_snapshot(run, tool_event_limit=tool_event_limit)
         if chat_id is None:
             raise ValueError("chat_id is required when run_id is not provided")
-        runs = self._run_repository.list_for_chat(chat_id, limit=1)
-        if not runs:
+        run = self._run_repository.get_latest_non_terminal_for_chat(chat_id)
+        if run is None:
             return None
-        return self._build_snapshot(runs[0], tool_event_limit=tool_event_limit)
+        return self._build_snapshot(run, tool_event_limit=tool_event_limit)

@@ -430,10 +430,7 @@ def _print_conversation_history(runtime: Any, chat_id: int, *, limit: int = 10) 
 
 def _latest_non_terminal_run(runtime: Any, chat_id: int) -> Any | None:
     """Return the latest non-terminal run for a chat session, if any."""
-    runs = runtime.persistence.run_repository.list_for_chat(chat_id, limit=None)
-    if not runs:
-        return None
-    return next((item for item in runs if item.status not in RunStatus.terminal_statuses()), None)
+    return runtime.persistence.run_repository.get_latest_non_terminal_for_chat(chat_id)
 
 
 def _print_session_resume_summary(runtime: Any, chat_id: int) -> None:
