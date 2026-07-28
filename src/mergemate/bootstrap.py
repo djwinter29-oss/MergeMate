@@ -20,7 +20,6 @@ from mergemate.application.services.workflow_service import WorkflowService
 from mergemate.application.use_cases.cancel_run import CancelRunUseCase
 from mergemate.application.use_cases.get_run_status import GetRunStatusUseCase
 from mergemate.application.use_cases.submit_prompt import SubmitPromptUseCase
-
 from mergemate.config.loader import load_runtime_settings, resolve_config_path
 from mergemate.config.models import AppConfig
 from mergemate.infrastructure.llm.gateway import ParallelLLMGateway
@@ -33,15 +32,14 @@ from mergemate.infrastructure.persistence.sqlite import (
     SQLiteRunRepository,
     SQLiteToolEventRepository,
 )
-
 from mergemate.infrastructure.queue import JobQueueBackend
 from mergemate.infrastructure.queue.local_queue import LocalQueue
 from mergemate.infrastructure.telemetry.logger import configure_logging, log_startup_configuration
+from mergemate.infrastructure.tools.registry import ToolRegistryBuilder
 from mergemate.interfaces.telegram.lifecycle_notifier import (
     LifecycleNotifier,
     TelegramRunLifecycleNotifier,
 )
-from mergemate.infrastructure.tools.registry import ToolRegistryBuilder
 
 if TYPE_CHECKING:
     from mergemate.infrastructure.persistence.sqlite import SQLiteRepoKnowledgeRepository

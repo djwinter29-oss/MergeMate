@@ -1,12 +1,12 @@
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
 import asyncio
 import time as time_module
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import httpx
 import pytest
-from unittest.mock import MagicMock
 
 from mergemate.config.models import RetryConfig
 from mergemate.domain.shared.exceptions import AllProvidersFailedError, ProviderResponseError

@@ -1,13 +1,13 @@
+import asyncio
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 
-import asyncio
 import pytest
 
 from mergemate.application.execution_plan import DirectExecutionPlan, MultiStageExecutionPlan
 from mergemate.application.services.workflow_service import WorkflowService
-from mergemate.domain.shared import WorkflowName
 from mergemate.domain.policies import uses_multi_stage_delivery
+from mergemate.domain.shared import WorkflowName
 from mergemate.domain.shared.exceptions import ParallelWorkerError, StageExecutionError
 
 

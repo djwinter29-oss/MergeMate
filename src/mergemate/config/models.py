@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections import Counter
 import os
+from collections import Counter
 from pathlib import Path
 from typing import Any, ClassVar, Collection, Literal, Self
 from urllib.parse import ParseResult, urlparse

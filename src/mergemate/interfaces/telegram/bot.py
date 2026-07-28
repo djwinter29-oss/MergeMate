@@ -1,10 +1,10 @@
 """Telegram runtime adapter for polling and webhook modes."""
 
 from typing import Any
+
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 
-from mergemate.interfaces.telegram.health import WebhookHealthServer, WebhookReadinessState
 from mergemate.interfaces.telegram.handlers import (
     approve_command,
     cancel_command,
@@ -13,6 +13,7 @@ from mergemate.interfaces.telegram.handlers import (
     status_command,
     tools_command,
 )
+from mergemate.interfaces.telegram.health import WebhookHealthServer, WebhookReadinessState
 from mergemate.interfaces.telegram.progress_notifier import stop_progress_watchers
 
 

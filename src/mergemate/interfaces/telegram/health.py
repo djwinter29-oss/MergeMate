@@ -1,8 +1,8 @@
 """Local readiness endpoint for webhook deployments."""
 
+import json
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-import json
 from threading import Lock, Thread
 
 

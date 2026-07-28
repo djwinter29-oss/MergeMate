@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
 import sqlite3
+from datetime import UTC, datetime
 
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.shared import RunJobStatus, RunJobType, RunStatus

@@ -1,14 +1,14 @@
+import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
-import asyncio
 
 import pytest
 
 from mergemate.application.jobs.worker import BackgroundRunWorker
 from mergemate.application.use_cases.submit_prompt import PromptSubmissionError
-from mergemate.domain.shared.exceptions import WorkerStoppedError
 from mergemate.domain.runs.entities import RunJob
 from mergemate.domain.shared import RunJobStatus, RunJobType, RunStatus
+from mergemate.domain.shared.exceptions import WorkerStoppedError
 
 
 @dataclass(slots=True)

@@ -12,7 +12,6 @@ from typer.testing import CliRunner
 from mergemate import cli
 from mergemate.config.models import ConfigWorkflowNotFoundError
 
-
 runner = CliRunner()
 
 

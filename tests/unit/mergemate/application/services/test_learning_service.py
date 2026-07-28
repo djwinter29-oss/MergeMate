@@ -1,4 +1,5 @@
 import pytest
+
 from mergemate.application.services.learning_service import LearningService
 
 

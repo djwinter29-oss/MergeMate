@@ -5,9 +5,9 @@ import asyncio
 from collections.abc import Iterator
 from typing import Any, cast
 
+from mergemate.domain.shared import RunStage, RunStatus, tool_stage
 from mergemate.domain.tools import ToolInvoker
 from mergemate.domain.tools.entities import ToolMetadata
-from mergemate.domain.shared import RunStage, RunStatus, tool_stage
 
 
 class ToolService:

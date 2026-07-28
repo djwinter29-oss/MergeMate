@@ -24,7 +24,6 @@ from mergemate.infrastructure.persistence.sqlite import (
     SQLiteRepoKnowledgeRepository,
 )
 
-
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
@@ -317,10 +316,11 @@ class TestPromptServiceRepoKnowledge:
 @pytest.mark.asyncio
 async def test_orchestrator_passes_repo_knowledge_to_render() -> None:
     """11. process_run() calls load_repo_knowledge() and passes to render()."""
+    from datetime import UTC, datetime
+
     from mergemate.application.execution_plan import OrchestratorDependencies  # noqa: F811
     from mergemate.domain.runs.entities import AgentRun
     from mergemate.domain.shared import RunStatus
-    from datetime import UTC, datetime
 
     # Build a minimal run
     now = datetime.now(UTC)
@@ -455,10 +455,11 @@ async def test_orchestrator_passes_repo_knowledge_to_render() -> None:
 @pytest.mark.asyncio
 async def test_orchestrator_passes_none_repo_name_when_settings_missing() -> None:
     """Orchestrator calls load_repo_knowledge() with None when settings has no repo_name."""
+    from datetime import UTC, datetime
+
     from mergemate.application.execution_plan import OrchestratorDependencies
     from mergemate.domain.runs.entities import AgentRun
     from mergemate.domain.shared import RunStatus
-    from datetime import UTC, datetime
 
     now = datetime.now(UTC)
     run = AgentRun(
@@ -547,10 +548,11 @@ async def test_orchestrator_passes_none_repo_name_when_settings_missing() -> Non
 @pytest.mark.asyncio
 async def test_orchestrator_prefers_run_repo_name() -> None:
     """Orchestrator passes run.repo_name over settings.repo_name when run has one."""
+    from datetime import UTC, datetime
+
     from mergemate.application.execution_plan import OrchestratorDependencies
     from mergemate.domain.runs.entities import AgentRun
     from mergemate.domain.shared import RunStatus
-    from datetime import UTC, datetime
 
     now = datetime.now(UTC)
     run = AgentRun(

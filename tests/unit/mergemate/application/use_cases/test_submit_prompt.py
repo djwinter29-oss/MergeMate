@@ -275,6 +275,7 @@ def test_approve_is_idempotent_for_completed_run() -> None:
     run = next(iter(repository.runs.values()), None)
     if run is None:
         from datetime import UTC, datetime
+
         from mergemate.domain.runs.entities import AgentRun
 
         now = datetime.now(UTC)
@@ -405,6 +406,7 @@ def test_approve_rejects_run_from_other_chat() -> None:
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     from datetime import UTC, datetime
+
     from mergemate.domain.runs.entities import AgentRun
 
     now = datetime.now(UTC)
@@ -451,6 +453,7 @@ def test_approve_marks_run_failed_when_dispatch_rejects_during_shutdown() -> Non
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     from datetime import UTC, datetime
+
     from mergemate.domain.runs.entities import AgentRun
 
     now = datetime.now(UTC)
@@ -499,6 +502,7 @@ def test_approve_does_not_dispatch_when_transition_was_already_claimed() -> None
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     from datetime import UTC, datetime
+
     from mergemate.domain.runs.entities import AgentRun
 
     now = datetime.now(UTC)
@@ -628,6 +632,7 @@ def test_approve_returns_none_when_repository_approve_fails() -> None:
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     from datetime import UTC, datetime
+
     from mergemate.domain.runs.entities import AgentRun
 
     now = datetime.now(UTC)
@@ -670,6 +675,7 @@ def test_approve_returns_not_dispatched_for_already_approved_run() -> None:
         SettingsStub(WorkflowControlConfigStub(require_confirmation=True)),
     )
     from datetime import UTC, datetime
+
     from mergemate.domain.runs.entities import AgentRun
 
     now = datetime.now(UTC)

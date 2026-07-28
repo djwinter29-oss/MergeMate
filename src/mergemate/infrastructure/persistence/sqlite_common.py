@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 import shlex
+from datetime import datetime
 
 
 def _to_datetime(value: str) -> datetime:

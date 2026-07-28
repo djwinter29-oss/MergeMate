@@ -1,11 +1,11 @@
 """CLI entrypoints for running MergeMate."""
 
 import json
-from hashlib import blake2s
+import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from hashlib import blake2s
 from pathlib import Path
-import time
 from typing import Any, Sequence, cast
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen

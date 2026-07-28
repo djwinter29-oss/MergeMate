@@ -7,7 +7,6 @@ from mergemate.domain.agents.soul import (
     get_soul,
 )
 
-
 # ── DocPermission construction ────────────────────────────────────────────
 
 

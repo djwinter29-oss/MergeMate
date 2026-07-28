@@ -22,7 +22,6 @@ from mergemate.domain.shared.exceptions import (
 )
 from mergemate.infrastructure.llm.base import LLMClient
 
-
 # ── Retryable / non-retryable exception classification ────────────────
 
 

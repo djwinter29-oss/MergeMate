@@ -27,7 +27,6 @@ from typing import Protocol
 
 from mergemate.domain.shared import RunStage
 
-
 # ── ContextService ────────────────────────────────────────────────────────────
 
 

@@ -11,9 +11,8 @@ from mergemate.application.execution_plan import (
 )
 from mergemate.application.orchestrator import AgentOrchestrator
 from mergemate.domain.runs.entities import AgentRun
-from mergemate.domain.shared import RunStatus
+from mergemate.domain.shared import RunStatus, WorkflowName
 from mergemate.domain.shared.exceptions import RunNotFoundError
-from mergemate.domain.shared import WorkflowName
 from mergemate.domain.workflows.stage import get_workflow_definitions
 
 

@@ -8,12 +8,11 @@ Covers:
 """
 
 from types import SimpleNamespace
-from unittest.mock import Mock, AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 
 from mergemate.domain.shared import RunStatus
-
 
 # ── handlers.py: lines 217-229 ───────────────────────────────────────
 

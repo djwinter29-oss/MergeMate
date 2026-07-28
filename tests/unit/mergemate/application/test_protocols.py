@@ -14,8 +14,8 @@ except ImportError:
 from mergemate.application.protocols import (
     ContextServiceProtocol,
     DocumentationServiceProtocol,
-    LLMGatewayProtocol,
     LearningServiceProtocol,
+    LLMGatewayProtocol,
     PlanningServiceProtocol,
     PromptServiceProtocol,
     ToolServiceProtocol,

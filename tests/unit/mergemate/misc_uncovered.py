@@ -17,19 +17,18 @@ Covers:
 
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock, AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
 
-from mergemate.domain.shared import RunJobType, RunStatus
-from mergemate.domain.shared.exceptions import JobQueueError
+from mergemate.application.use_cases.submit_prompt import (
+    PromptSubmissionError,
+    SubmitPromptUseCase,
+)
 from mergemate.config import loader as config_loader
 from mergemate.domain.agents import soul as soul_module
-from mergemate.application.use_cases.submit_prompt import (
-    SubmitPromptUseCase,
-    PromptSubmissionError,
-)
-
+from mergemate.domain.shared import RunJobType, RunStatus
+from mergemate.domain.shared.exceptions import JobQueueError
 
 # ── dispatcher.py ─────────────────────────────────────────────────────
 

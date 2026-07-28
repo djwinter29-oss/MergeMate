@@ -23,10 +23,8 @@ from mergemate.application.execution_plan import (
 )
 from mergemate.application.services.workflow_service import WorkflowService
 from mergemate.domain.runs.entities import AgentRun
-from mergemate.domain.shared import RunStage, RunStatus
-from mergemate.domain.shared import WorkflowName
+from mergemate.domain.shared import RunStage, RunStatus, WorkflowName
 from mergemate.domain.workflows.stage import get_workflow_definitions
-
 
 pytestmark = pytest.mark.integration
 

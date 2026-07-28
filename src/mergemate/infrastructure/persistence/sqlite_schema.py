@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-import sqlite3
 from typing import Iterator
 
 from mergemate.domain.shared import RunStage

@@ -14,7 +14,6 @@ import pytest
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.shared import RunStage, RunStatus
 
-
 # ── helpers ──────────────────────────────────────────────────────────────
 
 

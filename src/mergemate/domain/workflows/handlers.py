@@ -27,7 +27,6 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
-
 # ── Public API ─────────────────────────────────────────────────────────────
 
 __all__ = [

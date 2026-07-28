@@ -1,7 +1,8 @@
 """MergeMate package."""
 
 try:
-    from importlib.metadata import version as _version, PackageNotFoundError
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as _version
 
     __version__ = _version("mergemate")
 except PackageNotFoundError:

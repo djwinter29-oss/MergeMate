@@ -3,10 +3,10 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import sqlite3
-from uuid import uuid4
+from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 from mergemate.domain.runs.entities import AgentRun, RunJob
 from mergemate.domain.runs.repository import (
