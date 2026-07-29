@@ -318,7 +318,7 @@ async def test_orchestrator_passes_repo_knowledge_to_render() -> None:
     """11. process_run() calls load_repo_knowledge() and passes to render()."""
     from datetime import UTC, datetime
 
-    from mergemate.application.execution_plan import OrchestratorDependencies  # noqa: F811
+    from mergemate.application.execution_plan import OrchestratorDependencies
     from mergemate.domain.runs.entities import AgentRun
     from mergemate.domain.shared import RunStatus
 

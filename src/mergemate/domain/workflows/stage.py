@@ -12,8 +12,8 @@ from dataclasses import dataclass
 from mergemate.domain.shared.enums import WorkflowName
 
 __all__ = [
-    "WorkflowStage",
     "WorkflowDefinition",
+    "WorkflowStage",
     "get_workflow_definitions",
 ]
 

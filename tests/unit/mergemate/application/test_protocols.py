@@ -119,11 +119,11 @@ def test_workflow_service_implements_workflow_service_protocol() -> None:
             "record_lesson",
         },
     )
-    assert callable(getattr(WorkflowService, "has_high_concerns"))
+    assert callable(WorkflowService.has_high_concerns)
     assert _normalized_signature(
         inspect.signature(WorkflowService.has_high_concerns)
     ) == _normalized_signature(
-        inspect.signature(getattr(WorkflowServiceProtocol, "has_high_concerns"))
+        inspect.signature(WorkflowServiceProtocol.has_high_concerns)
     )
 
 

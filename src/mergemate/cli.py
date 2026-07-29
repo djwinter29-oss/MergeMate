@@ -2,11 +2,12 @@
 
 import json
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import blake2s
 from pathlib import Path
-from typing import Any, Sequence, cast
+from typing import Any, cast
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
@@ -321,7 +322,7 @@ def _resolve_session_chat_id(session_name: str | None) -> int:
         import random
 
         return -abs(random.getrandbits(31))
-    digest = blake2s(f"cli:{session_name}".encode("utf-8"), digest_size=8).digest()
+    digest = blake2s(f"cli:{session_name}".encode(), digest_size=8).digest()
     return 1 + (int.from_bytes(digest, "big") % (2**31 - 2))
 
 

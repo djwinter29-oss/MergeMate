@@ -132,7 +132,7 @@ class PersistenceContext:
     conversation_repository: SQLiteConversationRepository
     learning_repository: SQLiteLearningRepository
     tool_event_repository: SQLiteToolEventRepository
-    repo_knowledge_repository: "SQLiteRepoKnowledgeRepository"
+    repo_knowledge_repository: SQLiteRepoKnowledgeRepository
 
 
 @dataclass(slots=True)

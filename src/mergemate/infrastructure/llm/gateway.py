@@ -10,10 +10,10 @@ don't consume the budget).
 import asyncio
 import random
 import time
-from collections.abc import Mapping
-from datetime import datetime, timezone
+from collections.abc import Callable, Mapping
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
-from typing import Any, Callable, cast
+from typing import Any, cast
 
 from mergemate.config.models import RetryConfig
 from mergemate.domain.shared.exceptions import (
@@ -79,7 +79,7 @@ class _RetryBudget:
     Thread-safe for asyncio usage (single event loop -- no locks needed).
     """
 
-    __slots__ = ("_window_seconds", "_max_retries", "_timestamps")
+    __slots__ = ("_max_retries", "_timestamps", "_window_seconds")
 
     def __init__(self, window_seconds: int, max_retries: int) -> None:
         self._window_seconds = window_seconds
@@ -267,10 +267,10 @@ def _extract_retry_after(
     if retry_after_at is None:
         return None
     if retry_after_at.tzinfo is None:
-        retry_after_at = retry_after_at.replace(tzinfo=timezone.utc)
-    current_time = now or datetime.now(timezone.utc)
+        retry_after_at = retry_after_at.replace(tzinfo=UTC)
+    current_time = now or datetime.now(UTC)
     if current_time.tzinfo is None:
-        current_time = current_time.replace(tzinfo=timezone.utc)
+        current_time = current_time.replace(tzinfo=UTC)
     result: float = max(0.0, (retry_after_at - current_time).total_seconds())
     return result
 

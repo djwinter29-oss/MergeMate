@@ -292,7 +292,7 @@ class LLMGatewayProtocol(Protocol):
 from typing import TYPE_CHECKING  # noqa: E402
 
 if TYPE_CHECKING:
-    from mergemate.application.execution_plan import (  # noqa: F401
+    from mergemate.application.execution_plan import (
         DirectExecutionPlan,
         MultiStageExecutionPlan,
     )

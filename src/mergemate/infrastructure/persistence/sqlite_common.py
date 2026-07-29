@@ -44,7 +44,7 @@ def build_fts_query(query: str) -> str | None:
 __all__ = [
     "_to_datetime",
     "agent_runs_search_text_sql",
-    "conversation_messages_search_text_sql",
     "build_fts_query",
+    "conversation_messages_search_text_sql",
     "fts_quote",
 ]

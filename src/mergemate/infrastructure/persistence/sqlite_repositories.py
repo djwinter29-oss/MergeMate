@@ -918,10 +918,10 @@ class SQLiteToolEventRepository:
 
 
 __all__ = [
-    "SQLiteRunRepository",
     "SQLiteConversationRepository",
-    "SQLiteRunJobRepository",
     "SQLiteLearningRepository",
     "SQLiteRepoKnowledgeRepository",
+    "SQLiteRunJobRepository",
+    "SQLiteRunRepository",
     "SQLiteToolEventRepository",
 ]
