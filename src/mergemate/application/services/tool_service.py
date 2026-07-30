@@ -163,7 +163,7 @@ class ToolService:
         )
         try:
             result = tool.invoke(payload)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001
             result = self._tool_exception_result(tool_name, error)
         self._record_tool_event(
             run_id,

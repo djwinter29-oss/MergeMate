@@ -1,5 +1,7 @@
 """Tests for openai_adapter — covering all error paths in _extract_message_content."""
 
+from typing import Self
+
 import pytest
 
 from mergemate.domain.shared.exceptions import ProviderResponseError
@@ -47,7 +49,7 @@ class TestExtractMessageContent:
             def __init__(self, *, timeout: int) -> None:
                 self.timeout = timeout
 
-            async def __aenter__(self) -> "AsyncClientStub":
+            async def __aenter__(self) -> Self:
                 return self
 
             async def __aexit__(self, exc_type, exc, tb) -> None:

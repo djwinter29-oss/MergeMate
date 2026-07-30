@@ -47,21 +47,18 @@ def _init_registry() -> None:
 _init_registry()
 
 __all__ = [
-    # registry
-    "register_workflow",
-    "get_workflow",
     "get_all_workflows",
-    "known_workflow_names",
-    # validation
-    "ValidationHook",
-    "StageValidationHook",
-    "register_validation_hook",
-    "run_validation_hooks",
-    "get_validation_hooks",
-    # handlers
-    "StageHandler",
-    "register_handler",
     "get_stage_handler",
+    "get_validation_hooks",
+    "get_workflow",
+    "known_workflow_names",
+    "register_handler",
+    "register_validation_hook",
+    "register_workflow",
+    "run_validation_hooks",
+    "StageHandler",
+    "StageValidationHook",
+    "ValidationHook",
 ]
 
 # ── Auto-register built-in workflows into the live registry at import time ─

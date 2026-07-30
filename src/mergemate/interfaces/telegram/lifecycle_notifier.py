@@ -87,8 +87,8 @@ class TelegramRunLifecycleNotifier:
                     run.estimate_seconds,
                 ),
             )
-        except Exception as exc:
-            logger.exception("Run %s plan delivery failed: %s", run.run_id, exc)
+        except Exception:
+            logger.exception("Run %s plan delivery failed", run.run_id)
             return False
         return True
 
@@ -106,14 +106,14 @@ class TelegramRunLifecycleNotifier:
                     run.estimate_seconds,
                 ),
             )
-        except Exception as exc:
-            logger.exception("Run %s auto-start delivery failed: %s", run.run_id, exc)
+        except Exception:
+            logger.exception("Run %s auto-start delivery failed", run.run_id)
             return False
 
         try:
             start_progress_watcher(application, runtime, run.chat_id, run.run_id)
-        except Exception as exc:
-            logger.exception("Run %s progress watcher start failed: %s", run.run_id, exc)
+        except Exception:
+            logger.exception("Run %s progress watcher start failed", run.run_id)
 
         return True
 

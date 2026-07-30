@@ -60,10 +60,8 @@ def _is_retryable(exc: BaseException) -> bool:
         return exc.response.status_code in (429,) or exc.response.status_code >= 500
     if isinstance(exc, (ConnectError, TimeoutException, RemoteProtocolError, TransportError)):
         return True
-    if isinstance(exc, (IOError, OSError)):
-        return True
-    # Anything else -- treat as non-retryable to be safe.
-    return False
+    return isinstance(exc, (IOError, OSError))
+
 
 
 # ── Sliding-window retry budget (soft circuit breaker) ────────────────
@@ -381,7 +379,7 @@ class ParallelLLMGateway:
                 await self._generate_from_provider(provider_name, system_prompt, user_prompt),
                 None,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             return provider_name, None, str(exc)
 
     async def _generate_from_provider(

@@ -127,18 +127,18 @@ class FakeLifecycleNotifier:
 
 
 def _make_worker(**kwargs):
-    defaults = dict(
-        orchestrator=FakeOrchestrator(),
-        run_repository=FakeRunRepo(),
-        run_job_repository=FakeRunJobRepo(),
-        queue_backend=FakeQueueBackend(),
-        submit_prompt=FakeSubmitPrompt(),
-        lifecycle_notifier=FakeLifecycleNotifier(),
-        max_concurrent_runs=5,
-        lease_seconds=30,
-        heartbeat_interval_seconds=10,
-        worker_id="test-worker",
-    )
+    defaults = {
+        "orchestrator": FakeOrchestrator(),
+        "run_repository": FakeRunRepo(),
+        "run_job_repository": FakeRunJobRepo(),
+        "queue_backend": FakeQueueBackend(),
+        "submit_prompt": FakeSubmitPrompt(),
+        "lifecycle_notifier": FakeLifecycleNotifier(),
+        "max_concurrent_runs": 5,
+        "lease_seconds": 30,
+        "heartbeat_interval_seconds": 10,
+        "worker_id": "test-worker",
+    }
     defaults.update(kwargs)
     return BackgroundRunWorker(**defaults)
 
@@ -366,7 +366,7 @@ class TestStartCreatesConsumer:
         worker = _make_worker(queue_backend=FakeQueueBackend([]))
         await worker.start()
         assert len(worker._consumer_tasks) == 1
-        task = list(worker._consumer_tasks)[0]
+        task = next(iter(worker._consumer_tasks))
         task.cancel()
         try:
             await task

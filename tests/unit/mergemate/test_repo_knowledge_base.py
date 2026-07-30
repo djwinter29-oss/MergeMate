@@ -11,6 +11,7 @@ Covers:
 
 from pathlib import Path
 from types import SimpleNamespace
+from typing import ClassVar
 from unittest.mock import MagicMock
 
 import pytest
@@ -646,7 +647,7 @@ def test_bootstrap_wires_repo_knowledge_repository(monkeypatch, tmp_path: Path) 
     import mergemate.bootstrap as bootstrap_module
 
     class RepoKnowledgeRepositoryRecorder:
-        instances = []
+        instances: ClassVar[list[object]] = []
 
         def __init__(self, database):
             self.database = database

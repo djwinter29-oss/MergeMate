@@ -67,7 +67,7 @@ class InMemoryMockLLMWithReview(InMemoryMockLLM):
         if "review agent" in system_prompt.lower():
             self._review_count += 1
             if self._review_count <= self._high_concerns_on_review:
-                return "HIGH_CONCERNS: yes\nReview iteration %d: needs work" % self._review_count
+                return f"HIGH_CONCERNS: yes\nReview iteration {self._review_count}: needs work"
             return "HIGH_CONCERNS: no\nLooks good."
         return f"MockLLM stage response #{self._review_count + 1}"
 

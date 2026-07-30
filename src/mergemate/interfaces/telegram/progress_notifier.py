@@ -62,8 +62,8 @@ async def notify_terminal_update(application: _ApplicationLike, chat_id: int, ru
             lambda chunk: application.bot.send_message(chat_id=chat_id, text=chunk),
             _format_terminal_update(run),
         )
-    except Exception as exc:
-        logger.exception("Run %s progress update delivery failed: %s", run.run_id, exc)
+    except Exception:
+        logger.exception("Run %s progress update delivery failed", run.run_id)
         return False
     _terminal_delivery_registry(application).add(run.run_id)
     return True

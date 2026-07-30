@@ -34,23 +34,23 @@ WRITEABLE_SECTIONS = frozenset(
 
 def test_every_soul_has_exactly_one_exclusive_write_section() -> None:
     """Each built-in Soul owns exactly one write section (except explainer which owns none)."""
-    for name, soul in SOUL_REGISTRY.items():
-        if name == "explainer":
+    for soul in SOUL_REGISTRY.values():
+        if soul.name == "explainer":
             assert len(soul.doc_permissions.write) == 0, (
                 "explainer should have no write permissions"
             )
         else:
             assert len(soul.doc_permissions.write) >= 1, (
-                f"{name} should have at least one write section"
+                f"{soul.name} should have at least one write section"
             )
 
 
 def test_no_two_souls_share_the_same_write_section() -> None:
     """Every write section is owned by exactly one Soul (no write conflicts)."""
     section_to_owners: dict[str, list[str]] = {}
-    for name, soul in SOUL_REGISTRY.items():
+    for soul in SOUL_REGISTRY.values():
         for section in soul.doc_permissions.write:
-            section_to_owners.setdefault(section, []).append(name)
+            section_to_owners.setdefault(section, []).append(soul.name)
 
     conflicts = {s: o for s, o in section_to_owners.items() if len(o) > 1}
     assert not conflicts, f"Conflicting write sections: {conflicts}"
@@ -58,9 +58,11 @@ def test_no_two_souls_share_the_same_write_section() -> None:
 
 def test_no_soul_writes_to_unknown_section() -> None:
     """All write sections are in the known set of documentation sections."""
-    for name, soul in SOUL_REGISTRY.items():
+    for soul in SOUL_REGISTRY.values():
         for section in soul.doc_permissions.write:
-            assert section in WRITEABLE_SECTIONS, f"{name} writes to unknown section {section!r}"
+            assert section in WRITEABLE_SECTIONS, (
+                f"{soul.name} writes to unknown section {section!r}"
+            )
 
 
 def test_every_write_section_is_also_readable() -> None:
@@ -71,7 +73,7 @@ def test_every_write_section_is_also_readable() -> None:
     This invariant (write ⊆ read) is therefore NOT expected to hold;
     the test documents the actual state of the permission matrix.
     """
-    for name, soul in SOUL_REGISTRY.items():
+    for soul in SOUL_REGISTRY.values():
         for section in soul.doc_permissions.write:
             if section not in soul.doc_permissions.read:
                 pass  # known: own write section not duplicated in read list
@@ -176,17 +178,17 @@ def test_tester_can_read_architecture_and_implementation() -> None:
 
 def test_doc_permission_write_list_has_no_duplicates() -> None:
     """Soul write permissions should not contain duplicate entries."""
-    for name, soul in SOUL_REGISTRY.items():
+    for soul in SOUL_REGISTRY.values():
         assert len(soul.doc_permissions.write) == len(set(soul.doc_permissions.write)), (
-            f"{name} has duplicate write entries"
+            f"{soul.name} has duplicate write entries"
         )
 
 
 def test_doc_permission_read_list_has_no_duplicates() -> None:
     """Soul read permissions should not contain duplicate entries."""
-    for name, soul in SOUL_REGISTRY.items():
+    for soul in SOUL_REGISTRY.values():
         assert len(soul.doc_permissions.read) == len(set(soul.doc_permissions.read)), (
-            f"{name} has duplicate read entries"
+            f"{soul.name} has duplicate read entries"
         )
 
 
@@ -198,7 +200,7 @@ def test_doc_permission_read_is_superset_of_write() -> None:
     at least some Souls have additional read-only sections beyond write.
     """
     extra_read_count = 0
-    for name, soul in SOUL_REGISTRY.items():
+    for soul in SOUL_REGISTRY.values():
         extra_sections = set(soul.doc_permissions.read) - set(soul.doc_permissions.write)
         extra_read_count += len(extra_sections)
     assert extra_read_count > 0, (
