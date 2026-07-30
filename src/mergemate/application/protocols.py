@@ -23,7 +23,7 @@ docs/architecture/service-protocols.md : Full design rationale.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, TYPE_CHECKING
 
 from mergemate.domain.shared import RunStage
 
@@ -289,7 +289,6 @@ class LLMGatewayProtocol(Protocol):
 # resolved at runtime, so there is no circular import issue.
 # mypy resolves them via usual module-level import — we use ``TYPE_CHECKING``
 # block to keep mypy happy without a runtime cycle.
-from typing import TYPE_CHECKING  # noqa: E402
 
 if TYPE_CHECKING:
     from mergemate.application.execution_plan import (
