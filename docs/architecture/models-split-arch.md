@@ -83,7 +83,7 @@ hermes_cli/
 All existing callers import from `hermes_cli.models`:
 
 ```python
-from hermes_cli.models import normalize_provider   # still works
+from hermes_cli.models import normalize_provider  # still works
 from hermes_cli.models import fetch_openrouter_models  # still works
 from hermes_cli.models import validate_requested_model  # still works
 ```

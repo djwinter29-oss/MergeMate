@@ -56,9 +56,7 @@ The approval decision is a single function/predicate. Currently in `submit_promp
 
 ```python
 require_confirmation = self._settings.workflow_control.require_confirmation
-initial_status = (
-    RunStatus.AWAITING_CONFIRMATION if require_confirmation else RunStatus.QUEUED
-)
+initial_status = RunStatus.AWAITING_CONFIRMATION if require_confirmation else RunStatus.QUEUED
 ```
 
 After this change the logic becomes:

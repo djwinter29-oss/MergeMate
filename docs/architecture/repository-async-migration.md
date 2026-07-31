@@ -148,6 +148,7 @@ async def create(self, run: AgentRun) -> None:
     def _sync_create():
         with self._database.connection() as connection:
             connection.execute(...)
+
     await asyncio.to_thread(_sync_create)
 ```
 

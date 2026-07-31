@@ -92,11 +92,12 @@ File: `src/mergemate/application/services/learning_service.py`
 **`remember_success()` updated:**
 
 ```python
-async def remember_success(self, *, chat_id: int, workflow: str,
-                            prompt: str, result_text: str) -> None:
+async def remember_success(
+    self, *, chat_id: int, workflow: str, prompt: str, result_text: str
+) -> None:
     if not self._enabled:
         return
-    excerpt = result_text.strip()[:self._max_result_chars]
+    excerpt = result_text.strip()[: self._max_result_chars]
     lessons = await self._extract_lessons(result_text)
     self._learning_repository.record(chat_id, workflow, prompt, excerpt, lessons)
 ```
@@ -111,7 +112,7 @@ callers in `execution_plan.py`.
     "workflow": ...,
     "prompt": ...,
     "result_excerpt": ...,
-    "learning_lessons": ...,   # JSON string or None
+    "learning_lessons": ...,  # JSON string or None
 }
 ```
 
@@ -129,14 +130,16 @@ if learned_items:
         lines.append(f"- Workflow: {item['workflow']}")
         lines.append(f"  Prior prompt: {item['prompt']}")
         lines.append(f"  Prior result excerpt: {item['result_excerpt']}")
-        if item.get('learning_lessons'):
+        if item.get("learning_lessons"):
             try:
-                lessons = json.loads(item['learning_lessons'])
-                if lessons.get('technical_points'):
-                    lines.append(f"  Key technical points: {', '.join(lessons['technical_points'])}")
-                if lessons.get('pitfalls'):
+                lessons = json.loads(item["learning_lessons"])
+                if lessons.get("technical_points"):
+                    lines.append(
+                        f"  Key technical points: {', '.join(lessons['technical_points'])}"
+                    )
+                if lessons.get("pitfalls"):
                     lines.append(f"  Known pitfalls: {', '.join(lessons['pitfalls'])}")
-                if lessons.get('conclusion'):
+                if lessons.get("conclusion"):
                     lines.append(f"  Conclusion: {lessons['conclusion']}")
             except (json.JSONDecodeError, TypeError):
                 pass  # malformed JSON, skip
@@ -170,9 +173,15 @@ The existing `LLM_gateway` in the codebase already conforms to this interface.
 
 ```python
 class LearningService:
-    def __init__(self, learning_repository, enabled: bool,
-                 max_context_items: int, max_result_chars: int,
-                 llm_gateway=None, extraction_agent_name: str | None = None) -> None:
+    def __init__(
+        self,
+        learning_repository,
+        enabled: bool,
+        max_context_items: int,
+        max_result_chars: int,
+        llm_gateway=None,
+        extraction_agent_name: str | None = None,
+    ) -> None:
         self._llm_gateway = llm_gateway
         self._extraction_agent_name = extraction_agent_name or "default"
 ```
@@ -197,7 +206,7 @@ class LearningConfig(BaseModel):
     enabled: bool = True
     max_context_items: int = Field(default=3, ge=1)
     max_result_chars: int = Field(default=1200, ge=1)
-    extraction_agent: str | None = None   # agent name for lesson extraction
+    extraction_agent: str | None = None  # agent name for lesson extraction
 ```
 
 ### 7. Backward Compatibility

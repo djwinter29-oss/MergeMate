@@ -40,6 +40,7 @@ class FakeBot:
     async def send_message(self, *, chat_id, text):
         self.sent.append((chat_id, text))
 
+
 class StageSequenceRunRepo:
     """Returns a pre-defined sequence of run states to simulate progress."""
 

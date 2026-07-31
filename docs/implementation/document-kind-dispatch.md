@@ -40,10 +40,7 @@ The if/elif body was replaced with a single lookup:
 ```python
 saver = _DOCUMENT_KINDS.get(kind)
 if saver is None:
-    raise ValueError(
-        f"Unknown document kind {kind!r}. "
-        f"Registered kinds: {sorted(_DOCUMENT_KINDS)}"
-    )
+    raise ValueError(f"Unknown document kind {kind!r}. Registered kinds: {sorted(_DOCUMENT_KINDS)}")
 saver(runtime, artifacts, kind, agent_name=agent_name, **extra)
 ```
 

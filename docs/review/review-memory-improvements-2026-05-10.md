@@ -34,7 +34,7 @@ The blocking issue is an integration test spy that hasn't been updated for the a
 
 ```python
 class LearningServiceSpy:
-    def remember_success(self, **payload: Any) -> None:   # <-- sync, returns None
+    def remember_success(self, **payload: Any) -> None:  # <-- sync, returns None
         self.saved.append(payload)
 ```
 

@@ -110,10 +110,15 @@ class RedisQueue:
         redis.call('EXPIRE', KEYS[2], KEYS[3])
         return 1
         """
-        return bool(self._client.eval(lua, 3, self._queue_key, self._lease_ttl_key, self._lease_seconds, job_id))
+        return bool(
+            self._client.eval(
+                lua, 3, self._queue_key, self._lease_ttl_key, self._lease_seconds, job_id
+            )
+        )
 
     async def dequeue(self) -> str:
         """BLPOP with timeout. Blocks until a job is available."""
+
         # BLPOP blocks the connection — run in executor to avoid blocking the event loop
         def _blocking_pop():
             result = self._client.blpop(self._queue_key, timeout=0)  # 0 = indefinite
@@ -154,6 +159,7 @@ class RedisQueue:
 ```python
 class QueueConfig(BaseModel):
     """Queue backend configuration."""
+
     backend: Literal["local", "redis"] = "local"
     redis_url: str = "redis://localhost:6379/0"
     queue_name: str = "default"
@@ -195,6 +201,7 @@ queue:
 # In bootstrap() function, replace:
 #   queue_backend = LocalQueue()
 # with:
+
 
 def _create_queue_backend(settings: AppConfig) -> JobQueueBackend:
     if settings.queue.backend == "redis":
@@ -254,8 +261,10 @@ def bootstrap_worker(config_path: Path | None = None) -> BackgroundRunWorker:
 ```python
 # src/mergemate/worker.py
 
+
 async def main() -> None:
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=None)
     args = parser.parse_args()

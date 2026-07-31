@@ -103,6 +103,7 @@ migrate callers one at a time.
 
 ```python
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from mergemate.application.execution_plan import ExecutionRuntime
 ```
@@ -123,6 +124,7 @@ the application-layer class:
 # In domain/workflows/handlers.py
 class HandlerContext(Protocol):
     """Minimal dependency shape that handlers need — defined in domain."""
+
     async def generate(self, agent_name: str, system_prompt: str, user_prompt: str) -> str: ...
     async def update_run(self, run_id: str, **fields) -> None: ...
 ```
@@ -487,6 +489,7 @@ The workflow plugin system has been recently formalized (per prior architect wor
   ```python
   class WorkflowPlugin(Protocol):
       name: str
+
       async def on_register(self, registry: WorkflowRegistry) -> None: ...
       async def on_unregister(self, registry: WorkflowRegistry) -> None: ...
   ```

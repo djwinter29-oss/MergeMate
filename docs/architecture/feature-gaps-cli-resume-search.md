@@ -92,10 +92,14 @@ mergemate run "<prompt>" [--agent <name>] [--workflow <name>] [--quiet]
 def run_cli(
     prompt: str,
     agent: str | None = typer.Option(None, help="Agent name"),
-    workflow: str | None = typer.Option(None, help="Workflow name (generate_code, debug_code, explain_code)"),
+    workflow: str | None = typer.Option(
+        None, help="Workflow name (generate_code, debug_code, explain_code)"
+    ),
     quiet: bool = typer.Option(False, help="Suppress banner/estimate; print only the final result"),
     timeout: float | None = typer.Option(None, min=1, help="Max seconds to wait for completion"),
-    session: str | None = typer.Option(None, help="Session name for persistent conversation history"),
+    session: str | None = typer.Option(
+        None, help="Session name for persistent conversation history"
+    ),
     poll_interval: float = typer.Option(2.0, min=0.5, help="Polling interval in seconds"),
 ) -> None:
     runtime = bootstrap(config)
@@ -105,13 +109,15 @@ def run_cli(
 
     # Override confirmation for CLI sessions
     with _temporary_auto_approve(runtime):
-        result = asyncio.run(runtime.services.submit_prompt.execute(
-            chat_id=chat_id,
-            user_id=_CLI_USER_ID,
-            agent_name=agent_name,
-            workflow=resolved_workflow,
-            prompt=prompt,
-        ))
+        result = asyncio.run(
+            runtime.services.submit_prompt.execute(
+                chat_id=chat_id,
+                user_id=_CLI_USER_ID,
+                agent_name=agent_name,
+                workflow=resolved_workflow,
+                prompt=prompt,
+            )
+        )
 
     # Poll until terminal
     deadline = time.monotonic() + (timeout or float("inf"))
@@ -347,9 +353,11 @@ fts_count = cursor.fetchone()[0]
 cursor = connection.execute("SELECT COUNT(*) FROM conversation_messages")
 msg_count = cursor.fetchone()[0]
 if fts_count < msg_count:
-    connection.execute("INSERT INTO conversation_messages_fts(rowid, content) "
-                       "SELECT id, content FROM conversation_messages "
-                       "WHERE id > (SELECT COALESCE(MAX(rowid), 0) FROM conversation_messages_fts)")
+    connection.execute(
+        "INSERT INTO conversation_messages_fts(rowid, content) "
+        "SELECT id, content FROM conversation_messages "
+        "WHERE id > (SELECT COALESCE(MAX(rowid), 0) FROM conversation_messages_fts)"
+    )
 ```
 
 ### 5.4 Repository Changes
@@ -370,6 +378,7 @@ class SearchResult:
     run_id: str | None = None
     workflow: str | None = None
     status: str | None = None
+
 
 class SQLiteConversationSearchRepository:
     def __init__(self, database: SQLiteDatabase) -> None:
@@ -472,11 +481,12 @@ class PersistenceContext:
     # ... existing fields ...
     search_repository: SQLiteConversationSearchRepository  # NEW
 
+
 @dataclass(slots=True)
 class ServiceContext:
     # ... existing fields ...
     session_service: SessionService  # NEW
-    search_service: SearchService    # NEW
+    search_service: SearchService  # NEW
 ```
 
 The `bootstrap()` function:
@@ -559,6 +569,7 @@ Plus the rebuild triggers and backfill logic described in §5.3.
 
 ```python
 _CLI_USER_ID = 0  # Sentinel for CLI-originated runs
+
 
 def _resolve_session_chat_id(session_name: str | None) -> int:
     """Return a deterministic chat_id for a named session, or a unique one for anonymous sessions.
