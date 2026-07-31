@@ -3,11 +3,10 @@
 import json
 import time
 from collections.abc import Sequence
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import blake2s
 from pathlib import Path
-from typing import Any, cast
+from typing import Annotated, Any, cast
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
@@ -19,6 +18,8 @@ from mergemate.domain.shared import RunStatus
 from mergemate.interfaces.telegram.bot import TelegramBotRuntime
 
 app = typer.Typer(help="MergeMate command line interface")
+
+_CONFIG_OPTION = typer.Option(None, help="Path to a YAML configuration file")
 
 
 def _resolve_readiness_url(settings: Any) -> str:
@@ -65,7 +66,7 @@ def _probe_readiness_once(
 
 @app.command("run-bot")
 def run_bot(
-    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
+    config: Path | None = _CONFIG_OPTION,
 ) -> None:
     """Start the Telegram bot runtime."""
     runtime = bootstrap(config)
@@ -79,7 +80,7 @@ def run_bot(
     help="Validate required secrets, provider aliases, and the resolved database path before startup.",
 )
 def validate_config(
-    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
+    config: Path | None = _CONFIG_OPTION,
 ) -> None:
     """Validate required secrets, provider aliases, and the resolved database path before startup."""
     resolved_path = resolve_config_path(config)
@@ -120,19 +121,22 @@ def _report_not_ready(
 
 @app.command("probe-readiness")
 def probe_readiness(
-    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
-    timeout_seconds: float = typer.Option(2.0, min=0.1, help="HTTP timeout in seconds"),
-    wait: bool = typer.Option(False, help="Wait until the readiness endpoint reports ready"),
-    interval_seconds: float = typer.Option(
-        1.0,
-        min=0.1,
-        help="Polling interval in seconds when --wait is enabled",
-    ),
-    max_wait_seconds: float | None = typer.Option(
-        None,
-        min=0.1,
-        help="Optional maximum total wait time in seconds when --wait is enabled",
-    ),
+    config: Path | None = _CONFIG_OPTION,
+    timeout_seconds: Annotated[float, typer.Option(min=0.1, help="HTTP timeout in seconds")] = 2.0,
+    wait: Annotated[
+        bool, typer.Option(help="Wait until the readiness endpoint reports ready")
+    ] = False,
+    interval_seconds: Annotated[
+        float,
+        typer.Option(min=0.1, help="Polling interval in seconds when --wait is enabled"),
+    ] = 1.0,
+    max_wait_seconds: Annotated[
+        float | None,
+        typer.Option(
+            min=0.1,
+            help="Optional maximum total wait time in seconds when --wait is enabled",
+        ),
+    ] = None,
 ) -> None:
     """Probe the local webhook readiness endpoint and exit nonzero until it is ready."""
     settings = load_runtime_settings(config)
@@ -171,7 +175,7 @@ def probe_readiness(
 @app.command("install-package")
 def install_package(
     package_name: str,
-    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
+    config: Path | None = _CONFIG_OPTION,
 ) -> None:
     """Install an additional Python package when explicitly allowed by config."""
     runtime = bootstrap(config)
@@ -184,8 +188,10 @@ def install_package(
 
 @app.command("repo-context")
 def repo_context(
-    platform: str | None = typer.Option(None, help="Source platform to inspect: github or gitlab"),
-    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
+    platform: Annotated[
+        str | None, typer.Option(help="Source platform to inspect: github or gitlab")
+    ] = None,
+    config: Path | None = _CONFIG_OPTION,
 ) -> None:
     """Print local repository context using git and an authenticated platform CLI."""
     runtime = bootstrap(config)
@@ -197,8 +203,8 @@ def repo_context(
 
 @app.command("platform-auth")
 def platform_auth(
-    platform: str = typer.Argument(..., help="Platform to inspect: github or gitlab"),
-    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
+    platform: Annotated[str, typer.Argument(help="Platform to inspect: github or gitlab")],
+    config: Path | None = _CONFIG_OPTION,
 ) -> None:
     """Check whether a logged-in platform CLI is available for GitHub or GitLab."""
     runtime = bootstrap(config)
@@ -211,10 +217,10 @@ def platform_auth(
 
 @app.command("search-runs")
 def search_runs(
-    query: str = typer.Argument(..., help="Search term to match against run fields"),
-    limit: int = typer.Option(10, min=1, max=100, help="Maximum results to return"),
-    session: str | None = typer.Option(None, help="Session name to restrict results to"),
-    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
+    query: Annotated[str, typer.Argument(help="Search term to match against run fields")],
+    limit: Annotated[int, typer.Option(min=1, max=100, help="Maximum results to return")] = 10,
+    session: Annotated[str | None, typer.Option(help="Session name to restrict results to")] = None,
+    config: Path | None = _CONFIG_OPTION,
 ) -> None:
     """Search agent runs by keyword across prompts, results, and metadata fields."""
     runtime = bootstrap(config)
@@ -225,10 +231,12 @@ def search_runs(
 
 @app.command("search-conversations")
 def search_conversations(
-    query: str = typer.Argument(..., help="Search term to match against conversation messages"),
-    limit: int = typer.Option(10, min=1, max=100, help="Maximum results to return"),
-    session: str | None = typer.Option(None, help="Session name to restrict results to"),
-    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
+    query: Annotated[
+        str, typer.Argument(help="Search term to match against conversation messages")
+    ],
+    limit: Annotated[int, typer.Option(min=1, max=100, help="Maximum results to return")] = 10,
+    session: Annotated[str | None, typer.Option(help="Session name to restrict results to")] = None,
+    config: Path | None = _CONFIG_OPTION,
 ) -> None:
     """Search conversation messages by keyword."""
     runtime = bootstrap(config)
@@ -241,10 +249,10 @@ def search_conversations(
 
 @app.command("search")
 def search(
-    query: str = typer.Argument(..., help="Search term to match against runs and messages"),
-    limit: int = typer.Option(10, min=1, max=100, help="Maximum results to return"),
-    session: str | None = typer.Option(None, help="Session name to restrict results to"),
-    config: Path | None = typer.Option(None, help="Path to a YAML configuration file"),
+    query: Annotated[str, typer.Argument(help="Search term to match against runs and messages")],
+    limit: Annotated[int, typer.Option(min=1, max=100, help="Maximum results to return")] = 10,
+    session: Annotated[str | None, typer.Option(help="Session name to restrict results to")] = None,
+    config: Path | None = _CONFIG_OPTION,
 ) -> None:
     """Search stored runs and conversation messages in one combined result set."""
     runtime = bootstrap(config)
@@ -492,29 +500,30 @@ def _temporary_auto_approve(runtime: Any) -> Any:
     return _manager()
 
 
-@dataclass
-class _ConfigOption:
-    """Helper to share the --config option across commands."""
-
-    value: Path | None = None
-
-
-_CONFIG_OPTION = typer.Option(None, help="Path to a YAML configuration file")
-
-
 @app.command("run")
 def run_cli(
-    prompt: str = typer.Argument(..., help="Prompt to submit for execution"),
-    agent: str | None = typer.Option(None, help="Agent name to use"),
-    workflow: str | None = typer.Option(
-        None, help="Workflow name (generate_code, debug_code, explain_code)"
-    ),
-    quiet: bool = typer.Option(False, help="Suppress banner/estimate; print only the final result"),
-    timeout: float | None = typer.Option(None, min=1, help="Max seconds to wait for completion"),
-    session: str | None = typer.Option(
-        None, help="Session name for persistent conversation history"
-    ),
-    poll_interval: float = typer.Option(2.0, min=0.5, help="Polling interval in seconds"),
+    prompt: Annotated[str, typer.Argument(help="Prompt to submit for execution")],
+    agent: Annotated[str | None, typer.Option(help="Agent name to use")] = None,
+    workflow: Annotated[
+        str | None,
+        typer.Option(help="Workflow name (generate_code, debug_code, explain_code)"),
+    ] = None,
+    quiet: Annotated[
+        bool,
+        typer.Option(help="Suppress banner/estimate; print only the final result"),
+    ] = False,
+    timeout: Annotated[
+        float | None,
+        typer.Option(min=1, help="Max seconds to wait for completion"),
+    ] = None,
+    session: Annotated[
+        str | None,
+        typer.Option(help="Session name for persistent conversation history"),
+    ] = None,
+    poll_interval: Annotated[
+        float,
+        typer.Option(min=0.5, help="Polling interval in seconds"),
+    ] = 2.0,
     config: Path | None = _CONFIG_OPTION,
 ) -> None:
     """Submit a one-shot prompt and wait for completion."""
@@ -555,15 +564,23 @@ def run_cli(
 
 @app.command("chat")
 def chat_cli(
-    session: str | None = typer.Option(
-        None, help="Session name for persistent conversation history"
-    ),
-    agent: str | None = typer.Option(None, help="Agent name to use"),
-    workflow: str | None = typer.Option(
-        None, help="Workflow name (generate_code, debug_code, explain_code)"
-    ),
-    timeout: float | None = typer.Option(None, min=1, help="Max seconds to wait per run"),
-    poll_interval: float = typer.Option(2.0, min=0.5, help="Polling interval in seconds"),
+    session: Annotated[
+        str | None,
+        typer.Option(help="Session name for persistent conversation history"),
+    ] = None,
+    agent: Annotated[str | None, typer.Option(help="Agent name to use")] = None,
+    workflow: Annotated[
+        str | None,
+        typer.Option(help="Workflow name (generate_code, debug_code, explain_code)"),
+    ] = None,
+    timeout: Annotated[
+        float | None,
+        typer.Option(min=1, help="Max seconds to wait per run"),
+    ] = None,
+    poll_interval: Annotated[
+        float,
+        typer.Option(min=0.5, help="Polling interval in seconds"),
+    ] = 2.0,
     config: Path | None = _CONFIG_OPTION,
 ) -> None:
     """Interactive REPL for multi-turn conversation with session persistence."""
@@ -617,9 +634,15 @@ def chat_cli(
 
 @app.command("resume")
 def resume_cli(
-    session: str = typer.Option(..., help="Session name to resume"),
-    timeout: float | None = typer.Option(None, min=1, help="Max seconds to wait for completion"),
-    poll_interval: float = typer.Option(2.0, min=0.5, help="Polling interval in seconds"),
+    session: Annotated[str, typer.Option(help="Session name to resume")],
+    timeout: Annotated[
+        float | None,
+        typer.Option(min=1, help="Max seconds to wait for completion"),
+    ] = None,
+    poll_interval: Annotated[
+        float,
+        typer.Option(min=0.5, help="Polling interval in seconds"),
+    ] = 2.0,
     config: Path | None = _CONFIG_OPTION,
 ) -> None:
     """Reattach to the latest incomplete run in a named session."""

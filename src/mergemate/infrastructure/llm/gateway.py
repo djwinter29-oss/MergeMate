@@ -63,7 +63,6 @@ def _is_retryable(exc: BaseException) -> bool:
     return isinstance(exc, (IOError, OSError))
 
 
-
 # ── Sliding-window retry budget (soft circuit breaker) ────────────────
 
 

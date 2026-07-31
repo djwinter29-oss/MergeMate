@@ -976,7 +976,9 @@ def test_print_session_resume_summary_includes_timestamps_when_available(
 
 
 def test_format_datetime_and_age_normalize_naive_values() -> None:
-    assert cli._format_datetime(datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)) == "2026-01-02 03:04:05 UTC"
+    assert (
+        cli._format_datetime(datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)) == "2026-01-02 03:04:05 UTC"
+    )
     assert (
         cli._format_age(
             datetime(2026, 1, 1, 0, 0, tzinfo=UTC),

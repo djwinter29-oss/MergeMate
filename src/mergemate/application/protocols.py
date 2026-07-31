@@ -23,7 +23,7 @@ docs/architecture/service-protocols.md : Full design rationale.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol, TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from mergemate.domain.shared import RunStage
 
