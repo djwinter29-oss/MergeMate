@@ -105,16 +105,18 @@ class RunRepositorySpy:
         review_iterations: int | None = None,
         lesson_text: str | None = None,
     ) -> AgentRun | None:
-        self.save_artifacts_calls.append({
-            "run_id": run_id,
-            "current_stage": current_stage,
-            "design_text": design_text,
-            "test_text": test_text,
-            "review_text": review_text,
-            "result_text": result_text,
-            "review_iterations": review_iterations,
-            "lesson_text": lesson_text,
-        })
+        self.save_artifacts_calls.append(
+            {
+                "run_id": run_id,
+                "current_stage": current_stage,
+                "design_text": design_text,
+                "test_text": test_text,
+                "review_text": review_text,
+                "result_text": result_text,
+                "review_iterations": review_iterations,
+                "lesson_text": lesson_text,
+            }
+        )
         if current_stage is not None:
             self.run.current_stage = current_stage
         if design_text is not None:
@@ -139,11 +141,13 @@ class RunRepositorySpy:
         result_text: str | None = None,
         error_text: str | None = None,
     ) -> AgentRun | None:
-        self.update_status_calls.append({
-            "run_id": run_id,
-            "status": status,
-            "current_stage": current_stage,
-        })
+        self.update_status_calls.append(
+            {
+                "run_id": run_id,
+                "status": status,
+                "current_stage": current_stage,
+            }
+        )
         self.run.status = status
         if current_stage is not None:
             self.run.current_stage = current_stage
@@ -161,11 +165,13 @@ class RunRepositorySpy:
         *,
         current_stage: str | None = None,
     ) -> AgentRun | None:
-        self.update_plan_calls.append({
-            "run_id": run_id,
-            "plan_text": plan_text,
-            "current_stage": current_stage,
-        })
+        self.update_plan_calls.append(
+            {
+                "run_id": run_id,
+                "plan_text": plan_text,
+                "current_stage": current_stage,
+            }
+        )
         self.run.plan_text = plan_text
         if current_stage is not None:
             self.run.current_stage = current_stage
@@ -196,13 +202,15 @@ class DocumentationServiceSpy:
         design_text: str,
         role_name: str | None = None,
     ) -> Path:
-        self.calls.append({
-            "kind": "architecture",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "design_text": design_text,
-        })
+        self.calls.append(
+            {
+                "kind": "architecture",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "design_text": design_text,
+            }
+        )
         return Path(f"/tmp/docs/architecture/{plan_text[:10].replace(' ', '-')}.md")
 
     def write_test_plan(
@@ -215,14 +223,16 @@ class DocumentationServiceSpy:
         test_text: str,
         role_name: str | None = None,
     ) -> Path:
-        self.calls.append({
-            "kind": "testing",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "design_text": design_text,
-            "test_text": test_text,
-        })
+        self.calls.append(
+            {
+                "kind": "testing",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "design_text": design_text,
+                "test_text": test_text,
+            }
+        )
         return Path(f"/tmp/docs/testing/{plan_text[:10].replace(' ', '-')}-test-plan.md")
 
     def write_review_report(
@@ -237,16 +247,18 @@ class DocumentationServiceSpy:
         review_text: str,
         role_name: str | None = None,
     ) -> Path:
-        self.calls.append({
-            "kind": "review",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "design_text": design_text,
-            "implementation_text": implementation_text,
-            "test_text": test_text,
-            "review_text": review_text,
-        })
+        self.calls.append(
+            {
+                "kind": "review",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "design_text": design_text,
+                "implementation_text": implementation_text,
+                "test_text": test_text,
+                "review_text": review_text,
+            }
+        )
         return Path(f"/tmp/docs/reviews/{plan_text[:10].replace(' ', '-')}-review-report.md")
 
     def write_lesson(
@@ -258,13 +270,15 @@ class DocumentationServiceSpy:
         lesson_text: str,
         role_name: str | None = None,
     ) -> Path:
-        self.calls.append({
-            "kind": "lessons",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "lesson_text": lesson_text,
-        })
+        self.calls.append(
+            {
+                "kind": "lessons",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "lesson_text": lesson_text,
+            }
+        )
         return Path(f"/tmp/docs/lessons/{plan_text[:10].replace(' ', '-')}.md")
 
 

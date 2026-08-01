@@ -204,11 +204,13 @@ class ToolService:
                 run_id=run_id,
                 resume_stage=resume_stage,
             )
-            lines.extend((
-                "",
-                f"{metadata.context_key or tool_name} ({result['status']}):",
-                result.get("detail", "").strip() or "(no detail)",
-            ))
+            lines.extend(
+                (
+                    "",
+                    f"{metadata.context_key or tool_name} ({result['status']}):",
+                    result.get("detail", "").strip() or "(no detail)",
+                )
+            )
         return "\n".join(lines).strip()
 
     async def build_runtime_tool_context_async(

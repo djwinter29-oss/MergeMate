@@ -82,10 +82,12 @@ class PlanningService:
                 break
             match = re.match(r"^- \[.?\] (.+?)\(@(\w+)\)\s*$", line)
             if match:
-                tasks.append({
-                    "description": match.group(1).strip(),
-                    "owner": match.group(2).strip(),
-                })
+                tasks.append(
+                    {
+                        "description": match.group(1).strip(),
+                        "owner": match.group(2).strip(),
+                    }
+                )
         return tasks
 
     @staticmethod

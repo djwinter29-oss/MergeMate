@@ -117,11 +117,13 @@ async def test_watch_run_progress_sends_updates_for_stage_changes(monkeypatch) -
 
     monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
     application = ApplicationStub()
-    runtime = RuntimeStub([
-        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
-        _build_snapshot(_build_run(RunStatus.RUNNING, "implementation", review_iterations=1)),
-        _build_snapshot(_build_run(RunStatus.COMPLETED, "completed", review_iterations=1)),
-    ])
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "implementation", review_iterations=1)),
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed", review_iterations=1)),
+        ]
+    )
 
     await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
 
@@ -138,11 +140,13 @@ async def test_watch_run_progress_skips_duplicate_snapshots_and_missing_runs(mon
 
     monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
     application = ApplicationStub()
-    runtime = RuntimeStub([
-        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
-        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
-        None,
-    ])
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            None,
+        ]
+    )
 
     await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
 
@@ -158,11 +162,13 @@ async def test_watch_run_progress_stops_after_configured_poll_limit(
 
     monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
     application = ApplicationStub()
-    runtime = RuntimeStub([
-        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
-        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
-        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
-    ])
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+        ]
+    )
     runtime.settings.runtime.max_poll_iterations = 2
 
     with caplog.at_level("WARNING"):
@@ -181,21 +187,23 @@ async def test_watch_run_progress_sends_update_for_new_tool_activity_on_same_sta
 
     monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
     application = ApplicationStub()
-    runtime = RuntimeStub([
-        _build_snapshot(_build_run(RunStatus.WAITING_TOOL, "tool:syntax_checker")),
-        _build_snapshot(
-            _build_run(RunStatus.WAITING_TOOL, "tool:syntax_checker"),
-            tool_events=[
-                {
-                    "tool_name": "syntax_checker",
-                    "action": "check",
-                    "status": "started",
-                    "detail": "Invoking tool.",
-                }
-            ],
-        ),
-        _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
-    ])
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.WAITING_TOOL, "tool:syntax_checker")),
+            _build_snapshot(
+                _build_run(RunStatus.WAITING_TOOL, "tool:syntax_checker"),
+                tool_events=[
+                    {
+                        "tool_name": "syntax_checker",
+                        "action": "check",
+                        "status": "started",
+                        "detail": "Invoking tool.",
+                    }
+                ],
+            ),
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+        ]
+    )
 
     await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
 
@@ -214,20 +222,22 @@ async def test_watch_run_progress_splits_oversized_updates(monkeypatch) -> None:
 
     monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
     application = ApplicationStub()
-    runtime = RuntimeStub([
-        _build_snapshot(
-            _build_run(RunStatus.WAITING_TOOL, "tool:syntax_checker"),
-            tool_events=[
-                {
-                    "tool_name": "syntax_checker",
-                    "action": "check",
-                    "status": "started",
-                    "detail": "x" * 5000,
-                }
-            ],
-        ),
-        _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
-    ])
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(
+                _build_run(RunStatus.WAITING_TOOL, "tool:syntax_checker"),
+                tool_events=[
+                    {
+                        "tool_name": "syntax_checker",
+                        "action": "check",
+                        "status": "started",
+                        "detail": "x" * 5000,
+                    }
+                ],
+            ),
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+        ]
+    )
 
     await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
 
@@ -244,11 +254,13 @@ async def test_watch_run_progress_logs_and_retries_after_send_failure(
 
     monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
     application = ApplicationStub(fail_first_send=True)
-    runtime = RuntimeStub([
-        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
-        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
-        _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
-    ])
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+        ]
+    )
 
     with caplog.at_level("ERROR"):
         await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
@@ -268,10 +280,12 @@ async def test_watch_run_progress_retries_terminal_delivery_after_send_failure(
 
     monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
     application = ApplicationStub(fail_first_send=True)
-    runtime = RuntimeStub([
-        _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
-        _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
-    ])
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+        ]
+    )
 
     with caplog.at_level("ERROR"):
         await watch_run_progress(application, runtime, chat_id=99, run_id="run-1")
@@ -406,11 +420,13 @@ async def test_watch_run_progress_poll_limit_after_terminal_delivery_failure(
 
     application = ApplicationStub()
     application.bot = AlwaysFailingBot()
-    runtime = RuntimeStub([
-        _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
-        _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
-        _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
-    ])
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+            _build_snapshot(_build_run(RunStatus.COMPLETED, "completed")),
+        ]
+    )
     runtime.settings.runtime.max_poll_iterations = 2
 
     with caplog.at_level("WARNING"):
@@ -442,11 +458,13 @@ async def test_watch_run_progress_poll_limit_after_send_failure(
 
     application.bot = FailingBot()
 
-    runtime = RuntimeStub([
-        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
-        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
-        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
-    ])
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+        ]
+    )
     runtime.settings.runtime.max_poll_iterations = 2
 
     with caplog.at_level("WARNING"):
@@ -466,11 +484,13 @@ async def test_watch_run_progress_poll_limit_after_non_terminal_progress(
 
     monkeypatch.setattr("mergemate.interfaces.telegram.progress_notifier.asyncio.sleep", _sleep)
     application = ApplicationStub()
-    runtime = RuntimeStub([
-        _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
-        _build_snapshot(_build_run(RunStatus.RUNNING, "implementation")),
-        _build_snapshot(_build_run(RunStatus.RUNNING, "implementation")),
-    ])
+    runtime = RuntimeStub(
+        [
+            _build_snapshot(_build_run(RunStatus.RUNNING, "retrieve_context")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "implementation")),
+            _build_snapshot(_build_run(RunStatus.RUNNING, "implementation")),
+        ]
+    )
     runtime.settings.runtime.max_poll_iterations = 2
 
     with caplog.at_level("WARNING"):

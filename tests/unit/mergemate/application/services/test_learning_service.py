@@ -35,12 +35,14 @@ class LearningRepositoryStub:
         same_workflow_limit: int = 3,
         other_workflow_limit: int = 1,
     ):
-        self.grouped_calls.append((
-            chat_id,
-            current_workflow,
-            same_workflow_limit,
-            other_workflow_limit,
-        ))
+        self.grouped_calls.append(
+            (
+                chat_id,
+                current_workflow,
+                same_workflow_limit,
+                other_workflow_limit,
+            )
+        )
         return [
             {
                 "workflow": current_workflow,

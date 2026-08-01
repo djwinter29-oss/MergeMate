@@ -45,13 +45,15 @@ def test_run_status_terminal_statuses() -> None:
 def test_run_status_skip_process_statuses() -> None:
     """skip_process_statuses includes terminal + running + waiting_tool."""
     skip = RunStatus.skip_process_statuses()
-    expected = frozenset({
-        RunStatus.COMPLETED,
-        RunStatus.FAILED,
-        RunStatus.CANCELLED,
-        RunStatus.RUNNING,
-        RunStatus.WAITING_TOOL,
-    })
+    expected = frozenset(
+        {
+            RunStatus.COMPLETED,
+            RunStatus.FAILED,
+            RunStatus.CANCELLED,
+            RunStatus.RUNNING,
+            RunStatus.WAITING_TOOL,
+        }
+    )
     assert skip == expected
 
 

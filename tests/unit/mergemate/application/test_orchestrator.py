@@ -236,13 +236,15 @@ class DocumentationServiceStub:
         design_text: str,
         role_name: str | None = None,
     ):
-        self.calls.append({
-            "kind": "architecture",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "design_text": design_text,
-        })
+        self.calls.append(
+            {
+                "kind": "architecture",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "design_text": design_text,
+            }
+        )
         return f"docs/architecture/{plan_text.replace(' ', '-').lower()}.md"
 
     def write_test_plan(
@@ -255,14 +257,16 @@ class DocumentationServiceStub:
         test_text: str,
         role_name: str | None = None,
     ):
-        self.calls.append({
-            "kind": "testing",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "design_text": design_text,
-            "test_text": test_text,
-        })
+        self.calls.append(
+            {
+                "kind": "testing",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "design_text": design_text,
+                "test_text": test_text,
+            }
+        )
         return f"docs/testing/{plan_text.replace(' ', '-').lower()}-test-plan.md"
 
     def write_review_report(
@@ -277,16 +281,18 @@ class DocumentationServiceStub:
         review_text: str,
         role_name: str | None = None,
     ):
-        self.calls.append({
-            "kind": "review",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "design_text": design_text,
-            "implementation_text": implementation_text,
-            "test_text": test_text,
-            "review_text": review_text,
-        })
+        self.calls.append(
+            {
+                "kind": "review",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "design_text": design_text,
+                "implementation_text": implementation_text,
+                "test_text": test_text,
+                "review_text": review_text,
+            }
+        )
         return f"docs/reviews/{plan_text.replace(' ', '-').lower()}-review-report.md"
 
     def write_lesson(
@@ -298,13 +304,15 @@ class DocumentationServiceStub:
         lesson_text: str,
         role_name: str | None = None,
     ) -> str:
-        self.calls.append({
-            "kind": "lessons",
-            "run_id": run_id,
-            "iteration": iteration,
-            "plan_text": plan_text,
-            "lesson_text": lesson_text,
-        })
+        self.calls.append(
+            {
+                "kind": "lessons",
+                "run_id": run_id,
+                "iteration": iteration,
+                "plan_text": plan_text,
+                "lesson_text": lesson_text,
+            }
+        )
         return f"docs/lessons/{plan_text.replace(' ', '-').lower()}.md"
 
 

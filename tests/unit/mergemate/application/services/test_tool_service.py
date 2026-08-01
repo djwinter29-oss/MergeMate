@@ -130,30 +130,32 @@ class RunRepositoryStub:
 
 def test_get_repository_context_uses_git_and_default_platform() -> None:
     service = ToolService(
-        RegistryStub({
-            "git_repository": ToolStub(
-                {"status": "ok", "detail": "git status"},
-                ToolMetadata(
-                    name="git_repository",
-                    runtime_mode="context",
-                    default_action="status",
-                    read_only=True,
-                    context_key="git",
+        RegistryStub(
+            {
+                "git_repository": ToolStub(
+                    {"status": "ok", "detail": "git status"},
+                    ToolMetadata(
+                        name="git_repository",
+                        runtime_mode="context",
+                        default_action="status",
+                        read_only=True,
+                        context_key="git",
+                    ),
                 ),
-            ),
-            "github_cli": ToolStub(
-                {"status": "ok", "detail": "gh repo view"},
-                ToolMetadata(
-                    name="github_cli",
-                    runtime_mode="context",
-                    default_action="repo_view",
-                    read_only=True,
-                    context_key="github",
-                    platform="github",
-                    auth_action="auth_status",
+                "github_cli": ToolStub(
+                    {"status": "ok", "detail": "gh repo view"},
+                    ToolMetadata(
+                        name="github_cli",
+                        runtime_mode="context",
+                        default_action="repo_view",
+                        read_only=True,
+                        context_key="github",
+                        platform="github",
+                        auth_action="auth_status",
+                    ),
                 ),
-            ),
-        }),
+            }
+        ),
         SettingsStub(source_control=SourceControlConfigStub(), agents={}),
     )
 
@@ -175,10 +177,12 @@ def test_get_platform_auth_status_rejects_unknown_platform() -> None:
 
 def test_list_enabled_tools_returns_only_registered_tools() -> None:
     service = ToolService(
-        RegistryStub({
-            "syntax_checker": ToolStub({"status": "ok", "detail": "syntax ok"}),
-            "code_formatter": ToolStub({"status": "ok", "detail": "formatted"}),
-        }),
+        RegistryStub(
+            {
+                "syntax_checker": ToolStub({"status": "ok", "detail": "syntax ok"}),
+                "code_formatter": ToolStub({"status": "ok", "detail": "formatted"}),
+            }
+        ),
         SettingsStub(
             source_control=SourceControlConfigStub(),
             agents={
@@ -204,30 +208,32 @@ def test_install_package_returns_blocked_when_tool_missing() -> None:
 
 def test_get_repository_context_uses_explicit_platform_when_available() -> None:
     service = ToolService(
-        RegistryStub({
-            "git_repository": ToolStub(
-                {"status": "ok", "detail": "git status"},
-                ToolMetadata(
-                    name="git_repository",
-                    runtime_mode="context",
-                    default_action="status",
-                    read_only=True,
-                    context_key="git",
+        RegistryStub(
+            {
+                "git_repository": ToolStub(
+                    {"status": "ok", "detail": "git status"},
+                    ToolMetadata(
+                        name="git_repository",
+                        runtime_mode="context",
+                        default_action="status",
+                        read_only=True,
+                        context_key="git",
+                    ),
                 ),
-            ),
-            "gitlab_cli": ToolStub(
-                {"status": "ok", "detail": "glab repo view"},
-                ToolMetadata(
-                    name="gitlab_cli",
-                    runtime_mode="context",
-                    default_action="repo_view",
-                    read_only=True,
-                    context_key="gitlab",
-                    platform="gitlab",
-                    auth_action="auth_status",
+                "gitlab_cli": ToolStub(
+                    {"status": "ok", "detail": "glab repo view"},
+                    ToolMetadata(
+                        name="gitlab_cli",
+                        runtime_mode="context",
+                        default_action="repo_view",
+                        read_only=True,
+                        context_key="gitlab",
+                        platform="gitlab",
+                        auth_action="auth_status",
+                    ),
                 ),
-            ),
-        }),
+            }
+        ),
         SettingsStub(source_control=SourceControlConfigStub(default_platform="github"), agents={}),
     )
 
@@ -266,20 +272,22 @@ def test_install_package_uses_installer_when_available() -> None:
 
 def test_get_platform_auth_status_uses_platform_tool_when_available() -> None:
     service = ToolService(
-        RegistryStub({
-            "github_cli": ToolStub(
-                {"status": "ok", "detail": "authenticated"},
-                ToolMetadata(
-                    name="github_cli",
-                    runtime_mode="context",
-                    default_action="repo_view",
-                    read_only=True,
-                    context_key="github",
-                    platform="github",
-                    auth_action="auth_status",
-                ),
-            )
-        }),
+        RegistryStub(
+            {
+                "github_cli": ToolStub(
+                    {"status": "ok", "detail": "authenticated"},
+                    ToolMetadata(
+                        name="github_cli",
+                        runtime_mode="context",
+                        default_action="repo_view",
+                        read_only=True,
+                        context_key="github",
+                        platform="github",
+                        auth_action="auth_status",
+                    ),
+                )
+            }
+        ),
         SettingsStub(source_control=SourceControlConfigStub(), agents={}),
     )
 
@@ -666,19 +674,21 @@ def test_get_repository_context_skips_tools_without_context_metadata() -> None:
 
 def test_get_repository_context_skips_non_read_only_context_metadata() -> None:
     service = ToolService(
-        RegistryStub({
-            "github_cli": ToolStub(
-                {"status": "ok", "detail": "should not be used"},
-                ToolMetadata(
-                    name="github_cli",
-                    runtime_mode="context",
-                    default_action="repo_view",
-                    read_only=False,
-                    context_key="github",
-                    platform="github",
-                ),
-            )
-        }),
+        RegistryStub(
+            {
+                "github_cli": ToolStub(
+                    {"status": "ok", "detail": "should not be used"},
+                    ToolMetadata(
+                        name="github_cli",
+                        runtime_mode="context",
+                        default_action="repo_view",
+                        read_only=False,
+                        context_key="github",
+                        platform="github",
+                    ),
+                )
+            }
+        ),
         SettingsStub(source_control=SourceControlConfigStub(), agents={}),
     )
 
@@ -687,19 +697,21 @@ def test_get_repository_context_skips_non_read_only_context_metadata() -> None:
 
 def test_get_platform_auth_status_blocks_when_platform_metadata_has_no_action() -> None:
     service = ToolService(
-        RegistryStub({
-            "github_cli": ToolStub(
-                {"status": "ok", "detail": "unused"},
-                ToolMetadata(
-                    name="github_cli",
-                    runtime_mode="context",
-                    default_action="repo_view",
-                    read_only=True,
-                    context_key="github",
-                    platform="github",
-                ),
-            )
-        }),
+        RegistryStub(
+            {
+                "github_cli": ToolStub(
+                    {"status": "ok", "detail": "unused"},
+                    ToolMetadata(
+                        name="github_cli",
+                        runtime_mode="context",
+                        default_action="repo_view",
+                        read_only=True,
+                        context_key="github",
+                        platform="github",
+                    ),
+                )
+            }
+        ),
         SettingsStub(source_control=SourceControlConfigStub(), agents={}),
     )
 
@@ -710,20 +722,22 @@ def test_get_platform_auth_status_blocks_when_platform_metadata_has_no_action() 
 
 def test_get_platform_auth_status_skips_other_platform_metadata() -> None:
     service = ToolService(
-        RegistryStub({
-            "gitlab_cli": ToolStub(
-                {"status": "ok", "detail": "authenticated"},
-                ToolMetadata(
-                    name="gitlab_cli",
-                    runtime_mode="context",
-                    default_action="repo_view",
-                    read_only=True,
-                    context_key="gitlab",
-                    platform="gitlab",
-                    auth_action="auth_status",
-                ),
-            )
-        }),
+        RegistryStub(
+            {
+                "gitlab_cli": ToolStub(
+                    {"status": "ok", "detail": "authenticated"},
+                    ToolMetadata(
+                        name="gitlab_cli",
+                        runtime_mode="context",
+                        default_action="repo_view",
+                        read_only=True,
+                        context_key="gitlab",
+                        platform="gitlab",
+                        auth_action="auth_status",
+                    ),
+                )
+            }
+        ),
         SettingsStub(source_control=SourceControlConfigStub(), agents={}),
     )
 

@@ -21,11 +21,13 @@ class WorkflowName(StrEnum):
     LEARNING = "learning"
 
 
-USER_FACING_WORKFLOWS = frozenset({
-    WorkflowName.GENERATE_CODE,
-    WorkflowName.DEBUG_CODE,
-    WorkflowName.EXPLAIN_CODE,
-})
+USER_FACING_WORKFLOWS = frozenset(
+    {
+        WorkflowName.GENERATE_CODE,
+        WorkflowName.DEBUG_CODE,
+        WorkflowName.EXPLAIN_CODE,
+    }
+)
 
 _DEPRECATED_EXPORTS: dict[str, Any] = {
     "MULTI_STAGE_WORKFLOWS": frozenset({WorkflowName.GENERATE_CODE}),

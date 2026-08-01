@@ -692,10 +692,12 @@ async def test_handle_prompt_rejects_internal_default_agent() -> None:
 
 @pytest.mark.asyncio
 async def test_handle_prompt_revises_existing_plan_and_handles_failure() -> None:
-    latest = GetRunStatusStub([
-        RunStub(run_id="run-6", status=RunStatus.AWAITING_CONFIRMATION),
-        RunStub(run_id="run-6", status=RunStatus.AWAITING_CONFIRMATION),
-    ])
+    latest = GetRunStatusStub(
+        [
+            RunStub(run_id="run-6", status=RunStatus.AWAITING_CONFIRMATION),
+            RunStub(run_id="run-6", status=RunStatus.AWAITING_CONFIRMATION),
+        ]
+    )
     runtime = _runtime(
         latest=latest,
         submit=SubmitPromptStub(
@@ -748,10 +750,12 @@ async def test_handle_prompt_replies_with_error_when_plan_revision_fails() -> No
         run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION, error_text="planner unavailable"
     )
     runtime = _runtime(
-        latest=GetRunStatusStub([
-            RunStub(run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION),
-            failed_run,
-        ]),
+        latest=GetRunStatusStub(
+            [
+                RunStub(run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION),
+                failed_run,
+            ]
+        ),
         submit=SubmitPromptStub(revise_result=None, execute_error=None),
     )
 
@@ -775,10 +779,12 @@ async def test_handle_prompt_splits_oversized_revision_error() -> None:
         run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION, error_text=long_error
     )
     runtime = _runtime(
-        latest=GetRunStatusStub([
-            RunStub(run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION),
-            failed_run,
-        ]),
+        latest=GetRunStatusStub(
+            [
+                RunStub(run_id="run-11", status=RunStatus.AWAITING_CONFIRMATION),
+                failed_run,
+            ]
+        ),
         submit=SubmitPromptStub(revise_result=None, execute_error=None),
     )
 
@@ -918,9 +924,9 @@ async def test_handle_prompt_splits_oversized_submission_error() -> None:
 @pytest.mark.asyncio
 async def test_handle_prompt_reports_planning_in_progress_before_plan_is_ready() -> None:
     runtime = _runtime(
-        latest=GetRunStatusStub([
-            RunStub(run_id="run-12", status=RunStatus.AWAITING_CONFIRMATION, plan_text=None)
-        ])
+        latest=GetRunStatusStub(
+            [RunStub(run_id="run-12", status=RunStatus.AWAITING_CONFIRMATION, plan_text=None)]
+        )
     )
     message = MessageStub("more details")
 

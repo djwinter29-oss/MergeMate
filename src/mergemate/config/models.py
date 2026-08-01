@@ -22,11 +22,13 @@ _WORKFLOW_TESTING = "testing"
 _WORKFLOW_REVIEW = "review"
 _WORKFLOW_LEARNING = "learning"
 
-_USER_FACING_WORKFLOWS: frozenset[str] = frozenset({
-    _WORKFLOW_GENERATE_CODE,
-    _WORKFLOW_DEBUG_CODE,
-    _WORKFLOW_EXPLAIN_CODE,
-})
+_USER_FACING_WORKFLOWS: frozenset[str] = frozenset(
+    {
+        _WORKFLOW_GENERATE_CODE,
+        _WORKFLOW_DEBUG_CODE,
+        _WORKFLOW_EXPLAIN_CODE,
+    }
+)
 
 # ── Config-local exception classes (mirrors domain exceptions, no import) ──
 
