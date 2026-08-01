@@ -46,12 +46,10 @@ def test_discover_workflow_plugins_failure_logs_warning(monkeypatch, caplog) -> 
 
     monkeypatch.setattr(
         "importlib.metadata.entry_points",
-        lambda *, group: iter(
-            [
-                type("EntryPoint", (), {"name": "good", "load": lambda s: _good_plugin})(),
-                type("EntryPoint", (), {"name": "bad", "load": lambda s: _failing_plugin})(),
-            ]
-        ),
+        lambda *, group: iter([
+            type("EntryPoint", (), {"name": "good", "load": lambda s: _good_plugin})(),
+            type("EntryPoint", (), {"name": "bad", "load": lambda s: _failing_plugin})(),
+        ]),
     )
     caplog.set_level(logging.WARNING)
     bootstrap_module.discover_workflow_plugins()

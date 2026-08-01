@@ -815,14 +815,12 @@ class SQLiteLearningRepository:
             wf = row["workflow"]
             if wf not in groups:
                 groups[wf] = []
-            groups[wf].append(
-                {
-                    "workflow": wf,
-                    "prompt": row["prompt"],
-                    "result_excerpt": row["result_excerpt"],
-                    "learning_lessons": row["learning_lessons"],
-                }
-            )
+            groups[wf].append({
+                "workflow": wf,
+                "prompt": row["prompt"],
+                "result_excerpt": row["result_excerpt"],
+                "learning_lessons": row["learning_lessons"],
+            })
 
         current_entries = groups.pop(current_workflow, [])[:same_workflow_limit]
 

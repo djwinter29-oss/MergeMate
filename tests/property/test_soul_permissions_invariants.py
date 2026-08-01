@@ -19,17 +19,15 @@ from mergemate.domain.agents.soul import SOUL_REGISTRY
 
 # ── whitelist / blacklist invariants ──────────────────────────────────────
 
-WRITEABLE_SECTIONS = frozenset(
-    {
-        "planning",
-        "architecture",
-        "implementation",
-        "testing",
-        "review",
-        "lessons",
-        "requirements",
-    }
-)
+WRITEABLE_SECTIONS = frozenset({
+    "planning",
+    "architecture",
+    "implementation",
+    "testing",
+    "review",
+    "lessons",
+    "requirements",
+})
 
 
 def test_every_soul_has_exactly_one_exclusive_write_section() -> None:

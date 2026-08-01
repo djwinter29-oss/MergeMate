@@ -391,15 +391,13 @@ async def test_orchestrator_passes_repo_knowledge_to_render() -> None:
             self.render_calls = []
 
         def render(self, workflow, recent_messages, learned_items, prompt, repo_knowledge=None):
-            self.render_calls.append(
-                {
-                    "workflow": workflow,
-                    "recent_messages": recent_messages,
-                    "learned_items": learned_items,
-                    "prompt": prompt,
-                    "repo_knowledge": repo_knowledge,
-                }
-            )
+            self.render_calls.append({
+                "workflow": workflow,
+                "recent_messages": recent_messages,
+                "learned_items": learned_items,
+                "prompt": prompt,
+                "repo_knowledge": repo_knowledge,
+            })
             return ("system", "context")
 
     class ToolServiceStub:
@@ -788,20 +786,16 @@ class TestAppConfigRepoName:
 
     def test_repo_name_accepts_string_value(self) -> None:
         """14. AppConfig.repo_name accepts a string value."""
-        config = AppConfig.model_validate(
-            {
-                **self._minimal_config(),
-                "repo_name": "MergeMate",
-            }
-        )
+        config = AppConfig.model_validate({
+            **self._minimal_config(),
+            "repo_name": "MergeMate",
+        })
         assert config.repo_name == "MergeMate"
 
     def test_repo_name_accessible_via_settings_property(self) -> None:
         """repo_name is accessible via settings.repo_name in orchestrator."""
-        config = AppConfig.model_validate(
-            {
-                **self._minimal_config(),
-                "repo_name": "my-repo",
-            }
-        )
+        config = AppConfig.model_validate({
+            **self._minimal_config(),
+            "repo_name": "my-repo",
+        })
         assert config.repo_name == "my-repo"

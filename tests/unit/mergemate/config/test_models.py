@@ -15,35 +15,33 @@ from mergemate.domain.shared import WorkflowName
 
 
 def _build_config() -> AppConfig:
-    return AppConfig.model_validate(
-        {
-            "default_agent": "coder",
-            "default_provider": "primary",
-            "providers": {
-                "primary": {
-                    "api_key_env": "PRIMARY_KEY",
-                    "model": "gpt-5.4",
-                },
-                "secondary": {
-                    "api_key_env": "SECONDARY_KEY",
-                    "model": "gpt-4.1",
-                    "retry": {"max_retries": 6, "base_delay_seconds": 0.75},
-                },
+    return AppConfig.model_validate({
+        "default_agent": "coder",
+        "default_provider": "primary",
+        "providers": {
+            "primary": {
+                "api_key_env": "PRIMARY_KEY",
+                "model": "gpt-5.4",
             },
-            "telegram": {"bot_token_env": "TELEGRAM_TOKEN"},
-            "storage": {"workspace_root": "workspace", "database_path": ".state/runtime.db"},
-            "source_control": {"working_directory": "repo"},
-            "runtime": {"max_concurrent_runs": 2},
-            "agents": {
-                "planner": {"workflow": "planning"},
-                "architect": {"workflow": "design"},
-                "coder": {"workflow": "generate_code", "provider_names": ["secondary"]},
-                "tester": {"workflow": "testing"},
-                "reviewer": {"workflow": "review"},
-                "explainer": {"workflow": "explain_code"},
+            "secondary": {
+                "api_key_env": "SECONDARY_KEY",
+                "model": "gpt-4.1",
+                "retry": {"max_retries": 6, "base_delay_seconds": 0.75},
             },
-        }
-    )
+        },
+        "telegram": {"bot_token_env": "TELEGRAM_TOKEN"},
+        "storage": {"workspace_root": "workspace", "database_path": ".state/runtime.db"},
+        "source_control": {"working_directory": "repo"},
+        "runtime": {"max_concurrent_runs": 2},
+        "agents": {
+            "planner": {"workflow": "planning"},
+            "architect": {"workflow": "design"},
+            "coder": {"workflow": "generate_code", "provider_names": ["secondary"]},
+            "tester": {"workflow": "testing"},
+            "reviewer": {"workflow": "review"},
+            "explainer": {"workflow": "explain_code"},
+        },
+    })
 
 
 def test_config_model_resolves_provider_names_and_api_keys(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -679,8 +677,8 @@ def test_runtime_config_accepts_legacy_retry_alias() -> None:
 
 
 def test_runtime_config_accepts_modern_llm_retry_name() -> None:
-    cfg = RuntimeConfig.model_validate(
-        {"llm_retry": {"max_retries": 4, "base_delay_seconds": 0.25}}
-    )
+    cfg = RuntimeConfig.model_validate({
+        "llm_retry": {"max_retries": 4, "base_delay_seconds": 0.25}
+    })
 
     assert cfg.llm_retry == RetryConfig(max_retries=4, base_delay_seconds=0.25)

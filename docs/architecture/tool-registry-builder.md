@@ -9,18 +9,14 @@ Eliminate the repetitive `**({...} if condition else {})` pattern used to condit
 `bootstrap.py` lines 184–228 construct `ToolRegistry` with an inline dict literal that repeats the same conditional-spread idiom three times:
 
 ```python
-tool_registry = ToolRegistry(
-    {
-        "code_formatter": CodeFormatterTool(),
-        "package_installer": PackageInstallerTool(...),
-        "syntax_checker": SyntaxCheckerTool(),
-        **(
-            {"git_repository": GitRepositoryTool(...)} if settings.source_control.enable_git else {}
-        ),
-        **({"github_cli": GitHubCliTool(...)} if settings.source_control.enable_github else {}),
-        **({"gitlab_cli": GitLabCliTool(...)} if settings.source_control.enable_gitlab else {}),
-    }
-)
+tool_registry = ToolRegistry({
+    "code_formatter": CodeFormatterTool(),
+    "package_installer": PackageInstallerTool(...),
+    "syntax_checker": SyntaxCheckerTool(),
+    **({"git_repository": GitRepositoryTool(...)} if settings.source_control.enable_git else {}),
+    **({"github_cli": GitHubCliTool(...)} if settings.source_control.enable_github else {}),
+    **({"gitlab_cli": GitLabCliTool(...)} if settings.source_control.enable_gitlab else {}),
+})
 ```
 
 **Issues:**

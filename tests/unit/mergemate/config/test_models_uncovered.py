@@ -10,28 +10,26 @@ from mergemate.config.models import AppConfig
 
 
 def _build_config() -> AppConfig:
-    return AppConfig.model_validate(
-        {
-            "default_agent": "coder",
-            "default_provider": "primary",
-            "providers": {
-                "primary": {"api_key_env": "PRIMARY_KEY", "model": "gpt-5.4"},
-                "secondary": {"api_key_env": "SECONDARY_KEY", "model": "gpt-4.1"},
-            },
-            "telegram": {"bot_token_env": "TELEGRAM_TOKEN"},
-            "storage": {"workspace_root": "workspace", "database_path": ".state/runtime.db"},
-            "source_control": {"working_directory": "repo"},
-            "runtime": {"max_concurrent_runs": 2},
-            "agents": {
-                "planner": {"workflow": "planning"},
-                "architect": {"workflow": "design"},
-                "coder": {"workflow": "generate_code", "provider_names": ["secondary"]},
-                "tester": {"workflow": "testing"},
-                "reviewer": {"workflow": "review"},
-                "explainer": {"workflow": "explain_code"},
-            },
-        }
-    )
+    return AppConfig.model_validate({
+        "default_agent": "coder",
+        "default_provider": "primary",
+        "providers": {
+            "primary": {"api_key_env": "PRIMARY_KEY", "model": "gpt-5.4"},
+            "secondary": {"api_key_env": "SECONDARY_KEY", "model": "gpt-4.1"},
+        },
+        "telegram": {"bot_token_env": "TELEGRAM_TOKEN"},
+        "storage": {"workspace_root": "workspace", "database_path": ".state/runtime.db"},
+        "source_control": {"working_directory": "repo"},
+        "runtime": {"max_concurrent_runs": 2},
+        "agents": {
+            "planner": {"workflow": "planning"},
+            "architect": {"workflow": "design"},
+            "coder": {"workflow": "generate_code", "provider_names": ["secondary"]},
+            "tester": {"workflow": "testing"},
+            "reviewer": {"workflow": "review"},
+            "explainer": {"workflow": "explain_code"},
+        },
+    })
 
 
 class TestResolveAgentProviderNames:

@@ -97,9 +97,12 @@ async def test_notify_auto_execution_started_passes_awaitable_sender_to_send_tex
     started_watchers: list[tuple[object, object, int, str]] = []
     monkeypatch.setattr(
         "mergemate.interfaces.telegram.lifecycle_notifier.start_progress_watcher",
-        lambda application, runtime, chat_id, run_id: started_watchers.append(
-            (application, runtime, chat_id, run_id)
-        ),
+        lambda application, runtime, chat_id, run_id: started_watchers.append((
+            application,
+            runtime,
+            chat_id,
+            run_id,
+        )),
     )
 
     notifier = TelegramRunLifecycleNotifier(SettingsStub())
@@ -167,9 +170,12 @@ async def test_notify_auto_execution_started_returns_true_and_sends_message_and_
     started_watchers: list[tuple[object, object, int, str]] = []
     monkeypatch.setattr(
         "mergemate.interfaces.telegram.lifecycle_notifier.start_progress_watcher",
-        lambda application, runtime, chat_id, run_id: started_watchers.append(
-            (application, runtime, chat_id, run_id)
-        ),
+        lambda application, runtime, chat_id, run_id: started_watchers.append((
+            application,
+            runtime,
+            chat_id,
+            run_id,
+        )),
     )
 
     notifier = TelegramRunLifecycleNotifier(SettingsStub())
@@ -215,9 +221,12 @@ async def test_notify_auto_execution_started_returns_false_on_send_failure(
     started_watchers: list[tuple[object, object, int, str]] = []
     monkeypatch.setattr(
         "mergemate.interfaces.telegram.lifecycle_notifier.start_progress_watcher",
-        lambda application, runtime, chat_id, run_id: started_watchers.append(
-            (application, runtime, chat_id, run_id)
-        ),
+        lambda application, runtime, chat_id, run_id: started_watchers.append((
+            application,
+            runtime,
+            chat_id,
+            run_id,
+        )),
     )
 
     notifier = TelegramRunLifecycleNotifier(SettingsStub())
