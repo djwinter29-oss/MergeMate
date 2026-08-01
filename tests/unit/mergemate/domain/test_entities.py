@@ -4,14 +4,13 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
+from mergemate.domain.runs.entities import AgentRun, RunJob
 from mergemate.domain.shared import (
     RunJobStatus,
     RunJobType,
     RunStage,
     RunStatus,
 )
-from mergemate.domain.runs.entities import AgentRun, RunJob
-
 
 # ── AgentRun construction ────────────────────────────────────────────────
 

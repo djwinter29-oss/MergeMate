@@ -12,7 +12,6 @@ from typer.testing import CliRunner
 from mergemate import cli
 from mergemate.config.models import ConfigWorkflowNotFoundError
 
-
 runner = CliRunner()
 
 
@@ -834,6 +833,18 @@ def _resume_runtime(*, runs=None, messages=None):
             captured_limits.append(limit)
             return runs or []
 
+        def get_latest_non_terminal_for_chat(self, chat_id: int):
+            from mergemate.domain.shared import RunStatus
+
+            return next(
+                (
+                    item
+                    for item in reversed(runs or [])
+                    if item.status not in RunStatus.terminal_statuses()
+                ),
+                None,
+            )
+
         def approve(self, run_id: str):
             self.approved_runs.append(run_id)
             return SimpleNamespace(run=(runs or [None])[0], transitioned=True)
@@ -940,7 +951,7 @@ def test_print_session_resume_summary_uses_full_history_lookup(
 
     captured = capsys.readouterr()
     assert "--- Incomplete run detected ---" in captured.out
-    assert runtime.captured_limits == [None]
+    assert runtime.captured_limits == []
 
 
 def test_print_session_resume_summary_includes_timestamps_when_available(
@@ -965,7 +976,9 @@ def test_print_session_resume_summary_includes_timestamps_when_available(
 
 
 def test_format_datetime_and_age_normalize_naive_values() -> None:
-    assert cli._format_datetime(datetime(2026, 1, 2, 3, 4, 5)) == "2026-01-02 03:04:05 UTC"
+    assert (
+        cli._format_datetime(datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC)) == "2026-01-02 03:04:05 UTC"
+    )
     assert (
         cli._format_age(
             datetime(2026, 1, 1, 0, 0, tzinfo=UTC),

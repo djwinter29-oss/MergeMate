@@ -12,8 +12,8 @@ class RunStub:
 
 
 class RunRepositoryStub:
-    def __init__(self) -> None:
-        self.run = RunStub("run-1", 10)
+    def __init__(self, runs: list[RunStub] | None = None) -> None:
+        self.runs = runs or [RunStub("run-1", 10)]
         self.updated = []
 
     def try_update_status(
@@ -38,10 +38,20 @@ class RunRepositoryStub:
         return RunDecisionStub(run=run, transitioned=transitioned)
 
     def get(self, run_id: str):
-        return self.run if run_id == "run-1" else None
+        return next((run for run in self.runs if run.run_id == run_id), None)
 
     def list_for_chat(self, chat_id: int, limit: int = 1):
-        return [self.run] if chat_id == 10 else []
+        if not self.runs or self.runs[0].chat_id != chat_id:
+            return []
+        return self.runs[:limit] if limit is not None else list(self.runs)
+
+    def get_latest_non_terminal_for_chat(self, chat_id: int):
+        if not self.runs or self.runs[0].chat_id != chat_id:
+            return None
+        return next(
+            (run for run in reversed(self.runs) if run.status not in RunStatus.terminal_statuses()),
+            None,
+        )
 
     def update_status(
         self,
@@ -53,11 +63,14 @@ class RunRepositoryStub:
         result_text=None,
         error_text=None,
     ):
-        if expected_current_status is not None and self.run.status != expected_current_status:
-            return self.run
+        target_run = self.get(run_id)
+        if target_run is None:
+            return None
+        if expected_current_status is not None and target_run.status != expected_current_status:
+            return target_run
         self.updated.append((run_id, status))
-        self.run.status = status
-        return self.run
+        target_run.status = status
+        return target_run
 
 
 @dataclass(slots=True)
@@ -92,9 +105,26 @@ def test_cancel_run_uses_latest_for_chat_and_none_when_missing() -> None:
     assert result.status == RunStatus.CANCELLED.value
 
 
+def test_cancel_run_uses_latest_non_terminal_for_chat() -> None:
+    repository = RunRepositoryStub(
+        runs=[
+            RunStub("run-old", 10, status=RunStatus.COMPLETED),
+            RunStub("run-active", 10, status=RunStatus.AWAITING_CONFIRMATION),
+        ]
+    )
+    use_case = CancelRunUseCase(repository)
+
+    result = use_case.execute(chat_id=10)
+
+    assert result is not None
+    assert result.run_id == "run-active"
+    assert result.cancelled is True
+    assert repository.updated == [("run-active", RunStatus.CANCELLED)]
+
+
 def test_cancel_run_rejects_non_awaiting_confirmation_status() -> None:
     repository = RunRepositoryStub()
-    repository.run.status = RunStatus.RUNNING
+    repository.runs[0].status = RunStatus.RUNNING
     use_case = CancelRunUseCase(repository)
 
     result = use_case.execute("run-1", chat_id=10)
@@ -111,8 +141,8 @@ def test_cancel_run_does_not_override_concurrent_status_transition() -> None:
     use_case = CancelRunUseCase(repository)
 
     def concurrent_update(*args, **kwargs):
-        repository.run.status = RunStatus.QUEUED
-        return RunDecisionStub(run=repository.run, transitioned=False)
+        repository.runs[0].status = RunStatus.QUEUED
+        return RunDecisionStub(run=repository.runs[0], transitioned=False)
 
     repository.try_update_status = concurrent_update
 

@@ -27,6 +27,7 @@ from mergemate.domain.workflows.registry import (
     known_workflow_names,
     register_workflow,
 )
+from mergemate.domain.workflows.stage import _BUILTIN_WORKFLOWS as _builtin_wfs
 from mergemate.domain.workflows.validation import (
     StageValidationHook,
     ValidationHook,
@@ -46,21 +47,18 @@ def _init_registry() -> None:
 _init_registry()
 
 __all__ = [
-    # registry
-    "register_workflow",
-    "get_workflow",
-    "get_all_workflows",
-    "known_workflow_names",
-    # validation
-    "ValidationHook",
-    "StageValidationHook",
-    "register_validation_hook",
-    "run_validation_hooks",
-    "get_validation_hooks",
-    # handlers
     "StageHandler",
-    "register_handler",
+    "StageValidationHook",
+    "ValidationHook",
+    "get_all_workflows",
     "get_stage_handler",
+    "get_validation_hooks",
+    "get_workflow",
+    "known_workflow_names",
+    "register_handler",
+    "register_validation_hook",
+    "register_workflow",
+    "run_validation_hooks",
 ]
 
 # ── Auto-register built-in workflows into the live registry at import time ─
@@ -68,8 +66,6 @@ __all__ = [
 # that query the registry find the built-in workflows without explicit
 # bootstrap wiring.  Plugin workflows registered later via entry points or
 # config are appended on top.
-
-from mergemate.domain.workflows.stage import _BUILTIN_WORKFLOWS as _builtin_wfs  # noqa: E402
 
 for _wf_name, _wf_def in _builtin_wfs.items():
     try:

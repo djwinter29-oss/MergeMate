@@ -1,12 +1,12 @@
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
 import asyncio
 import time as time_module
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import httpx
 import pytest
-from unittest.mock import MagicMock
 
 from mergemate.config.models import RetryConfig
 from mergemate.domain.shared.exceptions import AllProvidersFailedError, ProviderResponseError
@@ -364,7 +364,7 @@ class TestRetryableClassification:
         assert _is_retryable(exc) is True
 
     def test_ioerror_is_retryable(self) -> None:
-        assert _is_retryable(IOError("disk full")) is True
+        assert _is_retryable(OSError("disk full")) is True
 
     def test_runtime_error_not_retryable(self) -> None:
         # Bare RuntimeError is not a recognized transient error
@@ -554,13 +554,13 @@ class TestWithRetry:
     def test_extract_retry_after_parses_http_date(self) -> None:
         response = MagicMock(spec=httpx.Response)
         response.status_code = 429
-        retry_after_at = datetime(2026, 1, 1, 12, 0, 10, tzinfo=timezone.utc)
+        retry_after_at = datetime(2026, 1, 1, 12, 0, 10, tzinfo=UTC)
         response.headers = {"Retry-After": retry_after_at.strftime("%a, %d %b %Y %H:%M:%S GMT")}
         exc = httpx.HTTPStatusError("rate limited", request=MagicMock(), response=response)
 
         computed_delay = _extract_retry_after(
             exc,
-            now=datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+            now=datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC),
         )
 
         assert computed_delay == 10.0

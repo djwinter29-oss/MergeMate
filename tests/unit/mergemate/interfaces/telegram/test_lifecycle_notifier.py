@@ -98,7 +98,12 @@ async def test_notify_auto_execution_started_passes_awaitable_sender_to_send_tex
     monkeypatch.setattr(
         "mergemate.interfaces.telegram.lifecycle_notifier.start_progress_watcher",
         lambda application, runtime, chat_id, run_id: started_watchers.append(
-            (application, runtime, chat_id, run_id)
+            (
+                application,
+                runtime,
+                chat_id,
+                run_id,
+            )
         ),
     )
 
@@ -168,7 +173,12 @@ async def test_notify_auto_execution_started_returns_true_and_sends_message_and_
     monkeypatch.setattr(
         "mergemate.interfaces.telegram.lifecycle_notifier.start_progress_watcher",
         lambda application, runtime, chat_id, run_id: started_watchers.append(
-            (application, runtime, chat_id, run_id)
+            (
+                application,
+                runtime,
+                chat_id,
+                run_id,
+            )
         ),
     )
 
@@ -216,7 +226,12 @@ async def test_notify_auto_execution_started_returns_false_on_send_failure(
     monkeypatch.setattr(
         "mergemate.interfaces.telegram.lifecycle_notifier.start_progress_watcher",
         lambda application, runtime, chat_id, run_id: started_watchers.append(
-            (application, runtime, chat_id, run_id)
+            (
+                application,
+                runtime,
+                chat_id,
+                run_id,
+            )
         ),
     )
 

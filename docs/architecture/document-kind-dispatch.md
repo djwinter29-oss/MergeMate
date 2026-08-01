@@ -57,9 +57,11 @@ _DOCUMENT_KINDS: dict[str, DocumentSaver] = {}
 
 def register_document_kind(kind: str) -> Callable[[DocumentSaver], DocumentSaver]:
     """Decorator that registers a document-saver function under *kind*."""
+
     def _decorator(fn: DocumentSaver) -> DocumentSaver:
         _DOCUMENT_KINDS[kind] = fn
         return fn
+
     return _decorator
 ```
 
@@ -104,8 +106,7 @@ def _save_document(
     saver = _DOCUMENT_KINDS.get(kind)
     if saver is None:
         raise ValueError(
-            f"Unknown document kind {kind!r}. "
-            f"Registered kinds: {sorted(_DOCUMENT_KINDS)}"
+            f"Unknown document kind {kind!r}. Registered kinds: {sorted(_DOCUMENT_KINDS)}"
         )
     saver(runtime, artifacts, kind, agent_name=agent_name, **extra)
 ```
@@ -350,6 +351,7 @@ system, the `register_document_kind` decorator should warn on duplicate kinds:
 ```python
 import warnings
 
+
 def register_document_kind(kind: str) -> Callable:
     def _decorator(fn):
         if kind in _DOCUMENT_KINDS:
@@ -361,6 +363,7 @@ def register_document_kind(kind: str) -> Callable:
             )
         _DOCUMENT_KINDS[kind] = fn
         return fn
+
     return _decorator
 ```
 

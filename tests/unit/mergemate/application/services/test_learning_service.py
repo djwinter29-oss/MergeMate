@@ -1,4 +1,5 @@
 import pytest
+
 from mergemate.application.services.learning_service import LearningService
 
 
@@ -35,7 +36,12 @@ class LearningRepositoryStub:
         other_workflow_limit: int = 1,
     ):
         self.grouped_calls.append(
-            (chat_id, current_workflow, same_workflow_limit, other_workflow_limit)
+            (
+                chat_id,
+                current_workflow,
+                same_workflow_limit,
+                other_workflow_limit,
+            )
         )
         return [
             {

@@ -58,9 +58,9 @@ def workflow_prompt_file(workflow: str | WorkflowName) -> str:
 
 
 __all__ = [
+    "get_workflow",
+    "is_user_facing_workflow",
     "resolve_workflow_name",
     "uses_multi_stage_delivery",
-    "is_user_facing_workflow",
     "workflow_prompt_file",
-    "get_workflow",
 ]

@@ -20,7 +20,6 @@ from mergemate.domain.workflows.stage import (
     get_workflow_definitions,
 )
 
-
 # ── WorkflowStage construction ────────────────────────────────────────────
 
 

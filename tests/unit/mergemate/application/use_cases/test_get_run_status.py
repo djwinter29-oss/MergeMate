@@ -1,23 +1,35 @@
 from dataclasses import dataclass
 
 from mergemate.application.use_cases.get_run_status import GetRunStatusUseCase
+from mergemate.domain.shared import RunStatus
 
 
 @dataclass(slots=True)
 class RunStub:
     run_id: str
     chat_id: int
+    status: RunStatus = RunStatus.RUNNING
 
 
 class RunRepositoryStub:
-    def __init__(self) -> None:
-        self.run = RunStub("run-1", 10)
+    def __init__(self, runs: list[RunStub] | None = None) -> None:
+        self.runs = runs or [RunStub("run-1", 10)]
 
     def get(self, run_id: str):
-        return self.run if run_id == "run-1" else None
+        return next((run for run in self.runs if run.run_id == run_id), None)
 
     def list_for_chat(self, chat_id: int, limit: int = 1):
-        return [self.run] if chat_id == 10 else []
+        if not self.runs or self.runs[0].chat_id != chat_id:
+            return []
+        return self.runs[:limit] if limit is not None else list(self.runs)
+
+    def get_latest_non_terminal_for_chat(self, chat_id: int):
+        if not self.runs or self.runs[0].chat_id != chat_id:
+            return None
+        return next(
+            (run for run in reversed(self.runs) if run.status not in RunStatus.terminal_statuses()),
+            None,
+        )
 
 
 class ToolEventRepositoryStub:
@@ -69,6 +81,22 @@ def test_execute_uses_latest_run_for_chat_and_requires_chat_when_no_id() -> None
         assert "chat_id is required" in str(exc)
     else:
         raise AssertionError("Expected ValueError when chat_id is missing")
+
+
+def test_execute_uses_latest_non_terminal_run_for_chat() -> None:
+    use_case = GetRunStatusUseCase(
+        RunRepositoryStub(
+            runs=[
+                RunStub("run-old", 10, status=RunStatus.COMPLETED),
+                RunStub("run-active", 10, status=RunStatus.RUNNING),
+            ]
+        )
+    )
+
+    result = use_case.execute(chat_id=10)
+
+    assert result is not None
+    assert result.run_id == "run-active"
 
 
 def test_execute_includes_recent_tool_events_when_repository_is_configured() -> None:

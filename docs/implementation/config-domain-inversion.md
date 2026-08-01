@@ -14,7 +14,10 @@ Removed three import lines that created reverse dependencies from `config/` → 
 
 ```python
 from mergemate.domain.shared.exceptions import (
-    AgentNotFoundError, ConfigurationError, ProviderNotFoundError, WorkflowNotFoundError,
+    AgentNotFoundError,
+    ConfigurationError,
+    ProviderNotFoundError,
+    WorkflowNotFoundError,
 )
 from mergemate.domain.policies import is_user_facing_workflow
 from mergemate.domain.shared import WorkflowName
@@ -32,11 +35,13 @@ _WORKFLOW_TESTING = "testing"
 _WORKFLOW_REVIEW = "review"
 _WORKFLOW_LEARNING = "learning"
 
-_USER_FACING_WORKFLOWS: frozenset[str] = frozenset({
-    _WORKFLOW_GENERATE_CODE,
-    _WORKFLOW_DEBUG_CODE,
-    _WORKFLOW_EXPLAIN_CODE,
-})
+_USER_FACING_WORKFLOWS: frozenset[str] = frozenset(
+    {
+        _WORKFLOW_GENERATE_CODE,
+        _WORKFLOW_DEBUG_CODE,
+        _WORKFLOW_EXPLAIN_CODE,
+    }
+)
 ```
 
 These are private (`_`-prefixed) to prevent them from becoming a new public API. They mirror the domain `WorkflowName` enum using value semantics (plain strings).
@@ -47,11 +52,14 @@ These are private (`_`-prefixed) to prevent them from becoming a new public API.
 class ConfigError(ValueError):
     """Base exception for config-layer errors."""
 
+
 class ConfigAgentNotFoundError(ConfigError):
     """Referenced agent is not configured."""
 
+
 class ConfigProviderNotFoundError(ConfigError):
     """Referenced provider is not configured."""
+
 
 class ConfigWorkflowNotFoundError(ConfigError):
     """No agent found for the requested workflow."""

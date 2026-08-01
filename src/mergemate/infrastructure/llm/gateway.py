@@ -10,10 +10,10 @@ don't consume the budget).
 import asyncio
 import random
 import time
-from collections.abc import Mapping
-from datetime import datetime, timezone
+from collections.abc import Callable, Mapping
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
-from typing import Any, Callable, cast
+from typing import Any, cast
 
 from mergemate.config.models import RetryConfig
 from mergemate.domain.shared.exceptions import (
@@ -21,7 +21,6 @@ from mergemate.domain.shared.exceptions import (
     ProviderResponseError,
 )
 from mergemate.infrastructure.llm.base import LLMClient
-
 
 # ── Retryable / non-retryable exception classification ────────────────
 
@@ -61,10 +60,7 @@ def _is_retryable(exc: BaseException) -> bool:
         return exc.response.status_code in (429,) or exc.response.status_code >= 500
     if isinstance(exc, (ConnectError, TimeoutException, RemoteProtocolError, TransportError)):
         return True
-    if isinstance(exc, (IOError, OSError)):
-        return True
-    # Anything else -- treat as non-retryable to be safe.
-    return False
+    return isinstance(exc, (IOError, OSError))
 
 
 # ── Sliding-window retry budget (soft circuit breaker) ────────────────
@@ -80,7 +76,7 @@ class _RetryBudget:
     Thread-safe for asyncio usage (single event loop -- no locks needed).
     """
 
-    __slots__ = ("_window_seconds", "_max_retries", "_timestamps")
+    __slots__ = ("_max_retries", "_timestamps", "_window_seconds")
 
     def __init__(self, window_seconds: int, max_retries: int) -> None:
         self._window_seconds = window_seconds
@@ -268,10 +264,10 @@ def _extract_retry_after(
     if retry_after_at is None:
         return None
     if retry_after_at.tzinfo is None:
-        retry_after_at = retry_after_at.replace(tzinfo=timezone.utc)
-    current_time = now or datetime.now(timezone.utc)
+        retry_after_at = retry_after_at.replace(tzinfo=UTC)
+    current_time = now or datetime.now(UTC)
     if current_time.tzinfo is None:
-        current_time = current_time.replace(tzinfo=timezone.utc)
+        current_time = current_time.replace(tzinfo=UTC)
     result: float = max(0.0, (retry_after_at - current_time).total_seconds())
     return result
 
@@ -382,7 +378,7 @@ class ParallelLLMGateway:
                 await self._generate_from_provider(provider_name, system_prompt, user_prompt),
                 None,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             return provider_name, None, str(exc)
 
     async def _generate_from_provider(

@@ -44,7 +44,7 @@ def estimate_duration(workflow: str, prompt: str | None = None) -> int:
 
     base_seconds = _WORKFLOW_BASE_SECONDS.get(workflow, 60)
     multiplier = _prompt_complexity_multiplier(prompt)
-    return max(5, int(round(base_seconds * multiplier)))
+    return max(5, round(base_seconds * multiplier))
 
 
 def _prompt_complexity_multiplier(prompt: str | None) -> float:

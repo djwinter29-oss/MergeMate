@@ -9,9 +9,9 @@ with warnings.catch_warnings():
         WorkflowName,
     )
 from mergemate.domain.policies import (
+    is_user_facing_workflow,
     resolve_workflow_name,
     uses_multi_stage_delivery,
-    is_user_facing_workflow,
     workflow_prompt_file,
 )
 

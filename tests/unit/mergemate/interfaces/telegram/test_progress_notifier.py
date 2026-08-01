@@ -1,7 +1,7 @@
+import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from types import SimpleNamespace
-import asyncio
 
 import pytest
 

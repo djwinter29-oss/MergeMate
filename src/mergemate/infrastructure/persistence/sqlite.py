@@ -16,11 +16,11 @@ from .sqlite_repositories import (
 from .sqlite_schema import SQLiteDatabase
 
 __all__ = [
-    "SQLiteDatabase",
-    "SQLiteRunRepository",
     "SQLiteConversationRepository",
-    "SQLiteRunJobRepository",
+    "SQLiteDatabase",
     "SQLiteLearningRepository",
     "SQLiteRepoKnowledgeRepository",
+    "SQLiteRunJobRepository",
+    "SQLiteRunRepository",
     "SQLiteToolEventRepository",
 ]

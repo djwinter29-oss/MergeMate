@@ -13,7 +13,6 @@ Covers:
 
 from datetime import UTC, datetime
 
-
 from mergemate.domain.shared import RunJobStatus, RunStatus
 from mergemate.infrastructure.persistence.sqlite import (
     SQLiteDatabase,

@@ -2,7 +2,6 @@
 
 from collections.abc import Awaitable, Callable
 
-
 TELEGRAM_MESSAGE_LIMIT = 4000
 
 

@@ -3,10 +3,10 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 import sqlite3
-from uuid import uuid4
+from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 from mergemate.domain.runs.entities import AgentRun, RunJob
 from mergemate.domain.runs.repository import (
@@ -80,6 +80,10 @@ class SQLiteRunRepository:
                 parameters.append(limit)
             rows = connection.execute(query, tuple(parameters)).fetchall()
         return [self._row_to_run(row) for row in rows]
+
+    def get_latest_non_terminal_for_chat(self, chat_id: int) -> AgentRun | None:
+        runs = self.list_for_chat(chat_id, limit=None)
+        return next((run for run in runs if run.status not in RunStatus.terminal_statuses()), None)
 
     def search(self, query: str, limit: int = 10, *, chat_id: int | None = None) -> list[AgentRun]:
         fts_query = build_fts_query(query)
@@ -914,10 +918,10 @@ class SQLiteToolEventRepository:
 
 
 __all__ = [
-    "SQLiteRunRepository",
     "SQLiteConversationRepository",
-    "SQLiteRunJobRepository",
     "SQLiteLearningRepository",
     "SQLiteRepoKnowledgeRepository",
+    "SQLiteRunJobRepository",
+    "SQLiteRunRepository",
     "SQLiteToolEventRepository",
 ]

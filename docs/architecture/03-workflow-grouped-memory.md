@@ -24,9 +24,13 @@ File: `src/mergemate/infrastructure/persistence/sqlite.py`
 **`SQLiteLearningRepository`** gets a new method:
 
 ```python
-def list_grouped_by_workflow(self, chat_id: int, current_workflow: str,
-                              same_workflow_limit: int = 3,
-                              other_workflow_limit: int = 1) -> list[dict[str, str]]:
+def list_grouped_by_workflow(
+    self,
+    chat_id: int,
+    current_workflow: str,
+    same_workflow_limit: int = 3,
+    other_workflow_limit: int = 1,
+) -> list[dict[str, str]]:
     """Return learning entries grouped by workflow.
 
     - ``same_workflow_limit``: how many entries to return from the
@@ -49,12 +53,14 @@ def list_grouped_by_workflow(self, chat_id: int, current_workflow: str,
         wf = row["workflow"]
         if wf not in groups:
             groups[wf] = []
-        groups[wf].append({
-            "workflow": wf,
-            "prompt": row["prompt"],
-            "result_excerpt": row["result_excerpt"],
-            "learning_lessons": row["learning_lessons"],
-        })
+        groups[wf].append(
+            {
+                "workflow": wf,
+                "prompt": row["prompt"],
+                "result_excerpt": row["result_excerpt"],
+                "learning_lessons": row["learning_lessons"],
+            }
+        )
 
     current_entries = groups.pop(current_workflow, [])[:same_workflow_limit]
 
@@ -78,8 +84,7 @@ File: `src/mergemate/application/services/learning_service.py`
 **New method `load_grouped_learnings()`:**
 
 ```python
-def load_grouped_learnings(self, chat_id: int,
-                            current_workflow: str) -> list[dict[str, str]]:
+def load_grouped_learnings(self, chat_id: int, current_workflow: str) -> list[dict[str, str]]:
     if not self._enabled:
         return []
     return self._learning_repository.list_grouped_by_workflow(
@@ -108,7 +113,8 @@ with:
 
 ```python
 learned_items = self._deps.learning_service.load_grouped_learnings(
-    run.chat_id, current_workflow=run.workflow,
+    run.chat_id,
+    current_workflow=run.workflow,
 )
 ```
 

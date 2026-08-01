@@ -11,6 +11,7 @@ Covers:
 
 from pathlib import Path
 from types import SimpleNamespace
+from typing import ClassVar
 from unittest.mock import MagicMock
 
 import pytest
@@ -23,7 +24,6 @@ from mergemate.infrastructure.persistence.sqlite import (
     SQLiteDatabase,
     SQLiteRepoKnowledgeRepository,
 )
-
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -317,10 +317,11 @@ class TestPromptServiceRepoKnowledge:
 @pytest.mark.asyncio
 async def test_orchestrator_passes_repo_knowledge_to_render() -> None:
     """11. process_run() calls load_repo_knowledge() and passes to render()."""
-    from mergemate.application.execution_plan import OrchestratorDependencies  # noqa: F811
+    from datetime import UTC, datetime
+
+    from mergemate.application.execution_plan import OrchestratorDependencies
     from mergemate.domain.runs.entities import AgentRun
     from mergemate.domain.shared import RunStatus
-    from datetime import UTC, datetime
 
     # Build a minimal run
     now = datetime.now(UTC)
@@ -455,10 +456,11 @@ async def test_orchestrator_passes_repo_knowledge_to_render() -> None:
 @pytest.mark.asyncio
 async def test_orchestrator_passes_none_repo_name_when_settings_missing() -> None:
     """Orchestrator calls load_repo_knowledge() with None when settings has no repo_name."""
+    from datetime import UTC, datetime
+
     from mergemate.application.execution_plan import OrchestratorDependencies
     from mergemate.domain.runs.entities import AgentRun
     from mergemate.domain.shared import RunStatus
-    from datetime import UTC, datetime
 
     now = datetime.now(UTC)
     run = AgentRun(
@@ -547,10 +549,11 @@ async def test_orchestrator_passes_none_repo_name_when_settings_missing() -> Non
 @pytest.mark.asyncio
 async def test_orchestrator_prefers_run_repo_name() -> None:
     """Orchestrator passes run.repo_name over settings.repo_name when run has one."""
+    from datetime import UTC, datetime
+
     from mergemate.application.execution_plan import OrchestratorDependencies
     from mergemate.domain.runs.entities import AgentRun
     from mergemate.domain.shared import RunStatus
-    from datetime import UTC, datetime
 
     now = datetime.now(UTC)
     run = AgentRun(
@@ -644,7 +647,7 @@ def test_bootstrap_wires_repo_knowledge_repository(monkeypatch, tmp_path: Path) 
     import mergemate.bootstrap as bootstrap_module
 
     class RepoKnowledgeRepositoryRecorder:
-        instances = []
+        instances: ClassVar[list[object]] = []
 
         def __init__(self, database):
             self.database = database

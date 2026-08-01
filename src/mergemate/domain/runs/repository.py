@@ -32,6 +32,8 @@ class AgentRunRepository(Protocol):
 
     def list_for_chat(self, chat_id: int, limit: int | None = 5) -> list[AgentRun]: ...
 
+    def get_latest_non_terminal_for_chat(self, chat_id: int) -> AgentRun | None: ...
+
     def try_update_status(
         self,
         run_id: str,

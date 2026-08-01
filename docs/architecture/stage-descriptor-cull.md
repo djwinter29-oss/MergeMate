@@ -94,6 +94,7 @@ With:
 def requires_tool_context(self) -> bool:
     return False  # Base default, overridden as needed
 
+
 # DirectExecutionPlan → True (hardcoded, it always uses tool context)
 # MultiStageExecutionPlan → derived from WorkflowStage instances
 ```
@@ -111,7 +112,7 @@ runtime.deps.run_repository.save_artifacts(
 
 Replace with:
 ```python
-current_stage=RunStage.EXECUTION,
+current_stage = (RunStage.EXECUTION,)
 ```
 
 This is already the value the StageDescriptor supplies. No behavioral change.

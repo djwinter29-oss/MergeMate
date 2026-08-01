@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from mergemate.domain.workflows.stage import WorkflowDefinition
 
-
 _WORKFLOW_REGISTRY: dict[str, WorkflowDefinition] = {}
 
 

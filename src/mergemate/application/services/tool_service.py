@@ -5,9 +5,9 @@ import asyncio
 from collections.abc import Iterator
 from typing import Any, cast
 
+from mergemate.domain.shared import RunStage, RunStatus, tool_stage
 from mergemate.domain.tools import ToolInvoker
 from mergemate.domain.tools.entities import ToolMetadata
-from mergemate.domain.shared import RunStage, RunStatus, tool_stage
 
 
 class ToolService:
@@ -163,7 +163,7 @@ class ToolService:
         )
         try:
             result = tool.invoke(payload)
-        except Exception as error:
+        except Exception as error:  # noqa: BLE001
             result = self._tool_exception_result(tool_name, error)
         self._record_tool_event(
             run_id,

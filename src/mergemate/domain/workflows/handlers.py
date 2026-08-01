@@ -27,12 +27,11 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
-
 # ── Public API ─────────────────────────────────────────────────────────────
 
 __all__ = [
-    "StageHandler",
     "HandlerContext",
+    "StageHandler",
     "get_stage_handler",
     "register_handler",
 ]

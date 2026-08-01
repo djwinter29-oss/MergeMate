@@ -7,7 +7,6 @@ from types import SimpleNamespace
 
 from mergemate import bootstrap as bootstrap_module
 
-
 # ── discover_workflow_plugins ─────────────────────────────────────────────────
 
 

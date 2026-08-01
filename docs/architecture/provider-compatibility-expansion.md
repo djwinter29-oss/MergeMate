@@ -43,16 +43,19 @@ Keep the simple `generate` for backward compatibility and add optional Protocols
 ```python
 class LLMClient(Protocol):
     """Minimal — every adapter must implement this."""
+
     async def generate(self, system_prompt: str, user_prompt: str) -> str: ...
+
 
 class StreamingLLMClient(Protocol):
     """Optional — adapters that support token-by-token streaming."""
-    async def generate_stream(
-        self, system_prompt: str, user_prompt: str
-    ) -> AsyncIterator[str]: ...
+
+    async def generate_stream(self, system_prompt: str, user_prompt: str) -> AsyncIterator[str]: ...
+
 
 class ToolCallingLLMClient(Protocol):
     """Optional — adapters that support tool/function calling."""
+
     async def generate_with_tools(
         self,
         system_prompt: str,
@@ -73,6 +76,7 @@ A `BaseLLMAdapter` mixin provides shared utilities: HTTP client lifecycle, timeo
 ```python
 class BaseLLMAdapter:
     """Shared HTTP setup and error classification for all adapters."""
+
     def __init__(self, config: ProviderConfig, api_key: str | None) -> None:
         self._config = config
         self._api_key = api_key
@@ -103,9 +107,7 @@ class AnthropicAdapter(BaseLLMAdapter):
             "anthropic-version": "2023-06-01",
             "Content-Type": "application/json",
         }
-        response = await self._http.post(
-            self._config.provider_url, headers=headers, json=payload
-        )
+        response = await self._http.post(self._config.provider_url, headers=headers, json=payload)
         response.raise_for_status()
         data = response.json()
         return self._extract_content(data)
@@ -147,6 +149,7 @@ class ProviderType(str, Enum):
     ANTHROPIC = "anthropic"
     GOOGLE = "google"
     OPENAI_COMPATIBLE = "openai_compatible"  # Third-party OpenAI clones (DeepSeek, Together, etc.)
+
 
 class ProviderConfig(BaseModel):
     provider_type: ProviderType = ProviderType.OPENAI  # NEW
@@ -191,7 +194,9 @@ providers:
 Replace the `OpenAIAdapter(...)` loop in bootstrap.py with a factory:
 
 ```python
-def _build_adapter(provider_name: str, provider_cfg: ProviderConfig, api_key: str | None) -> LLMClient:
+def _build_adapter(
+    provider_name: str, provider_cfg: ProviderConfig, api_key: str | None
+) -> LLMClient:
     factory_map: dict[ProviderType, type[BaseLLMAdapter]] = {
         ProviderType.OPENAI: OpenAIAdapter,
         ProviderType.OPENAI_COMPATIBLE: OpenAIAdapter,
@@ -256,6 +261,7 @@ class RoutingStrategy(str, Enum):
     PRIORITY = "priority"
     ROUND_ROBIN = "round_robin"
     COST_OPTIMIZED = "cost_optimized"
+
 
 # Add to AgentConfig and RoleConfig:
 routing_strategy: RoutingStrategy = "ordered"
@@ -324,8 +330,8 @@ ParallelLLMGateway
 ```python
 class FallbackProviderGroup:
     """A group of providers tried in sequence with fallback."""
-    def __init__(self, providers: list[str], clients: Mapping[str, LLMClient]):
-        ...
+
+    def __init__(self, providers: list[str], clients: Mapping[str, LLMClient]): ...
 
     async def generate(self, system_prompt: str, user_prompt: str) -> str:
         for provider_name in self.providers:
@@ -337,12 +343,11 @@ class FallbackProviderGroup:
                 continue
         raise AllProvidersFailedError(...)
 
+
 class ParallelLLMGateway:
     _clients: Mapping[str, LLMClient]
 
-    async def generate(
-        self, agent_name: str, system_prompt: str, user_prompt: str
-    ) -> str:
+    async def generate(self, agent_name: str, system_prompt: str, user_prompt: str) -> str:
         provider_names = self._resolve_available_provider_names(agent_name)
         agent = self._settings.agents.get(agent_name)
 
@@ -353,9 +358,7 @@ class ParallelLLMGateway:
             )
 
         # Sequential with fallback (new)
-        return await self._generate_sequential(
-            provider_names, system_prompt, user_prompt
-        )
+        return await self._generate_sequential(provider_names, system_prompt, user_prompt)
 
     async def _generate_sequential(
         self, provider_names: list[str], system_prompt: str, user_prompt: str
@@ -386,6 +389,7 @@ An optional `health()` method on `LLMClient` enables pre-flight checking:
 ```python
 class HealthCheckable(Protocol):
     async def health(self) -> bool: ...
+
 
 # Gateway uses it to skip known-dead providers:
 available = [n for n in names if await self._is_healthy(n)]

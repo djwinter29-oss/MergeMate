@@ -19,9 +19,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
-from unittest.mock import AsyncMock
 
 from mergemate.application.execution_plan import (
     DirectExecutionPlan,
@@ -34,7 +34,6 @@ from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.shared import RunStage, RunStatus, WorkflowName
 from mergemate.domain.shared.exceptions import StageExecutionError
 from mergemate.domain.workflows.stage import get_workflow_definitions
-
 
 _GENERATE_CODE_DEF = get_workflow_definitions()[WorkflowName.GENERATE_CODE]
 

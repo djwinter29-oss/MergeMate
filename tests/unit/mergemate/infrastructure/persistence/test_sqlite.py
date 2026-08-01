@@ -1,5 +1,5 @@
-from datetime import UTC, datetime
 import sqlite3
+from datetime import UTC, datetime
 
 from mergemate.domain.runs.entities import AgentRun
 from mergemate.domain.shared import RunJobStatus, RunJobType, RunStatus
@@ -170,22 +170,25 @@ def test_run_repository_search_returns_matching_runs(tmp_path) -> None:
     assert len(results) == 0
 
 
-def test_run_repository_list_for_chat_without_limit_returns_all_runs(tmp_path) -> None:
+def test_run_repository_get_latest_non_terminal_for_chat_skips_terminal_runs(tmp_path) -> None:
     database = SQLiteDatabase(tmp_path / "state.db")
     database.initialize()
     repository = SQLiteRunRepository(database)
 
-    run_a = _build_run("run-a")
-    run_a.created_at = datetime(2026, 1, 1, 0, 0, tzinfo=UTC)
-    repository.create(run_a)
+    terminal_run = _build_run("run-terminal")
+    terminal_run.status = RunStatus.COMPLETED
+    terminal_run.created_at = datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
+    repository.create(terminal_run)
 
-    run_b = _build_run("run-b")
-    run_b.created_at = datetime(2026, 1, 2, 0, 0, tzinfo=UTC)
-    repository.create(run_b)
+    active_run = _build_run("run-active")
+    active_run.status = RunStatus.RUNNING
+    active_run.created_at = datetime(2026, 1, 1, 0, 0, tzinfo=UTC)
+    repository.create(active_run)
 
-    listed = repository.list_for_chat(1, limit=None)
+    latest = repository.get_latest_non_terminal_for_chat(1)
 
-    assert [item.run_id for item in listed] == ["run-b", "run-a"]
+    assert latest is not None
+    assert latest.run_id == "run-active"
 
 
 def test_run_repository_search_with_chat_id_filter(tmp_path) -> None:

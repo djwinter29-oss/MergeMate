@@ -62,8 +62,8 @@ async def notify_terminal_update(application: _ApplicationLike, chat_id: int, ru
             lambda chunk: application.bot.send_message(chat_id=chat_id, text=chunk),
             _format_terminal_update(run),
         )
-    except Exception as exc:
-        logger.exception("Run %s progress update delivery failed: %s", run.run_id, exc)
+    except Exception:
+        logger.exception("Run %s progress update delivery failed", run.run_id)
         return False
     _terminal_delivery_registry(application).add(run.run_id)
     return True
@@ -153,8 +153,8 @@ async def watch_run_progress(
                     lambda chunk: application.bot.send_message(chat_id=chat_id, text=chunk),
                     format_progress_update(run),
                 )
-        except Exception as exc:
-            logger.exception("Run %s progress update delivery failed: %s", run_id, exc)
+        except Exception:
+            logger.exception("Run %s progress update delivery failed", run_id)
             if max_poll_iterations is not None and poll_count >= max_poll_iterations:
                 logger.warning("Run %s progress watcher stopped after %s polls", run_id, poll_count)
                 return

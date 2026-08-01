@@ -2,6 +2,7 @@
 """Telegram command and message handlers."""
 
 from typing import Any
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -11,8 +12,8 @@ from mergemate.interfaces.telegram import message_utils
 from mergemate.interfaces.telegram.models import TelegramRequest
 from mergemate.interfaces.telegram.presenter import (
     format_acknowledgement,
-    format_approval_started,
     format_approval_not_needed,
+    format_approval_started,
     format_cancellation_not_allowed,
     format_cancelled,
     format_detailed_status,
@@ -22,7 +23,6 @@ from mergemate.interfaces.telegram.presenter import (
     format_welcome,
 )
 from mergemate.interfaces.telegram.progress_notifier import start_progress_watcher
-
 
 TELEGRAM_MESSAGE_LIMIT = message_utils.TELEGRAM_MESSAGE_LIMIT
 MAX_TOOL_HISTORY_LIMIT = 50

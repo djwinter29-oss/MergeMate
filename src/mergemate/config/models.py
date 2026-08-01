@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections import Counter
 import os
+from collections import Counter
+from collections.abc import Collection
 from pathlib import Path
-from typing import Any, ClassVar, Collection, Literal, Self
+from typing import Any, ClassVar, Literal, Self
 from urllib.parse import ParseResult, urlparse
 
 from pydantic import AliasChoices, BaseModel, Field, model_validator

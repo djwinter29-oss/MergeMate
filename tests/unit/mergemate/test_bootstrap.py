@@ -385,7 +385,7 @@ def test_bootstrap_skips_disabled_source_control_tools(monkeypatch, tmp_path: Pa
 
         def build(self):
             captured["tools"] = "built"
-            return SimpleNamespace(list_tools=lambda: [])
+            return SimpleNamespace(list_tools=list)
 
     monkeypatch.setattr(bootstrap_module, "ToolRegistryBuilder", ToolRegistryBuilderStub2)
 

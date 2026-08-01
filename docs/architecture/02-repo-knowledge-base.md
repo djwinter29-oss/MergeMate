@@ -64,8 +64,9 @@ class SQLiteRepoKnowledgeRepository:
                 (chat_id, repo_name, topic, summary, datetime.now(UTC).isoformat()),
             )
 
-    def list_recent(self, chat_id: int, repo_name: str | None = None,
-                    limit: int = 5) -> list[dict[str, str]]:
+    def list_recent(
+        self, chat_id: int, repo_name: str | None = None, limit: int = 5
+    ) -> list[dict[str, str]]:
         with self._database.connection() as connection:
             if repo_name is not None:
                 rows = connection.execute(
@@ -86,8 +87,7 @@ class SQLiteRepoKnowledgeRepository:
                     (chat_id, limit),
                 ).fetchall()
         return [
-            {"repo_name": row["repo_name"], "topic": row["topic"],
-             "summary": row["summary"]}
+            {"repo_name": row["repo_name"], "topic": row["topic"], "summary": row["summary"]}
             for row in rows
         ]
 ```
@@ -111,8 +111,9 @@ class LearningService:
 **New method `remember_repo_knowledge()`:**
 
 ```python
-def remember_repo_knowledge(self, *, chat_id: int, repo_name: str,
-                             topic: str, summary: str) -> None:
+def remember_repo_knowledge(
+    self, *, chat_id: int, repo_name: str, topic: str, summary: str
+) -> None:
     if not self._enabled or self._repo_knowledge_repository is None:
         return
     self._repo_knowledge_repository.record(chat_id, repo_name, topic, summary)
@@ -121,12 +122,13 @@ def remember_repo_knowledge(self, *, chat_id: int, repo_name: str,
 **New method `load_repo_knowledge()`:**
 
 ```python
-def load_repo_knowledge(self, chat_id: int,
-                        repo_name: str | None = None) -> list[dict[str, str]]:
+def load_repo_knowledge(self, chat_id: int, repo_name: str | None = None) -> list[dict[str, str]]:
     if not self._enabled or self._repo_knowledge_repository is None:
         return []
     return self._repo_knowledge_repository.list_recent(
-        chat_id, repo_name=repo_name, limit=self._max_context_items,
+        chat_id,
+        repo_name=repo_name,
+        limit=self._max_context_items,
     )
 ```
 
@@ -166,7 +168,8 @@ In `process_run()`, load repo knowledge alongside learned items:
 ```python
 learned_items = self._deps.learning_service.load_recent_learnings(run.chat_id)
 repo_knowledge = self._deps.learning_service.load_repo_knowledge(
-    run.chat_id, repo_name=run.repo_name,
+    run.chat_id,
+    repo_name=run.repo_name,
 )
 
 system_prompt, context_text = self._deps.prompt_service.render(
@@ -185,7 +188,9 @@ File: `src/mergemate/config/models.py`
 **New field** on `AppConfig`:
 
 ```python
-repo_name: str | None = Field(default=None, description="Current repo name for session-scoped knowledge")
+repo_name: str | None = Field(
+    default=None, description="Current repo name for session-scoped knowledge"
+)
 ```
 
 **On Run model** (`agent_runs` table), add `repo_name`:

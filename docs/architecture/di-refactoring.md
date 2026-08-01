@@ -144,7 +144,9 @@ def _check_cancelled(
 
 The call sites change from:
 ```python
-_check_cancelled(run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled)
+_check_cancelled(
+    run_id=run.run_id, run_repository=runtime.run_repository, is_cancelled=runtime.is_cancelled
+)
 ```
 to:
 ```python

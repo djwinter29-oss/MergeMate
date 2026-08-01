@@ -2,6 +2,12 @@
 
 import pytest
 
+from mergemate.domain.policies import (
+    is_user_facing_workflow,
+    resolve_workflow_name,
+    uses_multi_stage_delivery,
+    workflow_prompt_file,
+)
 from mergemate.domain.shared import (
     RunJobStatus,
     RunJobType,
@@ -15,13 +21,6 @@ from mergemate.domain.shared.enums import (
     USER_FACING_WORKFLOWS,
     WorkflowName,
 )
-from mergemate.domain.policies import (
-    is_user_facing_workflow,
-    resolve_workflow_name,
-    uses_multi_stage_delivery,
-    workflow_prompt_file,
-)
-
 
 # ── RunStatus enum ────────────────────────────────────────────────────────
 

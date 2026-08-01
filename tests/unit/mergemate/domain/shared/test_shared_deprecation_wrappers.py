@@ -9,8 +9,14 @@ import pytest
 from mergemate.domain import shared as shared_module
 from mergemate.domain.policies import (
     is_user_facing_workflow as policies_is_user_facing_workflow,
+)
+from mergemate.domain.policies import (
     resolve_workflow_name as policies_resolve_workflow_name,
+)
+from mergemate.domain.policies import (
     uses_multi_stage_delivery as policies_uses_multi_stage_delivery,
+)
+from mergemate.domain.policies import (
     workflow_prompt_file as policies_workflow_prompt_file,
 )
 from mergemate.domain.shared.enums import WorkflowName

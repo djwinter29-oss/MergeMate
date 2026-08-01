@@ -10,23 +10,23 @@ and awkward to mock for tests that only need a subset.
 ```python
 @dataclass(slots=True)
 class MergeMateRuntime:
-    settings: AppConfig                         # config
-    config_path: Path                           # config
-    database: SQLiteDatabase                    # persistence (infra)
-    run_repository: SQLiteRunRepository         # persistence
+    settings: AppConfig  # config
+    config_path: Path  # config
+    database: SQLiteDatabase  # persistence (infra)
+    run_repository: SQLiteRunRepository  # persistence
     run_job_repository: SQLiteRunJobRepository  # persistence
-    conversation_repository: ...                # persistence
-    learning_repository: ...                    # persistence
-    tool_event_repository: ...                  # persistence
-    queue_backend: JobQueueBackend              # infrastructure
-    learning_service: LearningService           # service
-    tool_service: ToolService                   # service
-    planning_service: PlanningService           # service
-    workflow_service: WorkflowService           # service
-    submit_prompt: SubmitPromptUseCase          # use case
-    get_run_status: GetRunStatusUseCase         # use case
-    cancel_run: CancelRunUseCase                # use case
-    worker: BackgroundRunWorker                 # infra / lifecycle
+    conversation_repository: ...  # persistence
+    learning_repository: ...  # persistence
+    tool_event_repository: ...  # persistence
+    queue_backend: JobQueueBackend  # infrastructure
+    learning_service: LearningService  # service
+    tool_service: ToolService  # service
+    planning_service: PlanningService  # service
+    workflow_service: WorkflowService  # service
+    submit_prompt: SubmitPromptUseCase  # use case
+    get_run_status: GetRunStatusUseCase  # use case
+    cancel_run: CancelRunUseCase  # use case
+    worker: BackgroundRunWorker  # infra / lifecycle
     lifecycle_notifier: TelegramRunLifecycleNotifier  # infra / lifecycle
 ```
 

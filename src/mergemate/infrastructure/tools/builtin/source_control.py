@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import subprocess
+from pathlib import Path
 from typing import ClassVar
 
 from mergemate.domain.tools.entities import ToolMetadata
@@ -67,7 +67,7 @@ class GitRepositoryTool(_BaseCliTool):
     )
     _default_action = "status"
     _unsupported_action_label = "git"
-    _command_map = {
+    _command_map: ClassVar[dict[str, list[str]]] = {
         "status": ["status", "--short", "--branch"],
         "branch": ["branch", "--show-current"],
         "remotes": ["remote", "-v"],
@@ -89,7 +89,7 @@ class GitHubCliTool(_BaseCliTool):
     )
     _default_action = "repo_view"
     _unsupported_action_label = "GitHub"
-    _command_map = {
+    _command_map: ClassVar[dict[str, list[str]]] = {
         "auth_status": ["auth", "status"],
         "repo_view": ["repo", "view"],
         "pr_status": ["pr", "status"],
@@ -110,7 +110,7 @@ class GitLabCliTool(_BaseCliTool):
     )
     _default_action = "repo_view"
     _unsupported_action_label = "GitLab"
-    _command_map = {
+    _command_map: ClassVar[dict[str, list[str]]] = {
         "auth_status": ["auth", "status"],
         "repo_view": ["repo", "view"],
         "mr_status": ["mr", "status"],

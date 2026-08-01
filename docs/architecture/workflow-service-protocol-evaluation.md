@@ -49,6 +49,7 @@ Below is the `WorkflowServiceProtocol` as already specified in the service-proto
 ```python
 # Place in: src/mergemate/application/protocols.py
 
+
 class WorkflowServiceProtocol(Protocol):
     """Protocol for WorkflowService — satisfied by the concrete class via structural subtyping."""
 
@@ -57,11 +58,9 @@ class WorkflowServiceProtocol(Protocol):
         workflow: str,
         *,
         agent_name: str,
-    ) -> DirectExecutionPlan | MultiStageExecutionPlan:
-        ...
+    ) -> DirectExecutionPlan | MultiStageExecutionPlan: ...
 
-    async def create_design(self, plan_text: str, context_text: str) -> str:
-        ...
+    async def create_design(self, plan_text: str, context_text: str) -> str: ...
 
     async def generate_code(
         self,
@@ -70,17 +69,19 @@ class WorkflowServiceProtocol(Protocol):
         context_text: str,
         *,
         agent_name: str | None = None,
-    ) -> str:
-        ...
+    ) -> str: ...
 
-    async def execute_direct(self, agent_name: str, system_prompt: str, user_prompt: str) -> str:
-        ...
+    async def execute_direct(
+        self, agent_name: str, system_prompt: str, user_prompt: str
+    ) -> str: ...
 
-    async def generate_tests(self, plan_text: str, design_text: str, implementation_text: str) -> str:
-        ...
+    async def generate_tests(
+        self, plan_text: str, design_text: str, implementation_text: str
+    ) -> str: ...
 
-    async def review(self, plan_text: str, design_text: str, implementation_text: str, test_text: str) -> str:
-        ...
+    async def review(
+        self, plan_text: str, design_text: str, implementation_text: str, test_text: str
+    ) -> str: ...
 
     async def record_lesson(
         self,
@@ -93,12 +94,10 @@ class WorkflowServiceProtocol(Protocol):
         result_text: str = "",
         error_text: str = "",
         agent_name: str = "",
-    ) -> str:
-        ...
+    ) -> str: ...
 
     @staticmethod
-    def has_high_concerns(review_text: str) -> bool:
-        ...
+    def has_high_concerns(review_text: str) -> bool: ...
 ```
 
 ## 3. Files to Change

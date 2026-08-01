@@ -1,5 +1,5 @@
-from datetime import UTC, datetime, timedelta
 import sqlite3
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from mergemate.infrastructure.persistence.sqlite import SQLiteDatabase, SQLiteLearningRepository

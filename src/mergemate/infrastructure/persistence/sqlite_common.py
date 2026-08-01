@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 import shlex
+from datetime import datetime
 
 
 def _to_datetime(value: str) -> datetime:
@@ -44,7 +44,7 @@ def build_fts_query(query: str) -> str | None:
 __all__ = [
     "_to_datetime",
     "agent_runs_search_text_sql",
-    "conversation_messages_search_text_sql",
     "build_fts_query",
+    "conversation_messages_search_text_sql",
     "fts_quote",
 ]

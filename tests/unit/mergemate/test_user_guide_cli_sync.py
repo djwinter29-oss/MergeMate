@@ -1,7 +1,7 @@
 """Ensure CLI commands documented in docs/user-guide.md stay in sync with the CLI."""
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 from mergemate.cli import app
 
