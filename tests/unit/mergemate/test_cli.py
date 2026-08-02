@@ -1123,3 +1123,20 @@ def test_resume_cli_requires_an_incomplete_run(monkeypatch: pytest.MonkeyPatch) 
 
     assert result.exit_code != 0
     assert 'No incomplete run found for session "my-feature".' in result.stderr
+
+
+def test_resume_cli_shows_recent_history_when_no_incomplete_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime = _resume_runtime(
+        runs=[],
+        messages=[{"role": "user", "content": "Previous discussion"}],
+    )
+    monkeypatch.setattr(cli, "bootstrap", lambda _config: runtime)
+
+    result = runner.invoke(cli.app, ["resume", "--session", "my-feature"])
+
+    assert result.exit_code != 0
+    assert "--- Previous conversation ---" in result.stdout
+    assert "[user] Previous discussion" in result.stdout
+    assert 'No incomplete run found for session "my-feature".' in result.stderr

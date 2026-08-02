@@ -651,6 +651,7 @@ def resume_cli(
     run = _latest_non_terminal_run(runtime, chat_id)
 
     if run is None:
+        _print_conversation_history(runtime, chat_id)
         typer.echo(f'No incomplete run found for session "{session}".', err=True)
         raise typer.Exit(code=1)
 
