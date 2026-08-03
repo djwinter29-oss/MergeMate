@@ -9,7 +9,8 @@
 > and unified `mergemate search` are available today, and search is backed by SQLite FTS5 with
 > phrase-aware ranking plus a LIKE fallback when FTS is unavailable. `mergemate resume` is also
 > available for direct reattachment, and it now scans the full session history instead of relying on
-> a fixed lookup window. This document now serves as a historical design note for the remaining
+> a fixed lookup window. When a resumable run is waiting for confirmation, the command auto-approves it before
+> waiting for completion. This document now serves as a historical design note for the remaining
 > session-recovery UX work.
 
 ---
@@ -19,10 +20,10 @@
 The deep review originally identified 3 feature gaps that were documented in tickets but never implemented:
 
 1. **Missing CLI commands** — `mergemate run` and `mergemate chat` were designed (see `docs/implementation/cli-interactive-mode.md`) and are now implemented in `src/mergemate/cli.py`.
-2. **Session resume capability** — The `--session <name>` CLI option exists, but no resume-from-last-unsaved-session logic exists when the user re-enters a session whose last run was interrupted or incomplete.
+2. **Session resume capability** — The `--session <name>` CLI option exists, and the CLI now detects the latest non-terminal run when a user re-enters a session whose last run was interrupted or incomplete.
 3. **Conversation search** — The original keyword-search gap has now been closed by FTS5-backed search with phrase-aware ranking and a LIKE fallback.
 
-The original review grouped these gaps because they touched the same CLI surface (`cli.py`) and conversation/session data model. The shipped command and search surface is now complete; the remaining work is about richer session recovery.
+The original review grouped these gaps because they touched the same CLI surface (`cli.py`) and conversation/session data model. The shipped command and search surface is now complete; the remaining work is about richer session recovery UX.
 
 ---
 
@@ -54,10 +55,10 @@ The original review grouped these gaps because they touched the same CLI surface
 
 Currently:
 - `mergemate chat --session <name>` creates a deterministic `chat_id` and uses the existing conversation history
-- The CLI now prints the latest incomplete run summary when `run` or `chat` re-enters a named session, which improves continuity. Direct reattachment is handled by `mergemate resume`.
+- The CLI now prints the latest incomplete run summary when `run` or `chat` re-enters a named session, which improves continuity. Direct reattachment is handled by `mergemate resume`, which auto-approves a pending run before waiting for it to finish.
 - But if a user leaves a session mid-run, the remaining gap is still the passive UX path inside `run`/`chat`:
   - Detecting the "last incomplete run" is implemented through the resume lookup
-  - `resume` can reattach and optionally approve a pending run
+  - `resume` can reattach and auto-approves a pending run when confirmation is still required
   - automatic watcher reattachment from a plain session re-entry is still a manual action
 
 ### 2.4 Search State
