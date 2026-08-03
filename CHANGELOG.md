@@ -4,6 +4,8 @@
 
 ### Changed
 
+- **Resume UX documentation** — clarified that `mergemate resume` auto-approves a run that is still waiting for confirmation, and updated the README and user guide to describe that behavior alongside the session reattach flow.
+
 - **Documentation refresh** — clarified the `probe-readiness` rollout guidance in the README and user guide, including the wait-loop tuning flags and the timeout note emitted when a readiness wait reaches its maximum.
 
 - **Documentation sync** — updated the README command surface to include `mergemate resume` and describe its session reattach behavior alongside the other CLI entrypoints.
