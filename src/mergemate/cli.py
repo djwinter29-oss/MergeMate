@@ -442,6 +442,12 @@ def _latest_non_terminal_run(runtime: Any, chat_id: int) -> Any | None:
     return runtime.persistence.run_repository.get_latest_non_terminal_for_chat(chat_id)
 
 
+def _latest_run_for_chat(runtime: Any, chat_id: int) -> Any | None:
+    """Return the latest run for a chat session, terminal or otherwise."""
+    runs = runtime.persistence.run_repository.list_for_chat(chat_id, limit=1)
+    return runs[0] if runs else None
+
+
 def _print_session_resume_summary(runtime: Any, chat_id: int) -> None:
     """Print the latest non-terminal run for a named session, if one exists."""
     run = _latest_non_terminal_run(runtime, chat_id)
@@ -651,6 +657,10 @@ def resume_cli(
     run = _latest_non_terminal_run(runtime, chat_id)
 
     if run is None:
+        latest_run = _latest_run_for_chat(runtime, chat_id)
+        if latest_run is not None:
+            typer.echo("--- Latest run summary ---")
+            _print_run_result(latest_run)
         _print_conversation_history(runtime, chat_id)
         typer.echo(f'No incomplete run found for session "{session}".', err=True)
         raise typer.Exit(code=1)
