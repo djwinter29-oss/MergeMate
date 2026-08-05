@@ -103,7 +103,7 @@ and the search and context commands when you need to inspect persisted state loc
 - `mergemate search <query> [--limit N] [--session NAME]` — search runs and chat messages together in a single result stream, optionally scoped to a session.
 - `mergemate run <prompt>` — submit a one-shot prompt and wait for completion (supports `--agent`, `--workflow`, `--session`, `--quiet`, `--timeout`, `--poll-interval`).
 - `mergemate chat` — interactive REPL session (supports `--session`, `--agent`, `--workflow`, `--timeout`, `--poll-interval`).
-- `mergemate resume --session <name>` — reattach to the latest incomplete run in a named session, print its summary and recent conversation history, auto-approve it if it is waiting for confirmation, and wait for the original run to finish.
+- `mergemate resume --session <name>` — reattach to the latest incomplete run in a named session, print its summary and recent conversation history, auto-approve it if it is waiting for confirmation, and wait for the original run to finish. When nothing is resumable, it still prints the latest run summary and recent conversation history before exiting nonzero.
 
 The search commands are useful when you want to recover prior requirements or compare a current run with similar past work without opening the database directly. Use `search` when you want a unified stream of both run and message matches; use the source-specific commands when you want only one kind of result.
 

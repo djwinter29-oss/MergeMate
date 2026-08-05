@@ -1125,11 +1125,21 @@ def test_resume_cli_requires_an_incomplete_run(monkeypatch: pytest.MonkeyPatch) 
     assert 'No incomplete run found for session "my-feature".' in result.stderr
 
 
-def test_resume_cli_shows_recent_history_when_no_incomplete_run(
+def test_resume_cli_shows_latest_run_summary_and_history_when_no_incomplete_run(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from mergemate.domain.shared import RunStage, RunStatus
+
+    completed_run = SimpleNamespace(
+        run_id="run-complete-1",
+        status=RunStatus.COMPLETED,
+        current_stage=RunStage.COMPLETED,
+        prompt="Ship the fix",
+        plan_text=None,
+        result_text="Done.",
+    )
     runtime = _resume_runtime(
-        runs=[],
+        runs=[completed_run],
         messages=[{"role": "user", "content": "Previous discussion"}],
     )
     monkeypatch.setattr(cli, "bootstrap", lambda _config: runtime)
@@ -1137,6 +1147,9 @@ def test_resume_cli_shows_recent_history_when_no_incomplete_run(
     result = runner.invoke(cli.app, ["resume", "--session", "my-feature"])
 
     assert result.exit_code != 0
+    assert "--- Latest run summary ---" in result.stdout
+    assert "Status: completed" in result.stdout
+    assert "Result:\nDone." in result.stdout
     assert "--- Previous conversation ---" in result.stdout
     assert "[user] Previous discussion" in result.stdout
     assert 'No incomplete run found for session "my-feature".' in result.stderr
