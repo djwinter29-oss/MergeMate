@@ -757,6 +757,15 @@ def test_search_conversations_session_filters_results(monkeypatch: pytest.Monkey
     assert calls == [("messages", "Prompt", 10, expected_chat_id)]
 
 
+def test_search_help_mentions_query_syntax() -> None:
+    result = runner.invoke(cli.app, ["search", "--help"])
+
+    assert result.exit_code == 0
+    assert "multi-word queries are ANDed" in result.stdout
+    assert "quoted phrases stay" in result.stdout
+    assert "intact" in result.stdout
+
+
 def test_search_runs_prints_empty(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli, "bootstrap", lambda _config: _search_runtime())
 
