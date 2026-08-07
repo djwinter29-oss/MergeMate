@@ -217,7 +217,15 @@ def platform_auth(
 
 @app.command("search-runs")
 def search_runs(
-    query: Annotated[str, typer.Argument(help="Search term to match against run fields")],
+    query: Annotated[
+        str,
+        typer.Argument(
+            help=(
+                "Search term to match against run fields; multi-word queries are ANDed and "
+                "quoted phrases stay intact"
+            )
+        ),
+    ],
     limit: Annotated[int, typer.Option(min=1, max=100, help="Maximum results to return")] = 10,
     session: Annotated[str | None, typer.Option(help="Session name to restrict results to")] = None,
     config: Path | None = _CONFIG_OPTION,
@@ -232,7 +240,13 @@ def search_runs(
 @app.command("search-conversations")
 def search_conversations(
     query: Annotated[
-        str, typer.Argument(help="Search term to match against conversation messages")
+        str,
+        typer.Argument(
+            help=(
+                "Search term to match against conversation messages; multi-word queries are ANDed "
+                "and quoted phrases stay intact"
+            )
+        ),
     ],
     limit: Annotated[int, typer.Option(min=1, max=100, help="Maximum results to return")] = 10,
     session: Annotated[str | None, typer.Option(help="Session name to restrict results to")] = None,
@@ -249,7 +263,15 @@ def search_conversations(
 
 @app.command("search")
 def search(
-    query: Annotated[str, typer.Argument(help="Search term to match against runs and messages")],
+    query: Annotated[
+        str,
+        typer.Argument(
+            help=(
+                "Search term to match against runs and messages; multi-word queries are ANDed and "
+                "quoted phrases stay intact"
+            )
+        ),
+    ],
     limit: Annotated[int, typer.Option(min=1, max=100, help="Maximum results to return")] = 10,
     session: Annotated[str | None, typer.Option(help="Session name to restrict results to")] = None,
     config: Path | None = _CONFIG_OPTION,

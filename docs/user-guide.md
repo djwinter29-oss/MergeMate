@@ -207,6 +207,10 @@ matches saved chat messages, which makes it useful for recalling prior requireme
 context without scanning the raw database manually. Add `--session` when you want to scope the
 lookup to a named session.
 
+Search queries use shell-style tokenization: multi-word queries are ANDed by default, and quoted
+phrases stay intact. For example, `mergemate search "CI/CD pipeline"` looks for that exact phrase,
+while `mergemate search deployment webhook` requires both terms to be present.
+
 The runtime writes generated review reports under the workspace's `docs/reviews/` tree. This is
 separate from the repository's curated review notes under `docs/review/`, which are part of the
 static documentation set.

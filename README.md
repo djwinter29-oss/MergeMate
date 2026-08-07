@@ -105,7 +105,7 @@ and the search and context commands when you need to inspect persisted state loc
 - `mergemate chat` — interactive REPL session (supports `--session`, `--agent`, `--workflow`, `--timeout`, `--poll-interval`).
 - `mergemate resume --session <name>` — reattach to the latest incomplete run in a named session, print its summary and recent conversation history, auto-approve it if it is waiting for confirmation, and wait for the original run to finish. When nothing is resumable, it still prints the latest run summary and recent conversation history before exiting nonzero.
 
-The search commands are useful when you want to recover prior requirements or compare a current run with similar past work without opening the database directly. Use `search` when you want a unified stream of both run and message matches; use the source-specific commands when you want only one kind of result.
+The search commands are useful when you want to recover prior requirements or compare a current run with similar past work without opening the database directly. Use `search` when you want a unified stream of both run and message matches; use the source-specific commands when you want only one kind of result. Queries are split with shell-style tokenization, so multi-word searches are ANDed by default and quoted phrases stay intact.
 
 ## GitHub Automation
 
